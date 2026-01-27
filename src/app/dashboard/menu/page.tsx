@@ -183,7 +183,9 @@ export default function MenuPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-text-primary">{item.name}</span>
                       {!hasRequiredTags(item) && (
-                        <AlertCircle className="w-4 h-4 text-yellow-400" title="Missing required tags" />
+                        <span title="Missing required tags">
+                          <AlertCircle className="w-4 h-4 text-yellow-400" />
+                        </span>
                       )}
                     </div>
                   </td>

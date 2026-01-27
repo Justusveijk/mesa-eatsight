@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag, PriceTag } from '@/lib/types/taxonomy'
 import { Button } from '@/components/ui/button'
+import { createRecSession, trackEvent, getRecommendations, saveRecResults, RecommendedItem } from '@/lib/recommendations'
 
 interface QuestionFlowProps {
-  onComplete: (preferences: GuestPreferences) => void
+  venueId: string
+  tableRef: string | null
+  onComplete: (recommendations: RecommendedItem[]) => void
   onBack: () => void
 }
 
@@ -79,9 +82,11 @@ const chipVariants = {
   }),
 }
 
-export function QuestionFlow({ onComplete, onBack }: QuestionFlowProps) {
+export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: QuestionFlowProps) {
   const [step, setStep] = useState<Step>(1)
   const [direction, setDirection] = useState(1)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [preferences, setPreferences] = useState<GuestPreferences>({
     mood: null,
     flavors: [],
@@ -90,26 +95,78 @@ export function QuestionFlow({ onComplete, onBack }: QuestionFlowProps) {
     price: null,
   })
 
+  // Create session when flow starts
+  useEffect(() => {
+    async function initSession() {
+      const id = await createRecSession(venueId, tableRef)
+      setSessionId(id)
+      if (id) {
+        trackEvent(venueId, id, 'flow_started', { tableRef })
+      }
+    }
+    initSession()
+  }, [venueId, tableRef])
+
+  const handleComplete = useCallback(async () => {
+    setIsLoading(true)
+
+    if (sessionId) {
+      trackEvent(venueId, sessionId, 'flow_completed', { preferences })
+    }
+
+    // Fetch real recommendations from Supabase
+    const recommendations = await getRecommendations(venueId, preferences, 3)
+
+    if (sessionId) {
+      // Save results with actual scores
+      const resultsToSave = recommendations.map(r => ({
+        id: r.id,
+        score: r.score,
+        reason: r.reason,
+      }))
+      await saveRecResults(sessionId, resultsToSave)
+      trackEvent(venueId, sessionId, 'recommendations_shown', {
+        count: recommendations.length,
+        items: recommendations.map(r => r.id),
+      })
+    }
+
+    setIsLoading(false)
+    onComplete(recommendations)
+  }, [venueId, preferences, sessionId, onComplete])
+
   const goNext = () => {
     if (step < 5) {
+      if (sessionId) {
+        trackEvent(venueId, sessionId, 'step_completed', { step, preferences })
+      }
       setDirection(1)
       setStep((s) => (s + 1) as Step)
     } else {
-      onComplete(preferences)
+      handleComplete()
     }
   }
 
   const goBack = () => {
     if (step > 1) {
+      if (sessionId) {
+        trackEvent(venueId, sessionId, 'step_back', { step })
+      }
       setDirection(-1)
       setStep((s) => (s - 1) as Step)
     } else {
+      if (sessionId) {
+        trackEvent(venueId, sessionId, 'flow_abandoned', { step })
+      }
       onBack()
     }
   }
 
   const selectMood = (mood: MoodTag) => {
     setPreferences((p) => ({ ...p, mood }))
+    if (sessionId) {
+      trackEvent(venueId, sessionId, 'mood_selected', { mood })
+    }
   }
 
   const toggleFlavor = (flavor: FlavorTag) => {
@@ -384,9 +441,9 @@ export function QuestionFlow({ onComplete, onBack }: QuestionFlowProps) {
               size="lg"
               className="w-full"
               onClick={goNext}
-              disabled={!canContinue()}
+              disabled={!canContinue() || isLoading}
             >
-              {step === 5 ? 'Show recommendations' : 'Continue'}
+              {isLoading ? 'Finding recommendations...' : step === 5 ? 'Show recommendations' : 'Continue'}
             </Button>
             {(step === 4 || step === 5) && (
               <Button
@@ -394,6 +451,7 @@ export function QuestionFlow({ onComplete, onBack }: QuestionFlowProps) {
                 size="lg"
                 className="w-full mt-2"
                 onClick={goNext}
+                disabled={isLoading}
               >
                 {step === 4 ? 'None of these' : 'Skip'}
               </Button>

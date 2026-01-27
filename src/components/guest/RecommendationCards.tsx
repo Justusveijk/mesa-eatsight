@@ -1,11 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { MenuItem, TAG_LABELS, MenuTag } from '@/lib/types/taxonomy'
+import { TAG_LABELS, MenuTag } from '@/lib/types/taxonomy'
 import { Button } from '@/components/ui/button'
+import { RecommendedItem } from '@/lib/recommendations'
 
 interface RecommendationCardsProps {
-  recommendations: Array<MenuItem & { reason: string }>
+  recommendations: RecommendedItem[]
   onStartOver: () => void
 }
 
