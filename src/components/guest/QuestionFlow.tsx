@@ -1,0 +1,406 @@
+'use client'
+
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag, PriceTag } from '@/lib/types/taxonomy'
+import { Button } from '@/components/ui/button'
+
+interface QuestionFlowProps {
+  onComplete: (preferences: GuestPreferences) => void
+  onBack: () => void
+}
+
+type Step = 1 | 2 | 3 | 4 | 5
+
+const moodOptions: { id: MoodTag; label: string; icon: string }[] = [
+  { id: 'mood_comfort', label: 'Comfort / Indulgent', icon: '🍔' },
+  { id: 'mood_light', label: 'Fresh / Light', icon: '🥗' },
+  { id: 'mood_protein', label: 'High-protein / Filling', icon: '💪' },
+  { id: 'mood_warm', label: 'Warm / Cozy', icon: '🍜' },
+  { id: 'mood_treat', label: 'Sweet Treat', icon: '🍰' },
+]
+
+const flavorOptions: { id: FlavorTag; label: string; icon: string }[] = [
+  { id: 'flavor_umami', label: 'Savoury / Umami', icon: '🧀' },
+  { id: 'flavor_spicy', label: 'Spicy', icon: '🌶️' },
+  { id: 'flavor_sweet', label: 'Sweet', icon: '🍯' },
+  { id: 'flavor_tangy', label: 'Tangy / Sour', icon: '🍋' },
+  { id: 'flavor_smoky', label: 'Smoky', icon: '🔥' },
+]
+
+const portionOptions: { id: PortionTag; label: string; icon: string }[] = [
+  { id: 'portion_bite', label: 'Just a bite', icon: '🥄' },
+  { id: 'portion_standard', label: 'Normal hungry', icon: '🍽️' },
+  { id: 'portion_hearty', label: 'Very hungry', icon: '🍖' },
+]
+
+const dietOptions: { id: DietTag; label: string }[] = [
+  { id: 'diet_vegetarian', label: 'Vegetarian' },
+  { id: 'diet_vegan', label: 'Vegan' },
+  { id: 'diet_gluten_free', label: 'Gluten-free' },
+  { id: 'diet_dairy_free', label: 'Dairy-free' },
+  { id: 'diet_halal', label: 'Halal' },
+  { id: 'diet_no_pork', label: 'No pork' },
+  { id: 'allergy_nut_free', label: 'Nut allergy' },
+]
+
+const priceOptions: { id: PriceTag; label: string; icon: string }[] = [
+  { id: 'price_1', label: '€ Best value', icon: '💚' },
+  { id: 'price_2', label: '€€ Mid-range', icon: '⭐' },
+  { id: 'price_3', label: '€€€ Treat yourself', icon: '✨' },
+]
+
+const slideVariants = {
+  enter: (direction: number) => ({
+    y: direction > 0 ? 100 : -100,
+    opacity: 0,
+  }),
+  center: {
+    y: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    y: direction < 0 ? 100 : -100,
+    opacity: 0,
+  }),
+}
+
+const chipVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.05,
+      type: 'spring' as const,
+      stiffness: 300,
+      damping: 24,
+    },
+  }),
+}
+
+export function QuestionFlow({ onComplete, onBack }: QuestionFlowProps) {
+  const [step, setStep] = useState<Step>(1)
+  const [direction, setDirection] = useState(1)
+  const [preferences, setPreferences] = useState<GuestPreferences>({
+    mood: null,
+    flavors: [],
+    portion: null,
+    dietary: [],
+    price: null,
+  })
+
+  const goNext = () => {
+    if (step < 5) {
+      setDirection(1)
+      setStep((s) => (s + 1) as Step)
+    } else {
+      onComplete(preferences)
+    }
+  }
+
+  const goBack = () => {
+    if (step > 1) {
+      setDirection(-1)
+      setStep((s) => (s - 1) as Step)
+    } else {
+      onBack()
+    }
+  }
+
+  const selectMood = (mood: MoodTag) => {
+    setPreferences((p) => ({ ...p, mood }))
+  }
+
+  const toggleFlavor = (flavor: FlavorTag) => {
+    setPreferences((p) => {
+      if (p.flavors.includes(flavor)) {
+        return { ...p, flavors: p.flavors.filter((f) => f !== flavor) }
+      }
+      if (p.flavors.length >= 2) return p
+      return { ...p, flavors: [...p.flavors, flavor] }
+    })
+  }
+
+  const selectPortion = (portion: PortionTag) => {
+    setPreferences((p) => ({ ...p, portion }))
+  }
+
+  const toggleDiet = (diet: DietTag) => {
+    setPreferences((p) => {
+      if (p.dietary.includes(diet)) {
+        return { ...p, dietary: p.dietary.filter((d) => d !== diet) }
+      }
+      return { ...p, dietary: [...p.dietary, diet] }
+    })
+  }
+
+  const selectPrice = (price: PriceTag | null) => {
+    setPreferences((p) => ({ ...p, price }))
+  }
+
+  const canContinue = () => {
+    switch (step) {
+      case 1:
+        return preferences.mood !== null
+      case 2:
+        return true
+      case 3:
+        return preferences.portion !== null
+      case 4:
+        return true
+      case 5:
+        return true
+      default:
+        return false
+    }
+  }
+
+  const renderChip = (
+    selected: boolean,
+    label: string,
+    icon?: string,
+    onClick?: () => void,
+    index?: number
+  ) => (
+    <motion.button
+      key={label}
+      custom={index}
+      variants={chipVariants}
+      initial="hidden"
+      animate="visible"
+      onClick={onClick}
+      className={`
+        flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium transition-colors
+        ${
+          selected
+            ? 'bg-mesa-500 text-white'
+            : 'bg-white text-mesa-ink border border-mesa-border hover:border-mesa-500'
+        }
+      `}
+    >
+      {icon && <span className="text-lg">{icon}</span>}
+      <span>{label}</span>
+    </motion.button>
+  )
+
+  return (
+    <div className="min-h-screen flex flex-col bg-mesa-ivory relative overflow-hidden">
+      {/* Warm gradient blobs */}
+      <div className="blob blob-mesa w-[300px] h-[300px] top-1/4 -right-32 opacity-15" />
+      <div className="blob blob-mesa w-[200px] h-[200px] bottom-1/4 -left-16 opacity-10" />
+
+      <div className="relative z-10 flex flex-col flex-1">
+        {/* Progress bar */}
+        <div className="px-6 pt-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-mesa-graphite/60">Step {step} of 5</span>
+          </div>
+          <div className="h-1 bg-mesa-sand rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-mesa-500"
+              initial={false}
+              animate={{ width: `${(step / 5) * 100}%` }}
+              transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+            />
+          </div>
+        </div>
+
+        {/* Back button */}
+        <div className="px-6 pt-4">
+          <button
+            onClick={goBack}
+            className="text-mesa-graphite/70 hover:text-mesa-ink text-sm flex items-center gap-1"
+          >
+            <span>←</span> Back
+          </button>
+        </div>
+
+        {/* Questions */}
+        <div className="flex-1 px-6 py-8 overflow-hidden">
+          <AnimatePresence mode="wait" custom={direction}>
+            {step === 1 && (
+              <motion.div
+                key="step1"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="max-w-sm mx-auto"
+              >
+                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                  What are you in the mood for?
+                </h1>
+                <p className="text-mesa-graphite mb-8">Select one option</p>
+                <div className="flex flex-wrap gap-3">
+                  {moodOptions.map((option, i) =>
+                    renderChip(
+                      preferences.mood === option.id,
+                      option.label,
+                      option.icon,
+                      () => selectMood(option.id),
+                      i
+                    )
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div
+                key="step2"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="max-w-sm mx-auto"
+              >
+                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                  Pick your flavour direction
+                </h1>
+                <p className="text-mesa-graphite mb-8">Select up to 2 (optional)</p>
+                <div className="flex flex-wrap gap-3">
+                  {flavorOptions.map((option, i) =>
+                    renderChip(
+                      preferences.flavors.includes(option.id),
+                      option.label,
+                      option.icon,
+                      () => toggleFlavor(option.id),
+                      i
+                    )
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {step === 3 && (
+              <motion.div
+                key="step3"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="max-w-sm mx-auto"
+              >
+                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                  How hungry are you?
+                </h1>
+                <p className="text-mesa-graphite mb-8">Select one option</p>
+                <div className="flex flex-wrap gap-3">
+                  {portionOptions.map((option, i) =>
+                    renderChip(
+                      preferences.portion === option.id,
+                      option.label,
+                      option.icon,
+                      () => selectPortion(option.id),
+                      i
+                    )
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {step === 4 && (
+              <motion.div
+                key="step4"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="max-w-sm mx-auto"
+              >
+                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                  Any dietary needs?
+                </h1>
+                <p className="text-mesa-graphite mb-8">Select all that apply (optional)</p>
+                <div className="flex flex-wrap gap-3">
+                  {dietOptions.map((option, i) =>
+                    renderChip(
+                      preferences.dietary.includes(option.id),
+                      option.label,
+                      undefined,
+                      () => toggleDiet(option.id),
+                      i
+                    )
+                  )}
+                </div>
+                {preferences.dietary.length > 0 && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    onClick={() => setPreferences((p) => ({ ...p, dietary: [] }))}
+                    className="mt-4 text-sm text-mesa-graphite/70 hover:text-mesa-ink"
+                  >
+                    Clear selection
+                  </motion.button>
+                )}
+              </motion.div>
+            )}
+
+            {step === 5 && (
+              <motion.div
+                key="step5"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="max-w-sm mx-auto"
+              >
+                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                  Budget?
+                </h1>
+                <p className="text-mesa-graphite mb-8">Optional - skip if no preference</p>
+                <div className="flex flex-wrap gap-3">
+                  {priceOptions.map((option, i) =>
+                    renderChip(
+                      preferences.price === option.id,
+                      option.label,
+                      option.icon,
+                      () => selectPrice(preferences.price === option.id ? null : option.id),
+                      i
+                    )
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Continue button */}
+        <div className="px-6 pb-8">
+          <div className="max-w-sm mx-auto">
+            <Button
+              variant="mesa"
+              size="lg"
+              className="w-full"
+              onClick={goNext}
+              disabled={!canContinue()}
+            >
+              {step === 5 ? 'Show recommendations' : 'Continue'}
+            </Button>
+            {(step === 4 || step === 5) && (
+              <Button
+                variant="mesa-outline"
+                size="lg"
+                className="w-full mt-2"
+                onClick={goNext}
+              >
+                {step === 4 ? 'None of these' : 'Skip'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

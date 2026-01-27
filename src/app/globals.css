@@ -1,26 +1,186 @@
 @import "tailwindcss";
 
 :root {
+  /* ========================================
+     MESA Colors (Guest-facing - warm, appetizing)
+     ======================================== */
+  --mesa-500: #B2472A;        /* Primary Burnt Orange */
+  --mesa-700: #7A2A18;        /* Primary Dark */
+  --mesa-200: #F2B08A;        /* Primary Light */
+  --mesa-ink: #121012;        /* Charcoal text */
+  --mesa-graphite: #1E1A19;   /* Warm Graphite */
+  --mesa-ivory: #F6F0E8;      /* UI base */
+  --mesa-sand: #E9DDCF;       /* Cards */
+  --mesa-border: #CBBEB1;     /* Warm Grey borders */
+  --mesa-olive: #6F7A4A;      /* Fresh accent */
+  --mesa-copper: #D47B4D;     /* Highlight accent */
+
+  /* ========================================
+     Eatsight Colors (Operator-facing - analytical, premium dark)
+     ======================================== */
+  --ocean-950: #050B14;       /* Deepest background */
+  --ocean-900: #071427;       /* Base background */
+  --ocean-800: #0E1B2F;       /* Surface / sidebar */
+  --ocean-700: #132742;       /* Surface 2 / cards */
+  --ocean-600: #143A66;       /* Blob accent */
+  --text-primary: #E9EEF6;    /* Primary text */
+  --text-muted: #A9B4C6;      /* Muted text */
+  --line: #223552;            /* Subtle borders */
+  --signal: #FF6B5A;          /* Coral accent for CTAs, charts */
+
+  /* Legacy support */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111827;
 }
 
 @theme inline {
+  /* MESA */
+  --color-mesa-500: var(--mesa-500);
+  --color-mesa-700: var(--mesa-700);
+  --color-mesa-200: var(--mesa-200);
+  --color-mesa-ink: var(--mesa-ink);
+  --color-mesa-graphite: var(--mesa-graphite);
+  --color-mesa-ivory: var(--mesa-ivory);
+  --color-mesa-sand: var(--mesa-sand);
+  --color-mesa-border: var(--mesa-border);
+  --color-mesa-olive: var(--mesa-olive);
+  --color-mesa-copper: var(--mesa-copper);
+
+  /* Eatsight */
+  --color-ocean-950: var(--ocean-950);
+  --color-ocean-900: var(--ocean-900);
+  --color-ocean-800: var(--ocean-800);
+  --color-ocean-700: var(--ocean-700);
+  --color-ocean-600: var(--ocean-600);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-line: var(--line);
+  --color-signal: var(--signal);
+
+  /* Legacy */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-burgundy: var(--mesa-500);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ========================================
+   Liquid Glass Design System
+   ======================================== */
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.glass-panel-light {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* Gradient backgrounds */
+.gradient-mesa-hero {
+  background: linear-gradient(135deg, #7A2A18, #B2472A, #E28B55);
+}
+
+.gradient-eatsight {
+  background: linear-gradient(180deg, #050B14, #071427, #0B2342);
+}
+
+/* Noise overlay for texture */
+.noise-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Vignette effect */
+.vignette::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+  pointer-events: none;
+}
+
+/* Blurred gradient blobs */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.blob-coral {
+  background: var(--signal);
+}
+
+.blob-ocean {
+  background: var(--ocean-600);
+}
+
+.blob-mesa {
+  background: var(--mesa-200);
+}
+
+/* Custom scrollbar for dark theme */
+.dark-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--ocean-600);
+}
+
+/* Default scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Button transitions */
+.btn-transition {
+  transition: all 0.2s ease;
+}
+
+.btn-transition:hover {
+  transform: translateY(-1px);
+}
+
+.btn-transition:active {
+  transform: translateY(0);
 }
