@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag, PriceTag } from '@/lib/types/taxonomy'
 import { Button } from '@/components/ui/button'
-import { createRecSession, trackEvent, getRecommendations, saveRecResults, RecommendedItem } from '@/lib/recommendations'
+import { createRecSession, trackEvent, getRecommendationsWithFallback, saveRecResults, RecommendedItem, trackUnmetDemand, RecommendationsResult } from '@/lib/recommendations'
 
 interface QuestionFlowProps {
   venueId: string
   tableRef: string | null
-  onComplete: (recommendations: RecommendedItem[]) => void
+  onComplete: (recommendations: RecommendedItem[], showFallbackMessage?: boolean) => void
   onBack: () => void
 }
 
@@ -114,25 +114,32 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
       trackEvent(venueId, sessionId, 'flow_completed', { preferences })
     }
 
-    // Fetch real recommendations from Supabase
-    const recommendations = await getRecommendations(venueId, preferences, 3)
+    // Fetch real recommendations from Supabase with fallback support
+    const result = await getRecommendationsWithFallback(venueId, preferences, 3)
+    const allRecommendations = [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
+
+    // Track unmet demand if we had to show fallback items
+    if (result.showFallbackMessage && sessionId) {
+      await trackUnmetDemand(venueId, sessionId, preferences)
+    }
 
     if (sessionId) {
       // Save results with actual scores
-      const resultsToSave = recommendations.map(r => ({
+      const resultsToSave = allRecommendations.map(r => ({
         id: r.id,
         score: r.score,
         reason: r.reason,
       }))
       await saveRecResults(sessionId, resultsToSave)
       trackEvent(venueId, sessionId, 'recommendations_shown', {
-        count: recommendations.length,
-        items: recommendations.map(r => r.id),
+        count: allRecommendations.length,
+        items: allRecommendations.map(r => r.id),
+        hasFallback: result.showFallbackMessage,
       })
     }
 
     setIsLoading(false)
-    onComplete(recommendations)
+    onComplete(allRecommendations, result.showFallbackMessage)
   }, [venueId, preferences, sessionId, onComplete])
 
   const goNext = () => {
@@ -228,11 +235,11 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
       animate="visible"
       onClick={onClick}
       className={`
-        flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium transition-colors
+        flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium transition-all
         ${
           selected
-            ? 'bg-mesa-500 text-white'
-            : 'bg-white text-mesa-ink border border-mesa-border hover:border-mesa-500'
+            ? 'bg-white border-2 border-mesa-500 text-mesa-500 shadow-sm shadow-mesa-500/20'
+            : 'bg-white text-mesa-ink border-2 border-gray-200 hover:border-gray-300'
         }
       `}
     >

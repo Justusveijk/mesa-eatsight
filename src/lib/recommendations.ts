@@ -12,6 +12,18 @@ export interface RecommendedItem {
   is_push: boolean
   reason: string
   score: number
+  isFallback?: boolean
+}
+
+export interface RecommendationsResult {
+  recommendations: RecommendedItem[]
+  fallbackItems: RecommendedItem[]
+  showFallbackMessage: boolean
+  missingPreferences: {
+    mood: string | null
+    flavors: string[]
+    dietary: string[]
+  } | null
 }
 
 interface ScoredItem {
@@ -99,11 +111,41 @@ export async function saveRecResults(
   }
 }
 
+export async function trackUnmetDemand(
+  venueId: string,
+  sessionId: string | null,
+  preferences: GuestPreferences
+): Promise<void> {
+  const supabase = createClient()
+
+  await supabase.from('events').insert({
+    venue_id: venueId,
+    session_id: sessionId,
+    name: 'unmet_demand',
+    props: {
+      requested_mood: preferences.mood,
+      requested_flavors: preferences.flavors,
+      requested_dietary: preferences.dietary,
+    },
+    ts: new Date().toISOString(),
+  })
+}
+
 export async function getRecommendations(
   venueId: string,
   preferences: GuestPreferences,
   count: number = 3
 ): Promise<RecommendedItem[]> {
+  const result = await getRecommendationsWithFallback(venueId, preferences, count)
+  // Combine recommendations and fallback items for backward compatibility
+  return [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
+}
+
+export async function getRecommendationsWithFallback(
+  venueId: string,
+  preferences: GuestPreferences,
+  count: number = 3
+): Promise<RecommendationsResult> {
   const supabase = createClient()
 
   // 1. Get the published menu for this venue
@@ -116,7 +158,7 @@ export async function getRecommendations(
 
   if (menuError || !menu) {
     console.error('Failed to fetch menu:', menuError?.message, menuError?.details, menuError?.hint, menuError)
-    return []
+    return { recommendations: [], fallbackItems: [], showFallbackMessage: false, missingPreferences: null }
   }
 
   // 2. Get all menu items with their tags
@@ -137,7 +179,7 @@ export async function getRecommendations(
 
   if (itemsError || !items) {
     console.error('Failed to fetch menu items:', itemsError?.message, itemsError?.details, itemsError?.hint, itemsError)
-    return []
+    return { recommendations: [], fallbackItems: [], showFallbackMessage: false, missingPreferences: null }
   }
 
   // 3. Transform items with tags
@@ -157,8 +199,9 @@ export async function getRecommendations(
   // 4. Score and rank items
   const scored = scoreItems(itemsWithTags, preferences)
 
-  // 5. Return top N with reason strings
-  return scored
+  // 5. Get top items with positive scores (actual matches)
+  const topItems = scored
+    .filter(item => item.score > 0)
     .slice(0, count)
     .map(item => ({
       id: item.id,
@@ -172,6 +215,47 @@ export async function getRecommendations(
       reason: generateReasonString(item.matchedTags),
       score: item.score,
     }))
+
+  // 6. If fewer than 3 good matches, get popular fallback items
+  const fallbackItems: RecommendedItem[] = []
+  const showFallbackMessage = topItems.length < count
+
+  if (showFallbackMessage) {
+    const usedIds = new Set(topItems.map(item => item.id))
+    const remainingCount = count - topItems.length
+
+    // Get popular items as fallback (sorted by popularity_score)
+    const popularFallbacks = itemsWithTags
+      .filter(item => !usedIds.has(item.id))
+      .sort((a, b) => b.popularity_score - a.popularity_score)
+      .slice(0, remainingCount)
+      .map(item => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        category: item.category,
+        tags: item.tags,
+        popularity_score: item.popularity_score,
+        is_push: item.is_push,
+        reason: 'Popular with other guests',
+        score: 0,
+        isFallback: true,
+      }))
+
+    fallbackItems.push(...popularFallbacks)
+  }
+
+  return {
+    recommendations: topItems,
+    fallbackItems,
+    showFallbackMessage,
+    missingPreferences: showFallbackMessage ? {
+      mood: preferences.mood,
+      flavors: preferences.flavors,
+      dietary: preferences.dietary,
+    } : null,
+  }
 }
 
 function scoreItems(

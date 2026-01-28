@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { GlassPanel } from '@/components/shared/GlassPanel'
-import { RefreshCw, Store, Users, Scan, TrendingUp, CreditCard } from 'lucide-react'
+import { RefreshCw, Store, Users, Scan, TrendingUp, CreditCard, DollarSign, Target } from 'lucide-react'
 
 interface VenueWithStats {
   id: string
@@ -26,6 +26,10 @@ interface Stats {
   totalScans: number
   trialVenues: number
   paidVenues: number
+  mrr: number
+  arr: number
+  monthlyCount: number
+  annualCount: number
 }
 
 export default function AdminPage() {
@@ -37,7 +41,11 @@ export default function AdminPage() {
     activeVenues: 0,
     totalScans: 0,
     trialVenues: 0,
-    paidVenues: 0
+    paidVenues: 0,
+    mrr: 0,
+    arr: 0,
+    monthlyCount: 0,
+    annualCount: 0
   })
 
   const supabase = createClient()
@@ -131,6 +139,16 @@ export default function AdminPage() {
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
+      // Calculate MRR
+      const monthlyCount = enrichedVenues.filter(v =>
+        v.subscription_status === 'active' && v.subscription_plan === 'monthly'
+      ).length
+      const annualCount = enrichedVenues.filter(v =>
+        v.subscription_status === 'active' && v.subscription_plan === 'annual'
+      ).length
+      const mrr = (monthlyCount * 295) + (annualCount * 249)
+      const arr = mrr * 12
+
       setStats({
         totalVenues: enrichedVenues.length,
         activeVenues: enrichedVenues.filter(v =>
@@ -138,7 +156,11 @@ export default function AdminPage() {
         ).length,
         totalScans: Object.values(scansByVenue).reduce((a, b) => a + b, 0),
         trialVenues: enrichedVenues.filter(v => v.subscription_status === 'trialing').length,
-        paidVenues: enrichedVenues.filter(v => v.subscription_status === 'active').length
+        paidVenues: enrichedVenues.filter(v => v.subscription_status === 'active').length,
+        mrr,
+        arr,
+        monthlyCount,
+        annualCount
       })
     } catch (error) {
       console.error('Error in fetchAllVenues:', error)
@@ -261,6 +283,104 @@ export default function AdminPage() {
             </div>
             <div className="text-sm text-text-muted">Paid</div>
           </GlassPanel>
+        </div>
+
+        {/* Revenue Card */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <GlassPanel className="p-6 bg-gradient-to-br from-signal/10 to-ocean-800 border-signal/30">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-signal/20 flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-signal" />
+              </div>
+              <div>
+                <div className="text-sm text-text-muted">Monthly Recurring Revenue</div>
+                <div className="text-3xl font-bold text-text-primary">€{loading ? '-' : stats.mrr.toLocaleString()}</div>
+              </div>
+            </div>
+            <div className="text-sm text-text-muted">
+              ARR: €{loading ? '-' : stats.arr.toLocaleString()}
+            </div>
+            <div className="text-xs text-text-muted mt-1">
+              {stats.monthlyCount} monthly × €295 + {stats.annualCount} annual × €249
+            </div>
+          </GlassPanel>
+
+          {/* Milestones */}
+          <div className="md:col-span-2">
+            <GlassPanel className="p-6 h-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-ocean-700 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-signal" />
+                </div>
+                <h2 className="text-lg font-semibold text-text-primary">Milestones</h2>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Milestone 1: First 10 Venues */}
+                <div className="p-3 rounded-lg bg-ocean-700/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-text-muted">First 10 Venues</span>
+                    <span className={`text-xs ${stats.totalVenues >= 10 ? 'text-green-400' : 'text-text-muted'}`}>
+                      {stats.totalVenues >= 10 ? '✓' : `${stats.totalVenues}/10`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-ocean-600 rounded-full h-1.5">
+                    <div
+                      className="bg-signal h-1.5 rounded-full transition-all"
+                      style={{ width: `${Math.min(stats.totalVenues / 10 * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Milestone 2: First €1K MRR */}
+                <div className="p-3 rounded-lg bg-ocean-700/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-text-muted">First €1K MRR</span>
+                    <span className={`text-xs ${stats.mrr >= 1000 ? 'text-green-400' : 'text-text-muted'}`}>
+                      {stats.mrr >= 1000 ? '✓' : `€${stats.mrr}`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-ocean-600 rounded-full h-1.5">
+                    <div
+                      className="bg-signal h-1.5 rounded-full transition-all"
+                      style={{ width: `${Math.min(stats.mrr / 1000 * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Milestone 3: 5 Paid Venues */}
+                <div className="p-3 rounded-lg bg-ocean-700/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-text-muted">5 Paid Venues</span>
+                    <span className={`text-xs ${stats.paidVenues >= 5 ? 'text-green-400' : 'text-text-muted'}`}>
+                      {stats.paidVenues >= 5 ? '✓' : `${stats.paidVenues}/5`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-ocean-600 rounded-full h-1.5">
+                    <div
+                      className="bg-signal h-1.5 rounded-full transition-all"
+                      style={{ width: `${Math.min(stats.paidVenues / 5 * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Milestone 4: 1,000 Total Scans */}
+                <div className="p-3 rounded-lg bg-ocean-700/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-text-muted">1K Scans</span>
+                    <span className={`text-xs ${stats.totalScans >= 1000 ? 'text-green-400' : 'text-text-muted'}`}>
+                      {stats.totalScans >= 1000 ? '✓' : `${stats.totalScans}`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-ocean-600 rounded-full h-1.5">
+                    <div
+                      className="bg-signal h-1.5 rounded-full transition-all"
+                      style={{ width: `${Math.min(stats.totalScans / 1000 * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </GlassPanel>
+          </div>
         </div>
 
         {/* Venues Table */}

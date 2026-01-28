@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { QRCode } from 'react-qrcode-logo'
-import { Download, Upload, Check, AlertCircle } from 'lucide-react'
+import { Download, Upload, Check, AlertCircle, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GlassPanel } from '@/components/shared/GlassPanel'
 import { createClient } from '@/lib/supabase/client'
@@ -19,8 +19,17 @@ interface Venue {
   logo_url: string | null
 }
 
+interface Subscription {
+  id: string
+  status: string
+  plan: string
+  trial_ends_at: string | null
+  current_period_end: string | null
+}
+
 export default function SettingsPage() {
   const [venue, setVenue] = useState<Venue | null>(null)
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
@@ -65,6 +74,17 @@ export default function SettingsPage() {
         setVenue(venueData)
         setVenueName(venueData.name)
         setVenueAddress(venueData.address || '')
+
+        // Fetch subscription
+        const { data: sub } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('venue_id', venueData.id)
+          .single()
+
+        if (sub) {
+          setSubscription(sub)
+        }
       }
 
       setLoading(false)
@@ -322,6 +342,76 @@ export default function SettingsPage() {
               </ol>
             </div>
           </div>
+        </GlassPanel>
+      </div>
+
+      {/* Subscription Section */}
+      <div className="mt-8">
+        <GlassPanel className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg bg-signal/20 flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-signal" />
+            </div>
+            <h3 className="font-semibold text-text-primary">Subscription</h3>
+          </div>
+
+          {subscription ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-ocean-700/50">
+                  <p className="text-sm text-text-muted mb-1">Current Plan</p>
+                  <p className="text-lg font-semibold text-text-primary capitalize">{subscription.plan}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-ocean-700/50">
+                  <p className="text-sm text-text-muted mb-1">Status</p>
+                  <span className={`inline-flex px-2 py-1 rounded text-sm font-medium ${
+                    subscription.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                    subscription.status === 'trialing' ? 'bg-yellow-500/20 text-yellow-400' :
+                    'bg-red-500/20 text-red-400'
+                  }`}>
+                    {subscription.status === 'trialing' ? 'Free Trial' : subscription.status}
+                  </span>
+                </div>
+              </div>
+
+              {subscription.status === 'trialing' && subscription.trial_ends_at && (
+                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <p className="text-sm text-amber-400">
+                    Trial ends on {new Date(subscription.trial_ends_at).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-line">
+                <p className="text-sm text-text-muted mb-3">Plan Details</p>
+                {subscription.plan === 'monthly' ? (
+                  <p className="text-text-primary">€295/month • Cancel anytime</p>
+                ) : (
+                  <p className="text-text-primary">€249/month • Billed yearly (€2,988)</p>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                {subscription.plan === 'monthly' && subscription.status === 'active' && (
+                  <Button variant="signal-outline" className="flex-1">
+                    Upgrade to Annual (Save €552)
+                  </Button>
+                )}
+                <Button variant="ghost" className="text-text-muted hover:text-text-primary">
+                  Manage Billing
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-text-muted mb-4">No subscription found</p>
+              <Button variant="signal">Start Free Trial</Button>
+            </div>
+          )}
         </GlassPanel>
       </div>
     </div>

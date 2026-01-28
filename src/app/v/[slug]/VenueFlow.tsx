@@ -23,19 +23,22 @@ type Screen = 'landing' | 'questions' | 'recommendations'
 export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [screen, setScreen] = useState<Screen>('landing')
   const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
+  const [showFallbackMessage, setShowFallbackMessage] = useState(false)
 
   const handleStartQuestions = () => {
     setScreen('questions')
   }
 
-  const handleQuestionsComplete = (recs: RecommendedItem[]) => {
+  const handleQuestionsComplete = (recs: RecommendedItem[], hasFallback?: boolean) => {
     setRecommendations(recs)
+    setShowFallbackMessage(hasFallback || false)
     setScreen('recommendations')
   }
 
   const handleStartOver = () => {
     setScreen('landing')
     setRecommendations([])
+    setShowFallbackMessage(false)
   }
 
   // Landing Screen - MESA warm theme
@@ -118,6 +121,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     <RecommendationCards
       recommendations={recommendations}
       onStartOver={handleStartOver}
+      showFallbackMessage={showFallbackMessage}
     />
   )
 }

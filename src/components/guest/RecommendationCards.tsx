@@ -8,6 +8,7 @@ import { RecommendedItem } from '@/lib/recommendations'
 interface RecommendationCardsProps {
   recommendations: RecommendedItem[]
   onStartOver: () => void
+  showFallbackMessage?: boolean
 }
 
 const cardVariants = {
@@ -43,7 +44,7 @@ function getTagDisplay(tag: MenuTag): string {
   return shortLabels[tag] || TAG_LABELS[tag]
 }
 
-export function RecommendationCards({ recommendations, onStartOver }: RecommendationCardsProps) {
+export function RecommendationCards({ recommendations, onStartOver, showFallbackMessage }: RecommendationCardsProps) {
   const getDisplayTags = (tags: MenuTag[]) => {
     return tags.filter(
       (t) =>
@@ -53,6 +54,10 @@ export function RecommendationCards({ recommendations, onStartOver }: Recommenda
         t.startsWith('allergy_')
     ).slice(0, 4)
   }
+
+  // Separate matched recommendations from fallback items
+  const matchedItems = recommendations.filter(item => !item.isFallback)
+  const fallbackItems = recommendations.filter(item => item.isFallback)
 
   return (
     <div className="min-h-screen bg-mesa-ivory relative overflow-hidden">
@@ -79,8 +84,25 @@ export function RecommendationCards({ recommendations, onStartOver }: Recommenda
             </p>
           </motion.div>
 
-          <div className="space-y-4 mb-8">
-            {recommendations.map((item, index) => (
+          {/* Fallback message */}
+          {showFallbackMessage && matchedItems.length < 3 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl"
+            >
+              <p className="text-amber-800 font-medium text-sm">
+                We couldn&apos;t find a perfect match for everything you wanted.
+              </p>
+              <p className="text-amber-700 text-xs mt-1">
+                We&apos;ve let the restaurant know — they&apos;re always looking to improve their menu!
+              </p>
+            </motion.div>
+          )}
+
+          {/* Matched recommendations */}
+          <div className="space-y-4 mb-4">
+            {matchedItems.map((item, index) => (
               <motion.div
                 key={item.id}
                 custom={index}
@@ -88,7 +110,7 @@ export function RecommendationCards({ recommendations, onStartOver }: Recommenda
                 initial="hidden"
                 animate="visible"
               >
-                <div className="bg-white rounded-[20px] border border-mesa-border shadow-sm overflow-hidden">
+                <div className="bg-white rounded-[20px] border border-gray-200 shadow-sm overflow-hidden">
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h3 className="font-semibold text-mesa-ink text-lg leading-tight">
@@ -98,14 +120,14 @@ export function RecommendationCards({ recommendations, onStartOver }: Recommenda
                         €{item.price}
                       </span>
                     </div>
-                    <p className="text-sm text-mesa-graphite/80 mb-4">
+                    <p className="text-sm text-gray-500 mb-4">
                       {item.reason}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {getDisplayTags(item.tags).map((tag) => (
                         <span
                           key={tag}
-                          className="text-xs px-2.5 py-1 rounded-full bg-mesa-200/50 text-mesa-700 font-medium"
+                          className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 font-medium"
                         >
                           {getTagDisplay(tag)}
                         </span>
@@ -116,6 +138,52 @@ export function RecommendationCards({ recommendations, onStartOver }: Recommenda
               </motion.div>
             ))}
           </div>
+
+          {/* Fallback popular items */}
+          {fallbackItems.length > 0 && (
+            <>
+              <p className="text-sm text-gray-500 mt-6 mb-3">You might also like these popular items:</p>
+              <div className="space-y-4 mb-8">
+                {fallbackItems.map((item, index) => (
+                  <motion.div
+                    key={item.id}
+                    custom={matchedItems.length + index}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <div className="bg-white rounded-[20px] border border-gray-200 shadow-sm overflow-hidden opacity-90">
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h3 className="font-semibold text-mesa-ink text-lg leading-tight">
+                            {item.name}
+                          </h3>
+                          <span className="text-mesa-500 font-semibold whitespace-nowrap text-lg">
+                            €{item.price}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 mb-4">
+                          {item.reason}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {getDisplayTags(item.tags).map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 font-medium"
+                            >
+                              {getTagDisplay(tag)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {fallbackItems.length === 0 && <div className="mb-8" />}
 
           <motion.div
             initial={{ opacity: 0 }}
