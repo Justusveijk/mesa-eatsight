@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -44,7 +44,7 @@ function checkPasswordStrength(password: string): PasswordStrength {
   return { score, feedback }
 }
 
-export default function SignUpPage() {
+function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const plan = searchParams.get('plan') || 'monthly'
@@ -258,5 +258,34 @@ export default function SignUpPage() {
         </p>
       </GlassPanel>
     </motion.div>
+  )
+}
+
+function SignupFormFallback() {
+  return (
+    <div className="w-full max-w-md">
+      <GlassPanel className="p-8" withNoise>
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 mb-6">
+            <div className="w-8 h-8 rounded-lg bg-signal flex items-center justify-center">
+              <span className="text-white font-bold text-sm">E</span>
+            </div>
+            <span className="text-text-primary font-semibold">Eatsight</span>
+          </div>
+          <h1 className="text-2xl font-bold text-text-primary mb-2">
+            Create your account
+          </h1>
+          <p className="text-text-muted text-sm">Loading...</p>
+        </div>
+      </GlassPanel>
+    </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<SignupFormFallback />}>
+      <SignupForm />
+    </Suspense>
   )
 }
