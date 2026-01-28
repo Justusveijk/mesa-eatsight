@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Upload, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GlassPanel } from '@/components/shared/GlassPanel'
+import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/supabase/auth'
 
 const countries = [
   { code: 'NL', name: 'Netherlands' },
@@ -54,6 +56,9 @@ export default function CreateVenuePage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [showMoreDetails, setShowMoreDetails] = useState(false)
+  const [error, setError] = useState('')
+  const [slugError, setSlugError] = useState('')
+  const [checkingSlug, setCheckingSlug] = useState(false)
 
   // Required fields
   const [venueName, setVenueName] = useState('')
@@ -78,38 +83,168 @@ export default function CreateVenuePage() {
     }
   }, [venueName, slugEdited])
 
+  // Validate slug uniqueness (debounced)
+  useEffect(() => {
+    if (!slug) {
+      setSlugError('')
+      return
+    }
+
+    const checkSlug = async () => {
+      setCheckingSlug(true)
+      const supabase = createClient()
+
+      const { data } = await supabase
+        .from('venues')
+        .select('id')
+        .eq('slug', slug)
+        .single()
+
+      if (data) {
+        setSlugError('This URL is already taken')
+      } else {
+        setSlugError('')
+      }
+      setCheckingSlug(false)
+    }
+
+    const timer = setTimeout(checkSlug, 500)
+    return () => clearTimeout(timer)
+  }, [slug])
+
   const handleSlugChange = (value: string) => {
     setSlug(slugify(value))
     setSlugEdited(true)
   }
 
-  const isValid = venueName.trim() && slug.trim() && city.trim() && category
+  const isValid = venueName.trim() && slug.trim() && city.trim() && category && !slugError
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isValid) return
 
     setIsLoading(true)
+    setError('')
 
-    // Simulate venue creation
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const supabase = createClient()
+      const user = await getCurrentUser()
 
-    // Store venue data in session
-    sessionStorage.setItem('venueData', JSON.stringify({
-      name: venueName,
-      slug,
-      country,
-      city,
-      timezone,
-      currency,
-      language,
-      category,
-      phone,
-      website,
-      vatNumber,
-    }))
+      if (!user) {
+        setError('You must be logged in to create a venue')
+        setIsLoading(false)
+        return
+      }
 
-    router.push('/onboarding/setup')
+      // Get plan from session storage (set during signup)
+      const plan = sessionStorage.getItem('selectedPlan') || 'monthly'
+
+      // 1. Create the venue
+      const { data: venue, error: venueError } = await supabase
+        .from('venues')
+        .insert({
+          name: venueName,
+          slug,
+          country,
+          city,
+          timezone,
+          currency,
+          primary_language: language,
+          category,
+          phone: phone || null,
+          website: website || null,
+          vat_number: vatNumber || null,
+        })
+        .select('id')
+        .single()
+
+      if (venueError) {
+        console.error('Venue creation error:', venueError?.message, venueError?.details, venueError?.hint, venueError?.code, venueError)
+        if (venueError.code === '23505') {
+          setError('This venue slug is already taken. Please choose a different one.')
+        } else {
+          setError(venueError.message || 'Failed to create venue')
+        }
+        setIsLoading(false)
+        return
+      }
+
+      // 2. Create or update operator_users record linking auth user to venue
+      const { data: existingOperator } = await supabase
+        .from('operator_users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single()
+
+      let operatorError
+      if (existingOperator) {
+        // Update existing record with new venue
+        const { error } = await supabase
+          .from('operator_users')
+          .update({ venue_id: venue.id })
+          .eq('auth_user_id', user.id)
+        operatorError = error
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from('operator_users')
+          .insert({
+            auth_user_id: user.id,
+            email: user.email,
+            role: 'owner',
+            venue_id: venue.id,
+          })
+        operatorError = error
+      }
+
+      if (operatorError) {
+        console.error('Operator user creation error:', operatorError?.message, operatorError?.details, operatorError?.hint, operatorError?.code, operatorError)
+        // Cleanup: delete the venue we just created
+        await supabase.from('venues').delete().eq('id', venue.id)
+        setError('Failed to link user to venue')
+        setIsLoading(false)
+        return
+      }
+
+      // 3. Create subscription record
+      const { error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .insert({
+          venue_id: venue.id,
+          status: 'trialing',
+          plan,
+          trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days
+        })
+
+      if (subscriptionError) {
+        console.error('Subscription creation error:', subscriptionError?.message, subscriptionError?.details, subscriptionError?.hint, subscriptionError?.code, subscriptionError)
+        // Non-critical, continue anyway
+      }
+
+      // 4. Create a draft menu for the venue
+      const { error: menuError } = await supabase
+        .from('menus')
+        .insert({
+          venue_id: venue.id,
+          version: 1,
+          status: 'draft',
+        })
+
+      if (menuError) {
+        console.error('Menu creation error:', menuError?.message, menuError?.details, menuError?.hint, menuError?.code, menuError)
+        // Non-critical, continue anyway
+      }
+
+      // Clear the plan from session storage
+      sessionStorage.removeItem('selectedPlan')
+
+      // Redirect to dashboard
+      router.push('/dashboard')
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      setError('An unexpected error occurred')
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -136,6 +271,13 @@ export default function CreateVenuePage() {
             </p>
           </div>
 
+          {error && (
+            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-sm text-red-400">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Venue Name */}
             <div>
@@ -158,16 +300,28 @@ export default function CreateVenuePage() {
                 URL slug *
               </label>
               <div className="flex items-center gap-2">
-                <span className="text-text-muted text-sm">mesa.app/v/</span>
-                <input
-                  type="text"
-                  value={slug}
-                  onChange={(e) => handleSlugChange(e.target.value)}
-                  placeholder="bella-taverna"
-                  required
-                  className="flex-1 px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal transition-colors"
-                />
+                <span className="text-text-muted text-sm">eatsight.com/v/</span>
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="bella-taverna"
+                    required
+                    className={`w-full px-4 py-3 rounded-lg bg-ocean-800 border text-text-primary placeholder-text-muted/50 focus:outline-none transition-colors ${
+                      slugError ? 'border-red-500' : 'border-line focus:border-signal'
+                    }`}
+                  />
+                  {checkingSlug && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">
+                      Checking...
+                    </span>
+                  )}
+                </div>
               </div>
+              {slugError && (
+                <p className="mt-1 text-xs text-red-400">{slugError}</p>
+              )}
             </div>
 
             {/* Country & City */}
@@ -368,7 +522,7 @@ export default function CreateVenuePage() {
               variant="signal"
               size="lg"
               className="w-full"
-              disabled={isLoading || !isValid}
+              disabled={isLoading || !isValid || checkingSlug}
             >
               {isLoading ? 'Creating venue...' : 'Create venue & continue'}
             </Button>
