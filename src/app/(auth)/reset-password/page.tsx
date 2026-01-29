@@ -6,12 +6,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
+export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -20,35 +21,48 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      setLoading(false)
+      return
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: password
     })
 
-    if (signInError) {
-      setError(signInError.message)
+    if (error) {
+      setError(error.message)
       setLoading(false)
       return
     }
 
-    if (!data.user) {
-      setError('Login failed')
-      setLoading(false)
-      return
-    }
+    setSuccess(true)
+    setTimeout(() => {
+      router.push('/login')
+    }, 2000)
+  }
 
-    // Check if user has a venue linked
-    const { data: operator } = await supabase
-      .from('operator_users')
-      .select('venue_id')
-      .eq('auth_user_id', data.user.id)
-      .maybeSingle()
-
-    if (operator?.venue_id) {
-      router.push('/dashboard')
-    } else {
-      router.push('/onboarding/venue')
-    }
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center px-6">
+        <div className="w-full max-w-md text-center">
+          <div className="text-5xl mb-6">✅</div>
+          <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-4">
+            Password updated!
+          </h1>
+          <p className="text-[#1a1a1a]/60">
+            Redirecting you to login...
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -62,10 +76,10 @@ export default function LoginPage() {
 
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#1a1a1a]/5">
           <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-2 text-center">
-            Welcome back
+            Set new password
           </h1>
           <p className="text-[#1a1a1a]/50 text-center mb-8">
-            Sign in to your dashboard
+            Enter your new password below
           </p>
 
           {error && (
@@ -76,34 +90,15 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm text-[#1a1a1a]/60 mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@restaurant.com"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-sm text-[#1a1a1a]/60">Password</label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-[#722F37] hover:text-[#5a252c]"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+              <label className="block text-sm text-[#1a1a1a]/60 mb-2">New password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="At least 8 characters"
                   required
+                  minLength={8}
                   className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition pr-12"
                 />
                 <button
@@ -116,21 +111,26 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm text-[#1a1a1a]/60 mb-2">Confirm password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
+              />
+            </div>
+
             <button
               type="submit"
               disabled={loading}
               className="w-full py-3 bg-[#722F37] text-white rounded-xl hover:bg-[#5a252c] transition disabled:opacity-50 font-medium"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Updating...' : 'Update password'}
             </button>
           </form>
-
-          <p className="text-center text-[#1a1a1a]/50 mt-6">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-[#722F37] hover:text-[#5a252c] font-medium">
-              Start free trial
-            </Link>
-          </p>
         </div>
       </div>
     </div>

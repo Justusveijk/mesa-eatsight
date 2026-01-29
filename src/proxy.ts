@@ -39,8 +39,9 @@ export async function proxy(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
 
   // Auth routes (login, signup) - redirect to dashboard if already logged in
+  // Note: forgot-password and reset-password are NOT redirected even if logged in
   const authRoutes = ['/login', '/signup']
-  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route))
+  const isAuthRoute = authRoutes.includes(pathname)
 
   if (isProtectedRoute && !user) {
     // Not logged in, redirect to login
