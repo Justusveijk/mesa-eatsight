@@ -449,6 +449,80 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Team Section */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            className="text-center mb-12"
+          >
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-[#1a1a1a] mb-4">
+              The faces behind Mesa
+            </h2>
+            <p className="text-[#1a1a1a]/60 max-w-2xl mx-auto">
+              We&apos;re a small team passionate about helping restaurants connect with their guests in a more personal way.
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+          >
+            {/* Team member 1 */}
+            <motion.div variants={fadeInItem} className="text-center">
+              <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] flex items-center justify-center text-4xl">
+                👨‍💼
+              </div>
+              <h3 className="font-medium text-[#1a1a1a] text-lg">[Founder Name]</h3>
+              <p className="text-[#722F37] text-sm mb-2">Co-founder & CEO</p>
+              <p className="text-[#1a1a1a]/50 text-sm">
+                Former restaurant manager with a passion for hospitality tech.
+              </p>
+            </motion.div>
+
+            {/* Team member 2 */}
+            <motion.div variants={fadeInItem} className="text-center">
+              <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] flex items-center justify-center text-4xl">
+                👩‍💻
+              </div>
+              <h3 className="font-medium text-[#1a1a1a] text-lg">[Founder Name]</h3>
+              <p className="text-[#722F37] text-sm mb-2">Co-founder & CTO</p>
+              <p className="text-[#1a1a1a]/50 text-sm">
+                Building technology that brings hospitality to life.
+              </p>
+            </motion.div>
+
+            {/* Team member 3 */}
+            <motion.div variants={fadeInItem} className="text-center sm:col-span-2 lg:col-span-1">
+              <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] flex items-center justify-center text-4xl">
+                👨‍🍳
+              </div>
+              <h3 className="font-medium text-[#1a1a1a] text-lg">[Founder Name]</h3>
+              <p className="text-[#722F37] text-sm mb-2">Co-founder & Product</p>
+              <p className="text-[#1a1a1a]/50 text-sm">
+                Former chef who knows what guests really want.
+              </p>
+            </motion.div>
+          </motion.div>
+
+          <div className="text-center mt-12">
+            <p className="text-[#1a1a1a]/40 text-sm mb-4">Want to get in touch?</p>
+            <a
+              href="mailto:hello@eatsight.com"
+              className="text-[#722F37] hover:text-[#5a252c] font-medium"
+            >
+              hello@eatsight.com
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#722F37] text-white">
         <div className="max-w-3xl mx-auto text-center">
@@ -473,15 +547,60 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-10 md:py-12 px-6 md:px-8 bg-[#1a1a1a] text-white/60">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="font-serif text-xl text-white">Eatsight</div>
-          <div className="flex gap-6 md:gap-8 text-sm">
-            <a href="#" className="hover:text-white transition">Privacy</a>
-            <a href="#" className="hover:text-white transition">Terms</a>
-            <a href="mailto:hello@eatsight.io" className="hover:text-white transition">Contact</a>
+      <footer className="bg-[#1a1a1a] text-white py-12 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+            {/* Brand */}
+            <div className="col-span-2 md:col-span-1">
+              <div className="font-serif text-2xl mb-4">Mesa</div>
+              <p className="text-white/60 text-sm">
+                Personalized menus for every guest.
+              </p>
+            </div>
+
+            {/* Product */}
+            <div>
+              <h4 className="font-medium mb-4">Product</h4>
+              <ul className="space-y-2 text-white/60 text-sm">
+                <li><Link href="/v/bella-taverna" className="hover:text-white transition">Try Demo</Link></li>
+                <li><a href="#pricing" className="hover:text-white transition">Pricing</a></li>
+                <li><Link href="/demo" className="hover:text-white transition">Dashboard Preview</Link></li>
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h4 className="font-medium mb-4">Company</h4>
+              <ul className="space-y-2 text-white/60 text-sm">
+                <li><Link href="/about" className="hover:text-white transition">About</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition">Contact</Link></li>
+                <li><a href="mailto:hello@eatsight.com" className="hover:text-white transition">hello@eatsight.com</a></li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4 className="font-medium mb-4">Legal</h4>
+              <ul className="space-y-2 text-white/60 text-sm">
+                <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition">Terms of Service</Link></li>
+              </ul>
+            </div>
           </div>
-          <div className="text-sm">© 2026 Eatsight</div>
+
+          <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p className="text-white/40 text-sm">
+              © 2026 Mesa & Eatsight. Made with ❤️ in Amsterdam.
+            </p>
+            <div className="flex gap-4">
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white transition">
+                LinkedIn
+              </a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white transition">
+                Twitter
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
