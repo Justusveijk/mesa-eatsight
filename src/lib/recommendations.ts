@@ -349,21 +349,29 @@ export async function getDrinkRecommendations(
       // Cast tags to string array for comparison with non-MenuTag values
       const tagStrings = drink.tags as unknown as string[]
       const hasNonAlcoholicTag = tagStrings.some(t =>
-        t === 'abv_zero' || t === 'non_alcoholic' || t.includes('zero')
+        t === 'abv_zero' || t === 'strength_none' || t === 'non_alcoholic' || t.includes('zero')
       )
-      const isNonAlcoholicCategory = ['mocktails', 'soft drinks', 'smoothies', 'coffee', 'tea', 'juice']
+      // Include hot drinks in non-alcoholic categories
+      const isNonAlcoholicCategory = ['mocktails', 'soft drinks', 'smoothies', 'coffee', 'tea', 'juice', 'hot drinks']
         .some(cat => drink.category?.toLowerCase().includes(cat))
 
-      return hasNonAlcoholicTag || isNonAlcoholicCategory
+      // Check if item has alcoholic tag - if so, exclude it
+      const hasAlcoholicTag = tagStrings.some(t =>
+        t === 'abv_light' || t === 'abv_regular' || t === 'abv_strong' ||
+        t === 'strength_light' || t === 'strength_medium' || t === 'strength_strong'
+      )
+
+      return (hasNonAlcoholicTag || isNonAlcoholicCategory) && !hasAlcoholicTag
     })
   } else if (preferences.drinkStrength === 'strength_light') {
-    // Light alcohol or non-alcoholic (beer, wine, spritz)
+    // Light alcohol or non-alcoholic (beer, wine, spritz, hot drinks)
     filteredDrinks = drinkItems.filter(drink => {
       const tagStrings = drink.tags as unknown as string[]
       const hasLightTag = tagStrings.some(t =>
-        t === 'abv_light' || t === 'abv_zero' || t === 'non_alcoholic'
+        t === 'abv_light' || t === 'abv_zero' || t === 'strength_none' || t === 'strength_light' || t === 'non_alcoholic'
       )
-      const isLightCategory = ['wines', 'wine', 'beers', 'beer', 'spritz', 'mocktails', 'soft drinks', 'cider']
+      // Include hot drinks in light category (most hot drinks are non-alcoholic or light)
+      const isLightCategory = ['wines', 'wine', 'beers', 'beer', 'spritz', 'mocktails', 'soft drinks', 'cider', 'hot drinks', 'coffee', 'tea']
         .some(cat => drink.category?.toLowerCase().includes(cat))
       // Exclude strong spirits
       const isStrong = drink.category?.toLowerCase().includes('spirit') ||
@@ -393,16 +401,20 @@ export async function getDrinkRecommendations(
       targetTags.forEach(tag => {
         if (drink.tags.includes(tag as MenuTag)) {
           // Higher boost for temp_hot when user wants warming drinks
-          const boost = (preferences.drinkMood === 'drink_warming' && tag === 'temp_hot') ? 10 : 3
+          const boost = (preferences.drinkMood === 'drink_warming' && tag === 'temp_hot') ? 15 : 3
           score += boost
           matchedTags.push(tag as MenuTag)
         }
       })
 
-      // Also check category for Hot Drinks when warming is requested
+      // Strong category boost for Hot Drinks when warming is requested
       if (preferences.drinkMood === 'drink_warming') {
-        if (drink.category?.toLowerCase().includes('hot')) {
-          score += 8
+        const isHotDrinksCategory = drink.category?.toLowerCase() === 'hot drinks'
+        if (isHotDrinksCategory) {
+          score += 20 // Very strong boost - these are exactly what user wants
+          matchedTags.push('temp_hot' as MenuTag)
+        } else if (drink.category?.toLowerCase().includes('hot') || drink.category?.toLowerCase().includes('coffee')) {
+          score += 10
         }
       }
     }
