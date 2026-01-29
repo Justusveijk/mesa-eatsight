@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { QuestionFlow } from '@/components/guest/QuestionFlow'
 import { RecommendationCards } from '@/components/guest/RecommendationCards'
@@ -45,6 +46,23 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   if (screen === 'landing') {
     return (
       <div className="min-h-screen bg-mesa-ivory relative overflow-hidden">
+        {/* Header */}
+        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center bg-[#FDFBF7]/90 backdrop-blur-sm border-b border-[#1a1a1a]/5">
+          <Link
+            href="/"
+            className="text-sm text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition flex items-center gap-1"
+          >
+            ← Back
+          </Link>
+          <span className="text-sm font-medium text-[#1a1a1a]">{venue.name}</span>
+          <Link
+            href="/demo"
+            className="text-sm text-[#722F37] hover:text-[#5a252c] transition"
+          >
+            Dashboard
+          </Link>
+        </div>
+
         {/* Warm gradient blobs */}
         <div className="blob blob-mesa w-[400px] h-[400px] -top-32 -right-32 opacity-20" />
         <div className="blob blob-mesa w-[300px] h-[300px] bottom-0 -left-32 opacity-15" />
@@ -52,7 +70,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-12"
+          className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-12 pt-20"
         >
           <div className="text-center max-w-sm">
             <motion.div

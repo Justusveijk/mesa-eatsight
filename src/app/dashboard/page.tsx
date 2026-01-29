@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { TrendingUp, TrendingDown, Scan, MousePointerClick, Percent, Wine, RefreshCw } from 'lucide-react'
-import { GlassPanel } from '@/components/shared/GlassPanel'
+import { RefreshCw, QrCode } from 'lucide-react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { TAG_LABELS } from '@/lib/types/taxonomy'
 
@@ -13,56 +13,22 @@ interface Metrics {
   clicksToday: number
   clicksWeek: number
   ctr: number
-  topMoods: { tag: string; count: number }[]
-  topFlavors: { tag: string; count: number }[]
+  topMoods: { name: string; percent: number }[]
   topItems: { name: string; clicks: number }[]
-  dietaryDemand: { tag: string; count: number }[]
+  recentActivity: { ts: string; name: string; message: string }[]
 }
 
-interface ActivityEvent {
-  id: string
-  name: string
-  ts: string
-  props: Record<string, unknown> | null
+const fadeIn = {
+  initial: { opacity: 0, y: 20 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.25, 0.4, 0.25, 1] as const }
+  }
 }
 
-interface StatCardProps {
-  title: string
-  value: string | number
-  trend?: number
-  icon: React.ElementType
-  loading?: boolean
-}
-
-function StatCard({ title, value, trend, icon: Icon, loading }: StatCardProps) {
-  const isPositive = trend && trend > 0
-  const isNegative = trend && trend < 0
-
-  return (
-    <GlassPanel className="p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl bg-[#1e3a5f] dark:bg-ocean-700 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-white dark:text-signal" />
-        </div>
-        {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-sm ${
-            isPositive ? 'text-green-600 dark:text-green-400' : isNegative ? 'text-red-600 dark:text-red-400' : 'text-[#1a1a1a]/50 dark:text-text-muted'
-          }`}>
-            {isPositive && <TrendingUp className="w-4 h-4" />}
-            {isNegative && <TrendingDown className="w-4 h-4" />}
-            {isPositive && '+'}
-            {trend}%
-          </div>
-        )}
-      </div>
-      <p className="text-[#1a1a1a]/50 dark:text-text-muted text-sm mb-1">{title}</p>
-      {loading ? (
-        <div className="h-8 w-16 bg-gray-200 dark:bg-ocean-700 animate-pulse rounded" />
-      ) : (
-        <p className="text-2xl font-bold text-[#1a1a1a] dark:text-text-primary">{value}</p>
-      )}
-    </GlassPanel>
-  )
+const stagger = {
+  animate: { transition: { staggerChildren: 0.1 } }
 }
 
 export default function DashboardPage() {
@@ -77,11 +43,9 @@ export default function DashboardPage() {
     clicksWeek: 0,
     ctr: 0,
     topMoods: [],
-    topFlavors: [],
     topItems: [],
-    dietaryDemand: [],
+    recentActivity: [],
   })
-  const [recentActivity, setRecentActivity] = useState<ActivityEvent[]>([])
 
   const supabase = createClient()
 
@@ -143,7 +107,7 @@ export default function DashboardPage() {
         .eq('name', 'rec_clicked')
         .gte('ts', periodStart.toISOString())
 
-      // Get sessions with intent chips for mood/flavor analysis
+      // Get sessions with intent chips for mood analysis
       const { data: sessions } = await supabase
         .from('rec_sessions')
         .select('intent_chips')
@@ -152,18 +116,14 @@ export default function DashboardPage() {
 
       // Count mood tags
       const moodCounts: Record<string, number> = {}
-      const flavorCounts: Record<string, number> = {}
-      const dietaryCounts: Record<string, number> = {}
+      let totalMoods = 0
 
       sessions?.forEach(session => {
         const chips = session.intent_chips as string[] | null
         chips?.forEach((chip: string) => {
           if (chip.startsWith('mood_')) {
             moodCounts[chip] = (moodCounts[chip] || 0) + 1
-          } else if (chip.startsWith('flavor_')) {
-            flavorCounts[chip] = (flavorCounts[chip] || 0) + 1
-          } else if (chip.startsWith('diet_') || chip.startsWith('allergy_')) {
-            dietaryCounts[chip] = (dietaryCounts[chip] || 0) + 1
+            totalMoods++
           }
         })
       })
@@ -204,13 +164,32 @@ export default function DashboardPage() {
         }))
       }
 
+      // Get recent activity
+      const { data: recentEvents } = await supabase
+        .from('events')
+        .select('ts, name, props')
+        .eq('venue_id', venueId)
+        .order('ts', { ascending: false })
+        .limit(10)
+
+      const recentActivity = (recentEvents || []).map(event => {
+        const props = event.props as Record<string, unknown> | null
+        let message = event.name.replace(/_/g, ' ')
+        if (event.name === 'rec_clicked') {
+          message = `Clicked: ${props?.item_name || 'Item'}`
+        } else if (event.name === 'flow_started') {
+          message = `New session${props?.tableRef ? ` (Table ${props.tableRef})` : ''}`
+        }
+        return { ts: event.ts, name: event.name, message }
+      })
+
       // Calculate CTR
       const ctr = scansWeek && scansWeek > 0 ? ((clicksWeek || 0) / scansWeek * 100) : 0
 
-      // Helper to format tag label
+      // Format mood labels
       const formatTag = (tag: string) => {
         return TAG_LABELS[tag as keyof typeof TAG_LABELS] ||
-          tag.replace('mood_', '').replace('flavor_', '').replace('diet_', '').replace('allergy_', '')
+          tag.replace('mood_', '').replace('_', ' ')
       }
 
       setMetrics({
@@ -222,34 +201,17 @@ export default function DashboardPage() {
         topMoods: Object.entries(moodCounts)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 5)
-          .map(([tag, count]) => ({ tag: formatTag(tag), count })),
-        topFlavors: Object.entries(flavorCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([tag, count]) => ({ tag: formatTag(tag), count })),
+          .map(([tag, count]) => ({
+            name: formatTag(tag),
+            percent: totalMoods > 0 ? Math.round((count / totalMoods) * 100) : 0
+          })),
         topItems,
-        dietaryDemand: Object.entries(dietaryCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([tag, count]) => ({ tag: formatTag(tag), count })),
+        recentActivity,
       })
     } catch (error) {
       console.error('Error fetching metrics:', error)
     }
   }, [venueId, dateRange, supabase])
-
-  const fetchRecentActivity = useCallback(async () => {
-    if (!venueId) return
-
-    const { data: events } = await supabase
-      .from('events')
-      .select('*')
-      .eq('venue_id', venueId)
-      .order('ts', { ascending: false })
-      .limit(20)
-
-    setRecentActivity(events || [])
-  }, [venueId, supabase])
 
   // Initial load and polling
   useEffect(() => {
@@ -257,20 +219,16 @@ export default function DashboardPage() {
 
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchMetrics(), fetchRecentActivity()])
+      await fetchMetrics()
       setLoading(false)
     }
 
     loadData()
 
     // Poll for updates every 30 seconds
-    const interval = setInterval(() => {
-      fetchMetrics()
-      fetchRecentActivity()
-    }, 30000)
-
+    const interval = setInterval(fetchMetrics, 30000)
     return () => clearInterval(interval)
-  }, [venueId, fetchMetrics, fetchRecentActivity])
+  }, [venueId, fetchMetrics])
 
   // Refetch when date range changes
   useEffect(() => {
@@ -281,7 +239,7 @@ export default function DashboardPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await Promise.all([fetchMetrics(), fetchRecentActivity()])
+    await fetchMetrics()
     setRefreshing(false)
   }
 
@@ -294,45 +252,26 @@ export default function DashboardPage() {
     return `${Math.floor(seconds / 86400)}d ago`
   }
 
-  // Get event display info
-  const getEventInfo = (event: ActivityEvent) => {
-    const props = event.props as Record<string, unknown> | null
-    switch (event.name) {
-      case 'session_start':
-        return { type: 'scan', message: `New session${props?.table_ref ? ` (Table ${props.table_ref})` : ''}` }
-      case 'rec_clicked':
-        return { type: 'click', message: `Clicked: ${props?.item_name || 'Item'}` }
-      case 'chips_selected':
-        return { type: 'scan', message: 'Preferences selected' }
-      default:
-        return { type: 'scan', message: event.name.replace(/_/g, ' ') }
-    }
-  }
-
-  // Calculate max for bar charts
-  const maxMoodCount = Math.max(...metrics.topMoods.map(m => m.count), 1)
-  const maxFlavorCount = Math.max(...metrics.topFlavors.map(m => m.count), 1)
-
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1a1a] dark:text-text-primary">Dashboard</h1>
-          <p className="text-[#1a1a1a]/50 dark:text-text-muted">Overview of your menu performance</p>
+          <h1 className="text-3xl font-semibold text-[#1a1a1a] mb-1">Dashboard</h1>
+          <p className="text-[#1a1a1a]/50">Overview of your menu performance</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-ocean-700 border border-gray-200 dark:border-line text-[#1a1a1a]/50 dark:text-text-muted hover:text-[#1a1a1a] dark:hover:text-text-primary transition-colors disabled:opacity-50"
+            className="p-2 rounded-lg bg-[#1a1a1a] text-white hover:bg-[#333] transition disabled:opacity-50"
           >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
           </button>
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as typeof dateRange)}
-            className="px-4 py-2 rounded-lg bg-white dark:bg-ocean-700 border border-gray-200 dark:border-line text-[#1a1a1a] dark:text-text-primary text-sm focus:outline-none focus:border-[#1e3a5f] dark:focus:border-signal"
+            className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-white border-0 text-sm"
           >
             <option value="7">Last 7 days</option>
             <option value="30">Last 30 days</option>
@@ -341,183 +280,173 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Empty state */}
-      {!loading && metrics.scansWeek === 0 && metrics.clicksWeek === 0 && (
-        <GlassPanel className="p-8 text-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-[#1e3a5f]/20 dark:bg-signal/20 flex items-center justify-center mx-auto mb-4">
-            <Scan className="w-8 h-8 text-[#1e3a5f] dark:text-signal" />
+      {/* Empty State */}
+      {metrics.scansWeek === 0 && !loading && (
+        <motion.div
+          variants={fadeIn}
+          initial="initial"
+          animate="animate"
+          className="bg-white rounded-2xl p-12 border border-[#1a1a1a]/5 text-center mb-8"
+        >
+          <div className="w-16 h-16 bg-[#722F37]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <QrCode className="text-[#722F37]" size={28} />
           </div>
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-text-primary mb-2">No activity yet</h3>
-          <p className="text-[#1a1a1a]/50 dark:text-text-muted max-w-md mx-auto">
+          <h3 className="text-xl font-medium text-[#1a1a1a] mb-2">No activity yet</h3>
+          <p className="text-[#1a1a1a]/40 max-w-md mx-auto mb-6">
             Share your QR code with guests to start receiving recommendations data.
             Go to Settings to download your QR codes.
           </p>
-        </GlassPanel>
+          <Link
+            href="/dashboard/settings"
+            className="inline-block px-6 py-3 bg-[#722F37] text-white rounded-full hover:bg-[#5a252c] transition"
+          >
+            Get QR Codes
+          </Link>
+        </motion.div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              title="Scans today"
-              value={metrics.scansToday}
-              icon={Scan}
-              loading={loading}
-            />
-            <StatCard
-              title={`Scans (${dateRange}d)`}
-              value={metrics.scansWeek}
-              icon={Scan}
-              loading={loading}
-            />
-            <StatCard
-              title="Clicks today"
-              value={metrics.clicksToday}
-              icon={MousePointerClick}
-              loading={loading}
-            />
-            <StatCard
-              title="CTR"
-              value={`${metrics.ctr}%`}
-              icon={Percent}
-              loading={loading}
-            />
-          </div>
-
-          {/* Top Cravings (Moods) */}
-          <GlassPanel className="p-6">
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-text-primary mb-4">Top cravings</h3>
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-8 bg-gray-200 dark:bg-ocean-700 animate-pulse rounded" />
-                ))}
-              </div>
-            ) : metrics.topMoods.length > 0 ? (
-              <div className="space-y-3">
-                {metrics.topMoods.map((item) => (
-                  <div key={item.tag} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#1a1a1a]/60 dark:text-text-muted capitalize">{item.tag}</span>
-                      <span className="text-[#1a1a1a] dark:text-text-primary">{item.count}</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 dark:bg-ocean-700 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-[#1e3a5f] dark:bg-signal rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(item.count / maxMoodCount) * 100}%` }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[#1a1a1a]/50 dark:text-text-muted text-sm">No mood data yet</p>
-            )}
-          </GlassPanel>
-
-          {/* Top Flavors */}
-          {metrics.topFlavors.length > 0 && (
-            <GlassPanel className="p-6">
-              <h3 className="font-semibold text-[#1a1a1a] dark:text-text-primary mb-4">Top flavors</h3>
-              <div className="space-y-3">
-                {metrics.topFlavors.map((item) => (
-                  <div key={item.tag} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#1a1a1a]/60 dark:text-text-muted capitalize">{item.tag}</span>
-                      <span className="text-[#1a1a1a] dark:text-text-primary">{item.count}</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 dark:bg-ocean-700 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-[#1e3a5f]/70 dark:bg-signal/70 rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(item.count / maxFlavorCount) * 100}%` }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </GlassPanel>
+      {/* Metrics Grid */}
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8"
+        variants={stagger}
+        initial="initial"
+        animate="animate"
+      >
+        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5">
+          <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Scans Today</p>
+          {loading ? (
+            <div className="h-10 w-16 bg-gray-100 animate-pulse rounded" />
+          ) : (
+            <p className="text-4xl font-semibold text-[#1a1a1a]">{metrics.scansToday}</p>
           )}
+        </motion.div>
+        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5">
+          <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Scans ({dateRange}d)</p>
+          {loading ? (
+            <div className="h-10 w-16 bg-gray-100 animate-pulse rounded" />
+          ) : (
+            <p className="text-4xl font-semibold text-[#1a1a1a]">{metrics.scansWeek}</p>
+          )}
+        </motion.div>
+        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5">
+          <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Clicks Today</p>
+          {loading ? (
+            <div className="h-10 w-16 bg-gray-100 animate-pulse rounded" />
+          ) : (
+            <p className="text-4xl font-semibold text-[#1a1a1a]">{metrics.clicksToday}</p>
+          )}
+        </motion.div>
+        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5">
+          <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">CTR</p>
+          {loading ? (
+            <div className="h-10 w-16 bg-gray-100 animate-pulse rounded" />
+          ) : (
+            <p className="text-4xl font-semibold text-[#1a1a1a]">{metrics.ctr}%</p>
+          )}
+        </motion.div>
+      </motion.div>
 
-          {/* Top Clicked Items */}
-          <GlassPanel className="p-6">
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-text-primary mb-4">Most clicked items</h3>
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-8 bg-gray-200 dark:bg-ocean-700 animate-pulse rounded" />
-                ))}
-              </div>
-            ) : metrics.topItems.length > 0 ? (
-              <div className="space-y-3">
-                {metrics.topItems.map((item, index) => (
-                  <div key={item.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-[#1e3a5f]/20 dark:bg-signal/20 text-[#1e3a5f] dark:text-signal text-xs font-medium flex items-center justify-center">
-                        {index + 1}
-                      </span>
-                      <span className="text-[#1a1a1a] dark:text-text-primary">{item.name}</span>
-                    </div>
-                    <span className="text-[#1a1a1a]/50 dark:text-text-muted">{item.clicks} clicks</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[#1a1a1a]/50 dark:text-text-muted text-sm">No click data yet</p>
-            )}
-          </GlassPanel>
-        </div>
-
-        {/* Live Activity Feed */}
-        <div className="lg:col-span-1">
-          <GlassPanel className="p-6 h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[#1a1a1a] dark:text-text-primary">Live activity</h3>
-              <span className="flex items-center gap-2 text-xs text-[#1a1a1a]/50 dark:text-text-muted">
-                <span className="w-2 h-2 bg-[#1e3a5f] dark:bg-signal rounded-full animate-pulse" />
-                Live
-              </span>
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* Top Moods */}
+        <motion.div
+          variants={fadeIn}
+          initial="initial"
+          animate="animate"
+          className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+        >
+          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-6">Top Cravings</h3>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />
+              ))}
             </div>
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-12 bg-gray-200 dark:bg-ocean-700 animate-pulse rounded" />
-                ))}
-              </div>
-            ) : recentActivity.length > 0 ? (
-              <div className="space-y-3 max-h-[600px] overflow-auto dark-scrollbar">
-                {recentActivity.map((event) => {
-                  const eventInfo = getEventInfo(event)
-                  return (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex items-start gap-3 py-2 border-b border-gray-200 dark:border-line/50 last:border-0"
-                    >
-                      <span
-                        className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                          eventInfo.type === 'click' ? 'bg-[#1e3a5f] dark:bg-signal' : 'bg-gray-400 dark:bg-ocean-600'
-                        }`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-[#1a1a1a] dark:text-text-primary truncate">{eventInfo.message}</p>
-                        <p className="text-xs text-[#1a1a1a]/50 dark:text-text-muted">{timeAgo(event.ts)}</p>
-                      </div>
-                    </motion.div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-[#1a1a1a]/50 dark:text-text-muted text-sm">No recent activity</p>
-            )}
-          </GlassPanel>
-        </div>
+          ) : metrics.topMoods.length > 0 ? (
+            <div className="space-y-4">
+              {metrics.topMoods.map((mood) => (
+                <div key={mood.name}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-[#1a1a1a] capitalize">{mood.name}</span>
+                    <span className="text-[#1a1a1a]/50">{mood.percent}%</span>
+                  </div>
+                  <div className="h-2 bg-[#1a1a1a]/5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#722F37] rounded-full transition-all duration-500"
+                      style={{ width: `${mood.percent}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[#1a1a1a]/40">No mood data yet</p>
+          )}
+        </motion.div>
+
+        {/* Most Clicked Items */}
+        <motion.div
+          variants={fadeIn}
+          initial="initial"
+          animate="animate"
+          className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+        >
+          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-6">Most Clicked Items</h3>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />
+              ))}
+            </div>
+          ) : metrics.topItems.length > 0 ? (
+            <div className="space-y-4">
+              {metrics.topItems.map((item, i) => (
+                <div key={item.name} className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#1a1a1a]/30 font-mono text-sm w-4">{i + 1}</span>
+                    <span className="text-[#1a1a1a]">{item.name}</span>
+                  </div>
+                  <span className="text-[#722F37] font-medium">{item.clicks}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[#1a1a1a]/40">No click data yet</p>
+          )}
+        </motion.div>
+
+        {/* Live Activity */}
+        <motion.div
+          variants={fadeIn}
+          initial="initial"
+          animate="animate"
+          className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+        >
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40">Live Activity</h3>
+            <span className="flex items-center gap-1.5 text-xs text-green-600">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              Live
+            </span>
+          </div>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />
+              ))}
+            </div>
+          ) : metrics.recentActivity.length > 0 ? (
+            <div className="space-y-3 max-h-[300px] overflow-auto">
+              {metrics.recentActivity.map((activity, i) => (
+                <div key={i} className="text-sm p-3 bg-[#FDFBF7] rounded-xl">
+                  <span className="text-[#1a1a1a]/40 mr-2">{timeAgo(activity.ts)}</span>
+                  <span className="text-[#1a1a1a]">{activity.message}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[#1a1a1a]/40">No recent activity</p>
+          )}
+        </motion.div>
       </div>
     </div>
   )

@@ -275,13 +275,40 @@ function scoreItems(
     let score = 0
     const matchedTags: MenuTag[] = []
 
-    // Mood match (required): +5 points
+    // DIETARY REQUIREMENTS ARE MANDATORY
+    // If user has dietary needs, items MUST have those tags or be excluded
+    if (preferences.dietary.length > 0) {
+      const meetsAllDietary = preferences.dietary.every(diet => {
+        // Special handling: vegetarian also accepts vegan items
+        if (diet === 'diet_vegetarian') {
+          return item.tags.includes('diet_vegetarian') || item.tags.includes('diet_vegan')
+        }
+        return item.tags.includes(diet)
+      })
+
+      if (!meetsAllDietary) {
+        // Item doesn't meet dietary requirements - exclude completely
+        return {
+          ...item,
+          score: -1000,
+          matchedTags: [],
+        }
+      }
+
+      // Add matched dietary tags for reason string
+      preferences.dietary.forEach(diet => {
+        if (item.tags.includes(diet)) {
+          matchedTags.push(diet)
+        }
+      })
+      // Bonus for matching dietary
+      score += 3
+    }
+
+    // Mood match (preferred but not required): +5 points
     if (preferences.mood && item.tags.includes(preferences.mood)) {
       score += 5
       matchedTags.push(preferences.mood)
-    } else if (preferences.mood) {
-      // Mood is required - items without matching mood get heavily penalized
-      score -= 100
     }
 
     // Flavor match: +3 points per match
@@ -292,31 +319,10 @@ function scoreItems(
       }
     })
 
-    // Portion match (required): +4 points
+    // Portion match (preferred but not required): +4 points
     if (preferences.portion && item.tags.includes(preferences.portion)) {
       score += 4
       matchedTags.push(preferences.portion)
-    } else if (preferences.portion) {
-      // Portion is required - items without matching portion get heavily penalized
-      score -= 100
-    }
-
-    // Dietary MUST match: filter out items that don't meet ALL dietary requirements
-    if (preferences.dietary.length > 0) {
-      const meetsAllDietary = preferences.dietary.every(diet =>
-        item.tags.includes(diet)
-      )
-      if (!meetsAllDietary) {
-        // Item doesn't meet dietary requirements - exclude completely
-        score -= 1000
-      } else {
-        // Add matched dietary tags for reason string
-        preferences.dietary.forEach(diet => {
-          if (item.tags.includes(diet)) {
-            matchedTags.push(diet)
-          }
-        })
-      }
     }
 
     // Price preference (optional bonus)
@@ -328,7 +334,7 @@ function scoreItems(
     // Popularity: +0.1 * popularity_score
     score += 0.1 * item.popularity_score
 
-    // is_push: +2 points
+    // is_push: +2 points (featured items)
     if (item.is_push) {
       score += 2
     }
@@ -340,7 +346,7 @@ function scoreItems(
     }
   })
 
-  // Sort by score descending, filter out heavily penalized items
+  // Sort by score descending, filter out items that failed dietary requirements
   return scored
     .filter(item => item.score > -50)
     .sort((a, b) => b.score - a.score)

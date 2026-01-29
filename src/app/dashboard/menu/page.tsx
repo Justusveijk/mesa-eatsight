@@ -820,7 +820,7 @@ export default function MenuPage() {
               onChange={handleFileInput}
             />
           </div>
-          <div className="relative mt-3" ref={templateMenuRef}>
+          <div className="relative mt-3 z-50" ref={templateMenuRef}>
             <button
               onClick={() => setShowTemplateMenu(!showTemplateMenu)}
               className="flex items-center gap-2 text-sm text-signal hover:underline"
@@ -830,26 +830,26 @@ export default function MenuPage() {
               <ChevronDown className="w-3 h-3" />
             </button>
             {showTemplateMenu && (
-              <div className="absolute bottom-full left-0 mb-1 bg-ocean-700 border border-line rounded-lg shadow-xl z-[100] py-1 min-w-[220px]">
+              <div className="absolute bottom-full left-0 mb-2 bg-white border border-[#1a1a1a]/10 rounded-xl shadow-xl z-[100] py-2 min-w-[240px]">
                 <button
                   onClick={() => {
                     downloadSimpleTemplate()
                     setShowTemplateMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-ocean-600 transition-colors"
+                  className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-[#FDFBF7] transition-colors"
                 >
                   <div className="font-medium">Simple template</div>
-                  <div className="text-xs text-text-muted">name, description, price, category</div>
+                  <div className="text-xs text-[#1a1a1a]/50">name, description, price, category</div>
                 </button>
                 <button
                   onClick={() => {
                     downloadDetailedTemplate()
                     setShowTemplateMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-ocean-600 transition-colors"
+                  className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-[#FDFBF7] transition-colors"
                 >
                   <div className="font-medium">Detailed template</div>
-                  <div className="text-xs text-text-muted">With flavor profiles for auto-tagging</div>
+                  <div className="text-xs text-[#1a1a1a]/50">With flavor profiles for auto-tagging</div>
                 </button>
               </div>
             )}

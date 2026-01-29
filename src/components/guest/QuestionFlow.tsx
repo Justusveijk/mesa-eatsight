@@ -73,23 +73,22 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.15,
+      staggerChildren: 0.04,
+      delayChildren: 0.1,
     },
   },
 }
 
 const chipVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: (i: number) => ({
+  hidden: { opacity: 0, y: 12 },
+  visible: {
     opacity: 1,
     y: 0,
     transition: {
-      delay: i * 0.04,
-      duration: 0.35,
+      duration: 0.3,
       ease: [0.25, 0.4, 0.25, 1] as const,
     },
-  }),
+  },
 }
 
 const titleVariants = {
@@ -250,27 +249,27 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
     selected: boolean,
     label: string,
     icon?: string,
-    onClick?: () => void,
-    index?: number
+    onClick?: () => void
   ) => (
-    <motion.button
+    <motion.div
       key={label}
-      custom={index}
       variants={chipVariants}
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className={`
-        flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium transition-all duration-200
-        ${
-          selected
-            ? 'bg-white border-2 border-mesa-500 text-mesa-500 shadow-md shadow-mesa-500/20'
-            : 'bg-white text-mesa-ink border-2 border-gray-200 hover:border-gray-300 hover:shadow-sm'
-        }
-      `}
     >
-      {icon && <span className="text-lg">{icon}</span>}
-      <span>{label}</span>
-    </motion.button>
+      <button
+        onClick={onClick}
+        className={`
+          flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-colors duration-200
+          ${
+            selected
+              ? 'border-2 border-[#B2472A] text-[#B2472A] bg-[#B2472A]/5'
+              : 'border-2 border-[#1a1a1a]/20 text-[#1a1a1a]/70 hover:border-[#1a1a1a]/40'
+          }
+        `}
+      >
+        {icon && <span className="text-lg">{icon}</span>}
+        <span>{label}</span>
+      </button>
+    </motion.div>
   )
 
   // Loading screen
@@ -429,13 +428,12 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial="hidden"
                   animate="visible"
                 >
-                  {moodOptions.map((option, i) =>
+                  {moodOptions.map((option) =>
                     renderChip(
                       preferences.mood === option.id,
                       option.label,
                       option.icon,
-                      () => selectMood(option.id),
-                      i
+                      () => selectMood(option.id)
                     )
                   )}
                 </motion.div>
@@ -475,13 +473,12 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial="hidden"
                   animate="visible"
                 >
-                  {flavorOptions.map((option, i) =>
+                  {flavorOptions.map((option) =>
                     renderChip(
                       preferences.flavors.includes(option.id),
                       option.label,
                       option.icon,
-                      () => toggleFlavor(option.id),
-                      i
+                      () => toggleFlavor(option.id)
                     )
                   )}
                 </motion.div>
@@ -521,13 +518,12 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial="hidden"
                   animate="visible"
                 >
-                  {portionOptions.map((option, i) =>
+                  {portionOptions.map((option) =>
                     renderChip(
                       preferences.portion === option.id,
                       option.label,
                       option.icon,
-                      () => selectPortion(option.id),
-                      i
+                      () => selectPortion(option.id)
                     )
                   )}
                 </motion.div>
@@ -567,13 +563,12 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial="hidden"
                   animate="visible"
                 >
-                  {dietOptions.map((option, i) =>
+                  {dietOptions.map((option) =>
                     renderChip(
                       preferences.dietary.includes(option.id),
                       option.label,
                       undefined,
-                      () => toggleDiet(option.id),
-                      i
+                      () => toggleDiet(option.id)
                     )
                   )}
                 </motion.div>
@@ -623,13 +618,12 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial="hidden"
                   animate="visible"
                 >
-                  {priceOptions.map((option, i) =>
+                  {priceOptions.map((option) =>
                     renderChip(
                       preferences.price === option.id,
                       option.label,
                       option.icon,
-                      () => selectPrice(preferences.price === option.id ? null : option.id),
-                      i
+                      () => selectPrice(preferences.price === option.id ? null : option.id)
                     )
                   )}
                 </motion.div>
