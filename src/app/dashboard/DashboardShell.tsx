@@ -99,7 +99,7 @@ export function DashboardShell({ children, venueName, userEmail }: DashboardShel
         <div className="relative">
           {/* Background blobs */}
           <div className="absolute -top-32 right-0 w-[400px] h-[400px] rounded-full bg-[#1e3a5f]/5 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] rounded-full bg-[#FF6B5A]/5 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] rounded-full bg-[#722F37]/5 blur-3xl pointer-events-none" />
 
           {/* Content */}
           <div className="relative z-10">

@@ -1,25 +1,25 @@
 import { forwardRef, ButtonHTMLAttributes } from 'react'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'outline' | 'ghost' | 'signal' | 'signal-outline' | 'mesa' | 'mesa-outline'
+  variant?: 'default' | 'outline' | 'ghost' | 'primary' | 'primary-outline' | 'mesa' | 'mesa-outline'
   size?: 'default' | 'sm' | 'lg' | 'xl'
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className = '', variant = 'default', size = 'default', ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 btn-transition'
+    const baseStyles = 'inline-flex items-center justify-center rounded-xl font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
 
     const variants = {
-      // Legacy/default (uses mesa colors now)
-      default: 'bg-mesa-500 text-white hover:bg-mesa-700',
-      outline: 'border-2 border-mesa-500 text-mesa-500 hover:bg-mesa-500 hover:text-white',
-      ghost: 'hover:bg-mesa-500/10 text-mesa-500',
-      // Eatsight coral/signal
-      signal: 'bg-signal text-white hover:bg-signal/90 shadow-lg shadow-signal/25',
-      'signal-outline': 'border-2 border-signal text-signal hover:bg-signal hover:text-white',
-      // MESA warm
-      mesa: 'bg-mesa-500 text-white hover:bg-mesa-700',
-      'mesa-outline': 'border-2 border-mesa-border text-mesa-ink hover:border-mesa-500 hover:text-mesa-500',
+      // Default (burgundy)
+      default: 'bg-[#722F37] text-white hover:bg-[#5a252c]',
+      outline: 'border-2 border-[#722F37] text-[#722F37] hover:bg-[#722F37] hover:text-white',
+      ghost: 'hover:bg-[#722F37]/10 text-[#722F37]',
+      // Primary (dark blue for dashboard)
+      primary: 'bg-[#1e3a5f] text-white hover:bg-[#0f2440]',
+      'primary-outline': 'border-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white',
+      // MESA warm (for guest-facing)
+      mesa: 'bg-[#B2472A] text-white hover:bg-[#7A2A18]',
+      'mesa-outline': 'border-2 border-[#B2472A] text-[#B2472A] hover:bg-[#B2472A] hover:text-white',
     }
 
     const sizes = {

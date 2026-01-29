@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Upload, Search, Star, Plus, Pencil, Trash2, AlertCircle, Check, X, FileText, ChevronDown } from 'lucide-react'
+import { Upload, Search, Star, Plus, Pencil, Trash2, AlertCircle, Check, X, FileText, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TagEditor } from '@/components/dashboard/TagEditor'
 import { MenuTag, TAG_LABELS } from '@/lib/types/taxonomy'
-import { parseCSV, ParsedItem, ParseResult, downloadSimpleTemplate, downloadDetailedTemplate } from '@/lib/menu-import'
+import { parseCSV, ParsedItem, ParseResult, downloadDetailedTemplate } from '@/lib/menu-import'
 import { createClient } from '@/lib/supabase/client'
 
 interface MenuItem {
@@ -60,7 +60,7 @@ export default function MenuPage() {
   const [previewItems, setPreviewItems] = useState<PreviewItem[]>([])
   const [importing, setImporting] = useState(false)
   const [publishing, setPublishing] = useState(false)
-  const [showTemplateMenu, setShowTemplateMenu] = useState(false)
+  const [showChefModal, setShowChefModal] = useState(false)
 
   // Preview tag editing
   const [editingPreviewIndex, setEditingPreviewIndex] = useState<number | null>(null)
@@ -80,23 +80,11 @@ export default function MenuPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const templateMenuRef = useRef<HTMLDivElement>(null)
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
   }
-
-  // Close template menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (templateMenuRef.current && !templateMenuRef.current.contains(event.target as Node)) {
-        setShowTemplateMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const fetchMenuData = useCallback(async () => {
     const supabase = createClient()
@@ -820,39 +808,21 @@ export default function MenuPage() {
               onChange={handleFileInput}
             />
           </div>
-          <div className="relative mt-3 z-50" ref={templateMenuRef}>
+          <div className="flex items-center gap-4 mt-3">
             <button
-              onClick={() => setShowTemplateMenu(!showTemplateMenu)}
+              onClick={() => downloadDetailedTemplate()}
               className="flex items-center gap-2 text-sm text-[#1e3a5f] hover:underline"
             >
               <FileText className="w-4 h-4" />
-              Download template
-              <ChevronDown className="w-3 h-3" />
+              Download CSV template
             </button>
-            {showTemplateMenu && (
-              <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl z-[100] py-2 min-w-[240px]">
-                <button
-                  onClick={() => {
-                    downloadSimpleTemplate()
-                    setShowTemplateMenu(false)
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-gray-50 transition-colors"
-                >
-                  <div className="font-medium">Simple template</div>
-                  <div className="text-xs text-[#1a1a1a]/50">name, description, price, category</div>
-                </button>
-                <button
-                  onClick={() => {
-                    downloadDetailedTemplate()
-                    setShowTemplateMenu(false)
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-gray-50 transition-colors"
-                >
-                  <div className="font-medium">Detailed template</div>
-                  <div className="text-xs text-[#1a1a1a]/50">With flavor profiles for auto-tagging</div>
-                </button>
-              </div>
-            )}
+            <button
+              onClick={() => setShowChefModal(true)}
+              className="flex items-center gap-1 text-sm text-[#722F37] hover:underline"
+            >
+              <HelpCircle className="w-4 h-4" />
+              Why add flavor tags?
+            </button>
           </div>
         </div>
       )}
@@ -1207,6 +1177,66 @@ export default function MenuPage() {
           }}
           onClose={() => setShowNewItemTagEditor(false)}
         />
+      )}
+
+      {/* Chef Modal - Why add flavor tags */}
+      {showChefModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg p-6 shadow-xl">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-14 h-14 bg-[#722F37]/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <span className="text-3xl">👨‍🍳</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-[#1a1a1a]">Why flavor tags matter</h2>
+                <p className="text-[#1a1a1a]/50 text-sm mt-1">From our culinary team</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-[#1a1a1a]/70">
+              <p>
+                Flavor tags help us understand the <strong className="text-[#1a1a1a]">soul of each dish</strong> so we can match guests with exactly what they&apos;re craving.
+              </p>
+
+              <div className="bg-[#FDFBF7] rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-lg">🎯</span>
+                  <div>
+                    <p className="font-medium text-[#1a1a1a]">Better recommendations</p>
+                    <p className="text-sm">Match dishes to guest mood, dietary needs, and flavor preferences</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-lg">🍷</span>
+                  <div>
+                    <p className="font-medium text-[#1a1a1a]">Smart pairings</p>
+                    <p className="text-sm">Suggest complementary drinks and sides automatically</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-lg">📊</span>
+                  <div>
+                    <p className="font-medium text-[#1a1a1a]">Real insights</p>
+                    <p className="text-sm">Discover what flavors and moods drive orders at your venue</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm">
+                The more detailed your tags, the better we can serve your guests. Most restaurants see a <strong className="text-[#1a1a1a]">15-20% increase</strong> in add-on orders after adding flavor profiles.
+              </p>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <Button
+                onClick={() => setShowChefModal(false)}
+                className="bg-[#722F37] hover:bg-[#5a252c] text-white"
+              >
+                Got it
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -69,24 +69,24 @@ export function TagEditor({ item, onSave, onClose }: TagEditorProps) {
   const errors = getValidationErrors()
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="glass-panel max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl border border-gray-200 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-xl">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-line flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-text-primary">Edit Tags</h2>
-            <p className="text-sm text-text-muted">{item.name}</p>
+            <h2 className="text-lg font-semibold text-[#1a1a1a]">Edit Tags</h2>
+            <p className="text-sm text-[#1a1a1a]/50">{item.name}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-ocean-700 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-[#1a1a1a]/50 hover:text-[#1a1a1a]"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 dark-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {(
             Object.entries(TAG_CATEGORIES) as [
               keyof typeof TAG_CATEGORIES,
@@ -95,11 +95,11 @@ export function TagEditor({ item, onSave, onClose }: TagEditorProps) {
           ).map(([categoryKey, config]) => (
             <div key={categoryKey}>
               <div className="flex items-center gap-2 mb-3">
-                <h3 className="font-medium text-text-primary">{config.label}</h3>
+                <h3 className="font-medium text-[#1a1a1a]">{config.label}</h3>
                 {config.required && (
-                  <span className="text-xs text-signal">Required</span>
+                  <span className="text-xs text-[#722F37]">Required</span>
                 )}
-                <span className="text-xs text-text-muted">
+                <span className="text-xs text-[#1a1a1a]/50">
                   (select {config.max === 1 ? '1' : `up to ${config.max}`})
                 </span>
               </div>
@@ -114,8 +114,8 @@ export function TagEditor({ item, onSave, onClose }: TagEditorProps) {
                         px-3 py-1.5 rounded-full text-sm font-medium transition-colors
                         ${
                           isSelected
-                            ? 'bg-signal text-white'
-                            : 'bg-ocean-700 text-text-muted hover:bg-ocean-600 hover:text-text-primary'
+                            ? 'bg-[#722F37] text-white'
+                            : 'bg-gray-100 text-[#1a1a1a]/70 hover:bg-gray-200 hover:text-[#1a1a1a]'
                         }
                       `}
                     >
@@ -130,22 +130,22 @@ export function TagEditor({ item, onSave, onClose }: TagEditorProps) {
 
         {/* Validation errors */}
         {errors.length > 0 && (
-          <div className="px-6 py-3 bg-signal/10 border-t border-signal/20">
-            <p className="text-sm text-signal">
+          <div className="px-6 py-3 bg-amber-50 border-t border-amber-200">
+            <p className="text-sm text-amber-700">
               Missing required tags: {errors.join(', ')}
             </p>
           </div>
         )}
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-line flex justify-end gap-3">
-          <Button variant="signal-outline" onClick={onClose}>
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button
-            variant="signal"
             onClick={() => onSave(selectedTags)}
             disabled={errors.length > 0}
+            className="bg-[#722F37] hover:bg-[#5a252c] text-white"
           >
             Save Tags
           </Button>

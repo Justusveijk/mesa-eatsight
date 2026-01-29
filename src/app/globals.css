@@ -62,9 +62,9 @@
   --color-foreground: var(--foreground);
   --color-burgundy: var(--mesa-500);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-playfair);
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, monospace;
+  --font-serif: var(--font-playfair), Georgia, serif;
 }
 
 /* Serif font utility */
@@ -79,7 +79,11 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
 }
 
 /* ========================================

@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Upload, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { GlassPanel } from '@/components/shared/GlassPanel'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUser } from '@/lib/supabase/auth'
 
@@ -248,31 +247,31 @@ export default function CreateVenuePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#FDFBF7]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-xl"
       >
-        <GlassPanel className="p-8" withNoise>
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
           {/* Header */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-signal flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-[#1e3a5f] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">E</span>
               </div>
-              <span className="text-text-primary font-semibold">Eatsight</span>
+              <span className="text-[#1a1a1a] font-semibold">Eatsight</span>
             </Link>
-            <h1 className="text-2xl font-bold text-text-primary mb-2">
+            <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">
               Create your venue
             </h1>
-            <p className="text-text-muted text-sm">
+            <p className="text-[#1a1a1a]/50 text-sm">
               Tell us about your restaurant, bar, or café
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-sm text-red-400">
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-sm text-red-600">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -281,7 +280,7 @@ export default function CreateVenuePage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Venue Name */}
             <div>
-              <label className="block text-sm font-medium text-text-muted mb-2">
+              <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                 Venue name *
               </label>
               <input
@@ -290,17 +289,17 @@ export default function CreateVenuePage() {
                 onChange={(e) => setVenueName(e.target.value)}
                 placeholder="Bella Taverna"
                 required
-                className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
               />
             </div>
 
             {/* Slug */}
             <div>
-              <label className="block text-sm font-medium text-text-muted mb-2">
+              <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                 URL slug *
               </label>
               <div className="flex items-center gap-2">
-                <span className="text-text-muted text-sm">eatsight.com/v/</span>
+                <span className="text-[#1a1a1a]/50 text-sm">eatsight.ai/v/</span>
                 <div className="flex-1 relative">
                   <input
                     type="text"
@@ -308,32 +307,32 @@ export default function CreateVenuePage() {
                     onChange={(e) => handleSlugChange(e.target.value)}
                     placeholder="bella-taverna"
                     required
-                    className={`w-full px-4 py-3 rounded-lg bg-ocean-800 border text-text-primary placeholder-text-muted/50 focus:outline-none transition-colors ${
-                      slugError ? 'border-red-500' : 'border-line focus:border-signal'
+                    className={`w-full px-4 py-3 rounded-xl bg-white border text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none transition-colors ${
+                      slugError ? 'border-red-500' : 'border-gray-200 focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37]'
                     }`}
                   />
                   {checkingSlug && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#1a1a1a]/50">
                       Checking...
                     </span>
                   )}
                 </div>
               </div>
               {slugError && (
-                <p className="mt-1 text-xs text-red-400">{slugError}</p>
+                <p className="mt-1 text-xs text-red-600">{slugError}</p>
               )}
             </div>
 
             {/* Country & City */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-2">
+                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                   Country *
                 </label>
                 <select
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary focus:outline-none focus:border-signal transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
                 >
                   {countries.map((c) => (
                     <option key={c.code} value={c.code}>
@@ -343,7 +342,7 @@ export default function CreateVenuePage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-2">
+                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                   City *
                 </label>
                 <input
@@ -352,7 +351,7 @@ export default function CreateVenuePage() {
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Amsterdam"
                   required
-                  className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
                 />
               </div>
             </div>
@@ -360,13 +359,13 @@ export default function CreateVenuePage() {
             {/* Timezone & Currency */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-2">
+                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                   Timezone
                 </label>
                 <select
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary focus:outline-none focus:border-signal transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
                 >
                   {timezones.map((tz) => (
                     <option key={tz} value={tz}>
@@ -376,13 +375,13 @@ export default function CreateVenuePage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-2">
+                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                   Currency
                 </label>
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary focus:outline-none focus:border-signal transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
                 >
                   {currencies.map((c) => (
                     <option key={c.code} value={c.code}>
@@ -395,17 +394,17 @@ export default function CreateVenuePage() {
 
             {/* Language */}
             <div>
-              <label className="block text-sm font-medium text-text-muted mb-2">
+              <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                 Primary language
               </label>
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setLanguage('en')}
-                  className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                  className={`flex-1 px-4 py-3 rounded-xl border transition-colors ${
                     language === 'en'
-                      ? 'bg-signal/20 border-signal text-text-primary'
-                      : 'bg-ocean-800 border-line text-text-muted hover:border-text-muted'
+                      ? 'bg-[#722F37]/10 border-[#722F37] text-[#1a1a1a]'
+                      : 'bg-white border-gray-200 text-[#1a1a1a]/70 hover:border-gray-300'
                   }`}
                 >
                   English
@@ -413,10 +412,10 @@ export default function CreateVenuePage() {
                 <button
                   type="button"
                   onClick={() => setLanguage('nl')}
-                  className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                  className={`flex-1 px-4 py-3 rounded-xl border transition-colors ${
                     language === 'nl'
-                      ? 'bg-signal/20 border-signal text-text-primary'
-                      : 'bg-ocean-800 border-line text-text-muted hover:border-text-muted'
+                      ? 'bg-[#722F37]/10 border-[#722F37] text-[#1a1a1a]'
+                      : 'bg-white border-gray-200 text-[#1a1a1a]/70 hover:border-gray-300'
                   }`}
                 >
                   Nederlands
@@ -426,7 +425,7 @@ export default function CreateVenuePage() {
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-text-muted mb-2">
+              <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                 Category *
               </label>
               <div className="flex gap-3">
@@ -435,10 +434,10 @@ export default function CreateVenuePage() {
                     key={cat.id}
                     type="button"
                     onClick={() => setCategory(cat.id)}
-                    className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                    className={`flex-1 px-4 py-3 rounded-xl border transition-colors ${
                       category === cat.id
-                        ? 'bg-signal/20 border-signal text-text-primary'
-                        : 'bg-ocean-800 border-line text-text-muted hover:border-text-muted'
+                        ? 'bg-[#722F37]/10 border-[#722F37] text-[#1a1a1a]'
+                        : 'bg-white border-gray-200 text-[#1a1a1a]/70 hover:border-gray-300'
                     }`}
                   >
                     {cat.label}
@@ -451,7 +450,7 @@ export default function CreateVenuePage() {
             <button
               type="button"
               onClick={() => setShowMoreDetails(!showMoreDetails)}
-              className="flex items-center gap-2 text-sm text-text-muted hover:text-text-primary transition-colors"
+              className="flex items-center gap-2 text-sm text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition-colors"
             >
               {showMoreDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               Add more details (optional)
@@ -466,7 +465,7 @@ export default function CreateVenuePage() {
               >
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-text-muted mb-2">
+                    <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                       Phone
                     </label>
                     <input
@@ -474,11 +473,11 @@ export default function CreateVenuePage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+31 20 123 4567"
-                      className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal transition-colors"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-muted mb-2">
+                    <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                       Website
                     </label>
                     <input
@@ -486,13 +485,13 @@ export default function CreateVenuePage() {
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal transition-colors"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-text-muted mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                     VAT number
                   </label>
                   <input
@@ -500,18 +499,18 @@ export default function CreateVenuePage() {
                     value={vatNumber}
                     onChange={(e) => setVatNumber(e.target.value)}
                     placeholder="NL123456789B01"
-                    className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal transition-colors"
+                    className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-text-muted mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
                     Logo
                   </label>
-                  <div className="border-2 border-dashed border-line rounded-lg p-6 text-center hover:border-text-muted transition-colors cursor-pointer">
-                    <Upload className="w-6 h-6 text-text-muted mx-auto mb-2" />
-                    <p className="text-sm text-text-muted">Click to upload or drag & drop</p>
-                    <p className="text-xs text-text-muted/60 mt-1">PNG, JPG up to 2MB</p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-[#722F37] transition-colors cursor-pointer">
+                    <Upload className="w-6 h-6 text-[#1a1a1a]/40 mx-auto mb-2" />
+                    <p className="text-sm text-[#1a1a1a]/50">Click to upload or drag & drop</p>
+                    <p className="text-xs text-[#1a1a1a]/40 mt-1">PNG, JPG up to 2MB</p>
                   </div>
                 </div>
               </motion.div>
@@ -519,15 +518,14 @@ export default function CreateVenuePage() {
 
             <Button
               type="submit"
-              variant="signal"
               size="lg"
-              className="w-full"
+              className="w-full bg-[#722F37] hover:bg-[#5a252c] text-white"
               disabled={isLoading || !isValid || checkingSlug}
             >
               {isLoading ? 'Creating venue...' : 'Create venue & continue'}
             </Button>
           </form>
-        </GlassPanel>
+        </div>
       </motion.div>
     </div>
   )

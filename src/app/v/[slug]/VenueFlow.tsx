@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { QuestionFlow, Intent } from '@/components/guest/QuestionFlow'
+import { RecommendationCard } from '@/components/guest/RecommendationCard'
 import { RecommendedItem } from '@/lib/recommendations'
 
 interface Venue {
@@ -89,7 +90,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
       </header>
 
       {/* Main content with padding for header */}
-      <main className="pt-14 min-h-screen">
+      <main className="pt-20 min-h-screen">
         {/* Landing Screen */}
         {screen === 'landing' && (
           <div className="relative overflow-hidden min-h-[calc(100vh-56px)]">
@@ -333,7 +334,13 @@ function RecommendationResults({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
               >
-                <RecommendationCard item={item} />
+                <RecommendationCard
+                  item={item}
+                  pairing={intent === 'both' && drinkItems[0] ? {
+                    name: drinkItems[0].name,
+                    price: drinkItems[0].price
+                  } : undefined}
+                />
               </motion.div>
             ))}
           </div>
@@ -354,7 +361,13 @@ function RecommendationResults({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.1 }}
               >
-                <RecommendationCard item={item} />
+                <RecommendationCard
+                  item={item}
+                  pairing={intent === 'both' && foodItems[0] ? {
+                    name: foodItems[0].name,
+                    price: foodItems[0].price
+                  } : undefined}
+                />
               </motion.div>
             ))}
           </div>
@@ -436,28 +449,3 @@ function RecommendationResults({
   )
 }
 
-// Simple recommendation card component
-function RecommendationCard({ item }: { item: RecommendedItem }) {
-  return (
-    <div className="bg-white rounded-2xl border border-[#1a1a1a]/5 overflow-hidden shadow-sm">
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-semibold text-[#1a1a1a] text-lg leading-tight">
-            {item.name}
-          </h3>
-          <span className="text-[#722F37] font-semibold whitespace-nowrap text-lg">
-            €{item.price}
-          </span>
-        </div>
-        <p className="text-sm text-[#1a1a1a]/50 mb-3">
-          {item.reason}
-        </p>
-        {item.description && (
-          <p className="text-sm text-[#1a1a1a]/40 line-clamp-2">
-            {item.description}
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
