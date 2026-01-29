@@ -9,12 +9,13 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    const supabase = createClient()
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
@@ -41,10 +42,7 @@ export default function ForgotPasswordPage() {
           <p className="text-[#1a1a1a]/60 mb-8">
             We&apos;ve sent a password reset link to <strong>{email}</strong>
           </p>
-          <Link
-            href="/login"
-            className="text-[#722F37] hover:text-[#5a252c] font-medium"
-          >
+          <Link href="/login" className="text-[#722F37] hover:text-[#5a252c] font-medium">
             &larr; Back to login
           </Link>
         </div>

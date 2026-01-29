@@ -13,12 +13,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    const supabase = createClient()
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -37,7 +38,7 @@ export default function LoginPage() {
       return
     }
 
-    // Check if user has a venue linked
+    // Check if user has a venue
     const { data: operator } = await supabase
       .from('operator_users')
       .select('venue_id')
@@ -90,10 +91,7 @@ export default function LoginPage() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm text-[#1a1a1a]/60">Password</label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-[#722F37] hover:text-[#5a252c]"
-                >
+                <Link href="/forgot-password" className="text-sm text-[#722F37] hover:text-[#5a252c]">
                   Forgot password?
                 </Link>
               </div>

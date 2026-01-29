@@ -35,36 +35,9 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Protected routes that require authentication
-  const protectedRoutes = ['/dashboard', '/onboarding']
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
-
-  // Auth routes (login, signup) - redirect to dashboard if already logged in
-  // Note: forgot-password and reset-password are NOT redirected even if logged in
-  const authRoutes = ['/login', '/signup']
-  const isAuthRoute = authRoutes.includes(pathname)
-
-  if (isProtectedRoute && !user) {
-    // Not logged in, redirect to login
+  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding'))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    url.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(url)
-  }
-
-  if (isAuthRoute && user) {
-    // Already logged in, check if they have a venue
-    const { data: operatorUser } = await supabase
-      .from('operator_users')
-      .select('venue_id')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    const url = request.nextUrl.clone()
-    if (operatorUser?.venue_id) {
-      url.pathname = '/dashboard'
-    } else {
-      url.pathname = '/onboarding/venue'
-    }
     return NextResponse.redirect(url)
   }
 
@@ -74,7 +47,7 @@ export async function proxy(request: NextRequest) {
       .from('operator_users')
       .select('venue_id')
       .eq('auth_user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (!operatorUser?.venue_id) {
       const url = request.nextUrl.clone()
@@ -90,7 +63,5 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/onboarding/:path*',
-    '/login',
-    '/signup',
   ],
 }
