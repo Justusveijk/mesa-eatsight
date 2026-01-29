@@ -66,6 +66,8 @@ export async function getCurrentUser() {
 export async function getUserVenue(authUserId: string) {
   const supabase = createClient()
 
+  console.log('[getUserVenue] Looking up operator for auth_user_id:', authUserId)
+
   const { data: operatorUser, error } = await supabase
     .from('operator_users')
     .select(`
@@ -80,9 +82,12 @@ export async function getUserVenue(authUserId: string) {
       )
     `)
     .eq('auth_user_id', authUserId)
-    .single()
+    .maybeSingle()  // Use maybeSingle to avoid error when no row found
 
-  if (error || !operatorUser) {
+  console.log('[getUserVenue] Result:', { operatorUser, error })
+
+  if (error) {
+    console.error('[getUserVenue] Database error:', error)
     return null
   }
 

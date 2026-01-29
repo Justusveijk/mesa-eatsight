@@ -140,42 +140,42 @@ export default function LandingPage() {
 
         {/* Hero content */}
         <div className="text-center px-4 sm:px-6 md:px-8 max-w-4xl relative z-20">
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.25, 0.4, 0.25, 1] }}
-            className="text-[#722F37] uppercase tracking-[0.15em] sm:tracking-[0.2em] md:tracking-[0.3em] text-xs sm:text-sm mb-4 sm:mb-6"
-          >
-            Menu Intelligence
-          </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1, ease: [0.25, 0.4, 0.25, 1] }}
-            className="font-serif text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-[#1a1a1a] leading-[0.95] mb-6 sm:mb-8"
+            transition={{ duration: 0.8, ease: [0.25, 0.4, 0.25, 1] }}
+            className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#1a1a1a] leading-tight mb-6"
           >
-            Know what<br />your guests<br />
-            <span className="italic text-[#722F37]">crave</span>
+            Your menu,<br />
+            <span className="italic">personally served</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.4, 0.25, 1] }}
-            className="text-base sm:text-lg md:text-xl text-[#1a1a1a]/60 max-w-xl mx-auto mb-8 sm:mb-10 px-4"
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.25, 0.4, 0.25, 1] }}
+            className="text-lg sm:text-xl md:text-2xl text-[#1a1a1a]/70 max-w-3xl mx-auto font-light"
           >
-            Help guests find their perfect dish in seconds. See exactly what they want in real-time.
+            Menus are bigger than ever. Attention is lower than ever.
+          </motion.p>
+          <motion.p
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.15, ease: [0.25, 0.4, 0.25, 1] }}
+            className="mt-2 text-base sm:text-lg text-[#1a1a1a]/60 max-w-2xl mx-auto mb-8 sm:mb-10"
+          >
+            Eatsight turns menus into decisions, and decisions into revenue.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.4, 0.25, 1] }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.4, 0.25, 1] }}
             className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4"
           >
-            <Link href="/signup" className="inline-block bg-[#1a1a1a] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg hover:bg-[#333] transition">
-              Start your free trial
+            <Link href="/v/bella-taverna" className="inline-block bg-[#B2472A] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-medium hover:bg-[#8a341f] transition">
+              Try the demo
             </Link>
-            <Link href="/demo" className="inline-block border-2 border-[#1a1a1a] text-[#1a1a1a] px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg hover:bg-[#1a1a1a] hover:text-white transition">
-              Try the demo →
+            <Link href="#pricing" className="inline-block border-2 border-[#1a1a1a]/20 text-[#1a1a1a] px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg hover:border-[#1a1a1a]/40 transition">
+              View pricing
             </Link>
           </motion.div>
         </div>
@@ -191,6 +191,85 @@ export default function LandingPage() {
           </div>
         </motion.div>
       </motion.section>
+
+      {/* Value Proposition Section */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center"
+          >
+            {/* Left side - for guests */}
+            <motion.div variants={fadeInItem} className="text-center md:text-left">
+              <div className="inline-block px-3 py-1 bg-[#B2472A]/10 text-[#B2472A] rounded-full text-sm font-medium mb-4">
+                Mesa · For Guests
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-serif text-[#1a1a1a] mb-4">
+                Find what you&apos;ll love
+              </h3>
+              <p className="text-[#1a1a1a]/60">
+                Answer a few quick questions and discover dishes perfectly matched to your mood, cravings, and dietary needs. No more menu paralysis.
+              </p>
+            </motion.div>
+
+            {/* Right side - for operators */}
+            <motion.div variants={fadeInItem} className="text-center md:text-left">
+              <div className="inline-block px-3 py-1 bg-[#1e3a5f]/10 text-[#1e3a5f] rounded-full text-sm font-medium mb-4">
+                Eatsight · For Operators
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-serif text-[#1a1a1a] mb-4">
+                See what guests crave
+              </h3>
+              <p className="text-[#1a1a1a]/60">
+                Turn guest preferences into actionable insights. Know what&apos;s trending, what&apos;s missing, and what drives revenue — all in real time.
+              </p>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Stats/Social Proof Section */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[#1a1a1a] text-white">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+          >
+            <blockquote className="text-xl sm:text-2xl md:text-3xl font-serif italic mb-6">
+              &ldquo;Eatsight helps venues turn indecision into higher conversion by guiding guests to the right choices.&rdquo;
+            </blockquote>
+            <p className="text-white/60">
+              — The Mesa Team
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="grid grid-cols-3 gap-8 mt-12 pt-12 border-t border-white/10"
+          >
+            <motion.div variants={fadeInItem}>
+              <div className="text-3xl sm:text-4xl font-serif">3</div>
+              <div className="text-white/60 text-sm mt-1">Questions</div>
+            </motion.div>
+            <motion.div variants={fadeInItem}>
+              <div className="text-3xl sm:text-4xl font-serif">10s</div>
+              <div className="text-white/60 text-sm mt-1">To discover</div>
+            </motion.div>
+            <motion.div variants={fadeInItem}>
+              <div className="text-3xl sm:text-4xl font-serif">∞</div>
+              <div className="text-white/60 text-sm mt-1">Happy guests</div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
 
       {/* Problem Section - Animates in on scroll */}
       <section className="min-h-screen flex items-center py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">

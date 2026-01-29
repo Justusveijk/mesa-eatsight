@@ -23,25 +23,39 @@ function LoginForm() {
     setIsLoading(true)
     setError('')
 
+    console.log('[Login] Attempting sign in for:', email)
+
     const { user, error: signInError } = await signIn({ email, password })
 
     if (signInError) {
+      console.error('[Login] Sign in error:', signInError)
       setError(signInError)
       setIsLoading(false)
       return
     }
 
-    if (user) {
-      // Check if user has a venue
-      const operatorUser = await getUserVenue(user.id)
+    if (!user) {
+      console.error('[Login] No user returned after sign in')
+      setError('Login failed')
+      setIsLoading(false)
+      return
+    }
 
-      if (operatorUser?.venue_id) {
-        // User has a venue, redirect to dashboard or original destination
-        router.push(redirect || '/dashboard')
-      } else {
-        // User doesn't have a venue, redirect to onboarding
-        router.push('/onboarding/venue')
-      }
+    console.log('[Login] Signed in user:', user.id)
+
+    // Check if user has a venue linked
+    const operatorUser = await getUserVenue(user.id)
+
+    console.log('[Login] Operator user data:', operatorUser)
+
+    if (operatorUser?.venue_id) {
+      // User has a venue - go to dashboard
+      console.log('[Login] User has venue, redirecting to:', redirect || '/dashboard')
+      router.push(redirect || '/dashboard')
+    } else {
+      // No venue - go to onboarding
+      console.log('[Login] User has no venue, redirecting to onboarding')
+      router.push('/onboarding/venue')
     }
   }
 
