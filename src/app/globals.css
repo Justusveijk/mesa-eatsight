@@ -28,6 +28,16 @@
   --line: #223552;            /* Subtle borders */
   --signal: #FF6B5A;          /* Coral accent for CTAs, charts */
 
+  /* ========================================
+     Landing Page Colors (Warm & Inviting)
+     ======================================== */
+  --landing-cream: #FDFBF7;       /* Background */
+  --landing-charcoal: #1a1a1a;    /* Text */
+  --landing-wine: #722F37;        /* Burgundy accent */
+  --landing-sage: #7D8471;        /* Secondary */
+  --landing-gold: #C9A227;        /* Highlights */
+  --landing-warm-bg: #F5F3EF;     /* Alternate sections */
+
   /* Legacy support */
   --background: #ffffff;
   --foreground: #111827;
@@ -64,6 +74,12 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-playfair);
+}
+
+/* Serif font utility */
+.font-serif {
+  font-family: var(--font-playfair), Georgia, 'Times New Roman', serif;
 }
 
 body {

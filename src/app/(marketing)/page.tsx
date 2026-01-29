@@ -1,445 +1,398 @@
 'use client'
 
+import { useRef } from 'react'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { Check, Zap, BarChart3, Clock, QrCode, Smartphone, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
-const monthlyFeatures = [
-  'Unlimited scans',
-  'Real-time analytics',
-  'Menu management',
-  'QR code generator',
-]
-
-const annualFeatures = [
-  'Everything in Monthly',
-  '1 month free',
-  'Priority support',
-  'Early adopter pricing locked in',
+const steps = [
+  { num: '01', title: 'Scan', desc: 'Guest scans QR code at the table. No app download needed.', icon: '📱' },
+  { num: '02', title: 'Answer', desc: '"What mood are you in?" "Pick your flavors." "How hungry?" Three taps.', icon: '💭' },
+  { num: '03', title: 'Discover', desc: 'Three personalized recommendations with one-line reasons why.', icon: '✨' },
 ]
 
 const operatorFeatures = [
-  {
-    title: 'Real-time Demand Signals',
-    description: 'See trending moods, flavors, and dietary requests as they happen.',
-  },
-  {
-    title: 'Menu Gap Analysis',
-    description: "Know exactly what guests wanted but couldn't find.",
-  },
-  {
-    title: 'Push High-Margin Items',
-    description: 'Promote specific dishes when they match guest preferences.',
-  },
-  {
-    title: 'No POS Integration',
-    description: 'Works alongside your existing systems. Set up in 15 minutes.',
-  },
+  { title: 'What moods are trending', desc: 'See if guests want comfort food or light bites — by hour, day, or season.' },
+  { title: 'Which flavors they crave', desc: 'Spicy up? Umami down? Know before you plan the specials.' },
+  { title: "What's missing from your menu", desc: '"12 guests wanted vegan + spicy. You have 0 options."' },
+  { title: 'Which items actually convert', desc: 'Not just what they click — what they actually order.' },
 ]
 
-export default function EatsightLandingPage() {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-ocean-950 via-ocean-900 to-ocean-950">
-      {/* Header */}
-      <header className="px-6 py-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-signal flex items-center justify-center">
-              <span className="text-white font-bold text-sm">E</span>
-            </div>
-            <span className="text-text-primary font-semibold text-lg">Eatsight</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="#how-it-works" className="text-text-muted hover:text-text-primary text-sm hidden md:block">
-              How it works
-            </Link>
-            <Link href="#pricing" className="text-text-muted hover:text-text-primary text-sm hidden md:block">
-              Pricing
-            </Link>
-            <Link href="/login">
-              <Button variant="signal-outline" size="sm">
-                Log in
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+const monthlyFeatures = ['Unlimited scans', 'Real-time analytics', 'Menu management', 'Cancel anytime']
+const annualFeatures = ['Everything in Monthly', '1 month free', 'Priority support', 'Price locked forever']
 
-      {/* Hero */}
-      <section className="pt-16 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.h1
+export default function LandingPage() {
+  const containerRef = useRef(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  })
+
+  // Parallax transforms
+  const blob1Y = useTransform(scrollYProgress, [0, 0.2], [0, -100])
+  const blob2Y = useTransform(scrollYProgress, [0, 0.2], [0, -150])
+  const solutionBlobY = useTransform(scrollYProgress, [0.2, 0.5], [100, -100])
+
+  return (
+    <div ref={containerRef} className="bg-[#FDFBF7]">
+      {/* Navigation - Fixed, minimal */}
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-8 py-5 flex justify-between items-center bg-[#FDFBF7]/80 backdrop-blur-sm">
+        <div className="font-serif text-2xl text-[#1a1a1a]">Eatsight</div>
+        <div className="flex gap-4 md:gap-8 items-center">
+          <a href="#how-it-works" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">How it works</a>
+          <a href="#pricing" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">Pricing</a>
+          <Link href="/login" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition">Log in</Link>
+          <Link href="/signup" className="bg-[#722F37] text-white px-5 py-2 rounded-full hover:bg-[#5a252c] transition text-sm md:text-base">
+            Start free
+          </Link>
+        </div>
+      </nav>
+
+      {/* Section 1: Hero - Full viewport, centered */}
+      <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20">
+        {/* Parallax background elements */}
+        <motion.div
+          className="absolute top-20 left-10 md:left-20 w-48 md:w-64 h-48 md:h-64 rounded-full bg-[#722F37]/5"
+          style={{ y: blob1Y }}
+        />
+        <motion.div
+          className="absolute bottom-20 right-10 md:right-32 w-64 md:w-96 h-64 md:h-96 rounded-full bg-[#7D8471]/5"
+          style={{ y: blob2Y }}
+        />
+
+        <div className="text-center px-6 md:px-8 max-w-4xl relative z-10">
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold text-text-primary mb-6"
+            transition={{ duration: 0.6 }}
+            className="text-[#722F37] uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-6"
           >
-            Know what your guests want.
-            <br />
-            <span className="text-signal">Before they order.</span>
+            Menu Intelligence
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="font-serif text-5xl md:text-7xl lg:text-8xl text-[#1a1a1a] leading-[0.9] mb-8"
+          >
+            Know what<br />your guests<br />
+            <span className="italic text-[#722F37]">crave</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-xl text-text-muted max-w-2xl mx-auto mb-8"
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-lg md:text-xl text-[#1a1a1a]/60 max-w-xl mx-auto mb-10"
           >
-            Mesa helps guests find their perfect dish in seconds.
-            Eatsight shows you exactly what they&apos;re craving — so you can serve smarter.
+            Help guests find their perfect dish in seconds. See exactly what they want in real-time.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
+            transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <Link href="/signup">
-              <Button size="lg" variant="signal" className="px-8">
-                Start Free Trial
-              </Button>
-            </Link>
-            <Link href="#how-it-works">
-              <Button size="lg" variant="signal-outline">
-                See How It Works
-              </Button>
+            <Link href="/signup" className="inline-block bg-[#1a1a1a] text-white px-8 py-4 rounded-full text-lg hover:bg-[#333] transition">
+              Start your free trial
             </Link>
           </motion.div>
         </div>
-      </section>
 
-      {/* Social Proof */}
-      <section className="py-12 border-y border-ocean-800">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-center gap-8 md:gap-16 text-center">
-            <div>
-              <div className="text-3xl font-bold text-text-primary">15 sec</div>
-              <div className="text-text-muted text-sm">Average time to recommendation</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-text-primary">3 questions</div>
-              <div className="text-text-muted text-sm">To understand preferences</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-text-primary">Real-time</div>
-              <div className="text-text-muted text-sm">Analytics dashboard</div>
-            </div>
+        {/* Scroll indicator */}
+        <motion.div
+          className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+        >
+          <div className="w-6 h-10 border-2 border-[#1a1a1a]/20 rounded-full flex justify-center pt-2">
+            <div className="w-1.5 h-3 bg-[#1a1a1a]/30 rounded-full" />
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
+      {/* Section 2: The Problem - Editorial style */}
+      <section className="min-h-screen flex items-center py-20 md:py-32 px-6 md:px-8">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
           <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            transition={{ duration: 0.8 }}
           >
-            <h2 className="text-3xl font-bold text-text-primary mb-4">How It Works</h2>
-            <p className="text-text-muted max-w-2xl mx-auto">
-              Set up in 15 minutes. No POS integration needed. Start understanding your guests today.
+            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">The Challenge</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] leading-tight mb-6">
+              Menus are overwhelming.<br />
+              <span className="text-[#1a1a1a]/40">Decisions are hard.</span>
+            </h2>
+            <p className="text-lg text-[#1a1a1a]/60 leading-relaxed">
+              Your guests stare at the menu for minutes. They ask the server what&apos;s good.
+              They order safe choices instead of your best dishes.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Step 1 */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="bg-ocean-800/50 rounded-2xl p-6 border border-ocean-700"
-            >
-              <div className="w-12 h-12 bg-signal/20 rounded-full flex items-center justify-center text-signal font-bold text-xl mb-4">
-                1
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative"
+          >
+            <div className="bg-white rounded-3xl p-8 shadow-xl shadow-[#1a1a1a]/5 border border-[#1a1a1a]/5">
+              <div className="space-y-4 text-[#1a1a1a]/40 font-mono text-sm">
+                <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
+                  <span>Menu items</span>
+                  <span>47</span>
+                </div>
+                <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
+                  <span>Average decision time</span>
+                  <span>4+ min</span>
+                </div>
+                <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
+                  <span>Guests who ask server</span>
+                  <span>68%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Orders that match preference</span>
+                  <span className="text-[#722F37]">~40%</span>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-text-primary mb-2">Upload Your Menu</h3>
-              <p className="text-text-muted">
-                Upload a CSV of your menu items. Our smart tagger automatically categorizes dishes by mood, flavor, and dietary needs.
-              </p>
-            </motion.div>
-
-            {/* Step 2 */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="bg-ocean-800/50 rounded-2xl p-6 border border-ocean-700"
-            >
-              <div className="w-12 h-12 bg-signal/20 rounded-full flex items-center justify-center text-signal font-bold text-xl mb-4">
-                2
-              </div>
-              <h3 className="text-xl font-semibold text-text-primary mb-2">Print QR Codes</h3>
-              <p className="text-text-muted">
-                Download QR codes for each table. Guests scan to get personalized recommendations — no app download required.
-              </p>
-            </motion.div>
-
-            {/* Step 3 */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="bg-ocean-800/50 rounded-2xl p-6 border border-ocean-700"
-            >
-              <div className="w-12 h-12 bg-signal/20 rounded-full flex items-center justify-center text-signal font-bold text-xl mb-4">
-                3
-              </div>
-              <h3 className="text-xl font-semibold text-text-primary mb-2">See What They Want</h3>
-              <p className="text-text-muted">
-                Watch real-time analytics: what moods are trending, which items get clicked, and what&apos;s missing from your menu.
-              </p>
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Guest Experience */}
-      <section className="py-20 px-6 bg-ocean-800/30">
-        <div className="max-w-5xl mx-auto">
+      {/* Section 3: The Solution - Big statement */}
+      <section className="min-h-screen flex items-center justify-center bg-[#1a1a1a] text-white py-20 md:py-32 px-6 md:px-8 relative overflow-hidden">
+        {/* Parallax decorative elements */}
+        <motion.div
+          className="absolute top-0 right-0 w-[400px] md:w-[600px] h-[400px] md:h-[600px] rounded-full bg-[#722F37]/10 blur-3xl"
+          style={{ y: solutionBlobY }}
+        />
+
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-[#C9A227] uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8"
+          >
+            The Solution
+          </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="font-serif text-4xl md:text-5xl lg:text-7xl leading-tight mb-8"
+          >
+            Three questions.<br />
+            <span className="italic text-[#C9A227]">Perfect match.</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto"
+          >
+            Guest scans the QR code. Answers three simple questions about mood, flavor, and hunger.
+            Gets three perfect recommendations in under 15 seconds.
+          </motion.p>
+        </div>
+      </section>
+
+      {/* Section 4: How it works - Menu style cards */}
+      <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8">
+        <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-16 md:mb-20"
           >
-            <h2 className="text-3xl font-bold text-text-primary mb-4">The Guest Experience</h2>
-            <p className="text-text-muted">3 quick taps. Perfect recommendations. Happy guests.</p>
+            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">How It Works</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">The Experience</h2>
           </motion.div>
 
-          <div className="flex flex-wrap justify-center items-center gap-4 md:gap-8">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="text-center p-6"
-            >
-              <div className="w-16 h-16 bg-ocean-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <QrCode className="w-8 h-8 text-signal" />
-              </div>
-              <div className="text-sm text-text-primary">Scan QR</div>
-            </motion.div>
-            <div className="text-2xl text-text-muted hidden md:block">→</div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-center p-6"
-            >
-              <div className="w-16 h-16 bg-ocean-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <Smartphone className="w-8 h-8 text-signal" />
-              </div>
-              <div className="text-sm text-text-primary">&quot;What mood?&quot;</div>
-            </motion.div>
-            <div className="text-2xl text-text-muted hidden md:block">→</div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="text-center p-6"
-            >
-              <div className="w-16 h-16 bg-ocean-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <Sparkles className="w-8 h-8 text-signal" />
-              </div>
-              <div className="text-sm text-text-primary">3 Perfect Picks</div>
-            </motion.div>
+          {/* Step cards - styled like menu items */}
+          <div className="space-y-6 md:space-y-8">
+            {steps.map((step, i) => (
+              <motion.div
+                key={step.num}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: i * 0.1 }}
+                className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 p-6 md:p-8 border-b border-[#1a1a1a]/10 group hover:bg-[#1a1a1a]/[0.02] transition-colors"
+              >
+                <span className="text-[#1a1a1a]/20 font-serif text-4xl md:text-6xl md:w-24">{step.num}</span>
+                <span className="text-3xl md:text-4xl md:w-16">{step.icon}</span>
+                <div className="flex-1">
+                  <h3 className="font-serif text-2xl md:text-3xl text-[#1a1a1a] mb-2">{step.title}</h3>
+                  <p className="text-[#1a1a1a]/60">{step.desc}</p>
+                </div>
+                <div className="text-[#722F37] opacity-0 group-hover:opacity-100 transition-opacity hidden md:block text-2xl">
+                  →
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* For Operators */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
+      {/* Section 5: For Operators - Split */}
+      <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF]">
+        <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-16 md:mb-20"
           >
-            <h2 className="text-3xl font-bold text-text-primary mb-4">Built for Operators</h2>
-            <p className="text-text-muted">Finally understand what your guests really want — without asking.</p>
+            <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">For Operators</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">Finally, real answers</h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="space-y-4"
-            >
-              {operatorFeatures.map((feature, index) => (
-                <div key={index} className="flex gap-4 items-start">
-                  <div className="text-signal mt-1">
-                    <Check className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-text-primary font-medium">{feature.title}</div>
-                    <div className="text-text-muted text-sm">{feature.description}</div>
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="bg-ocean-800 rounded-2xl p-6 border border-ocean-700"
-            >
-              <div className="text-sm text-text-muted mb-4">Live Dashboard Preview</div>
-              <div className="space-y-4">
-                <div className="flex justify-between p-3 rounded-lg bg-ocean-700/50">
-                  <span className="text-text-muted">Scans today</span>
-                  <span className="text-text-primary font-medium">47</span>
-                </div>
-                <div className="flex justify-between p-3 rounded-lg bg-ocean-700/50">
-                  <span className="text-text-muted">Click-through rate</span>
-                  <span className="text-signal font-medium">68%</span>
-                </div>
-                <div className="flex justify-between p-3 rounded-lg bg-ocean-700/50">
-                  <span className="text-text-muted">Top mood</span>
-                  <span className="text-text-primary font-medium">Comfort</span>
-                </div>
-                <div className="flex justify-between p-3 rounded-lg bg-ocean-700/50">
-                  <span className="text-text-muted">Top request</span>
-                  <span className="text-text-primary font-medium">Vegan options</span>
-                </div>
-              </div>
-            </motion.div>
+          <div className="grid md:grid-cols-2 gap-6 md:gap-8">
+            {operatorFeatures.map((item, i) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: i * 0.1 }}
+                className="bg-white p-6 md:p-8 rounded-2xl"
+              >
+                <h3 className="font-serif text-xl md:text-2xl text-[#1a1a1a] mb-3">{item.title}</h3>
+                <p className="text-[#1a1a1a]/60">{item.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="py-20 px-6 bg-ocean-800/30">
+      {/* Section 6: Pricing - Clean, minimal */}
+      <section id="pricing" className="py-20 md:py-32 px-6 md:px-8">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-12 md:mb-16"
           >
-            <h2 className="text-3xl font-bold text-text-primary mb-4">Simple Pricing</h2>
-            <p className="text-text-muted">Start free. No credit card required.</p>
+            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">Pricing</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4">Simple & fair</h2>
+            <p className="text-[#1a1a1a]/60">Start free. No credit card required.</p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6">
             {/* Monthly */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="bg-ocean-800 rounded-2xl p-6 border border-ocean-700"
+              className="border border-[#1a1a1a]/10 rounded-2xl p-6 md:p-8 hover:border-[#1a1a1a]/20 transition-colors"
             >
-              <div className="text-lg font-medium text-text-primary mb-2">Monthly</div>
-              <div className="text-4xl font-bold text-text-primary mb-1">
-                €295<span className="text-lg text-text-muted">/mo</span>
+              <p className="text-[#1a1a1a]/40 uppercase tracking-wider text-sm mb-4">Monthly</p>
+              <div className="flex items-baseline gap-2 mb-6">
+                <span className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">€295</span>
+                <span className="text-[#1a1a1a]/40">/month</span>
               </div>
-              <div className="text-text-muted text-sm mb-6">Cancel anytime</div>
-              <ul className="space-y-2 mb-6">
+              <ul className="space-y-3 mb-8 text-[#1a1a1a]/70">
                 {monthlyFeatures.map((feature) => (
-                  <li key={feature} className="text-text-muted text-sm flex gap-2">
-                    <span className="text-signal">✓</span> {feature}
+                  <li key={feature} className="flex gap-3">
+                    <span className="text-[#7D8471]">✓</span> {feature}
                   </li>
                 ))}
               </ul>
-              <Link href="/signup?plan=monthly" className="block">
-                <Button variant="signal-outline" className="w-full">
-                  Start Free Trial
-                </Button>
+              <Link href="/signup?plan=monthly" className="block text-center py-3 border border-[#1a1a1a] rounded-full text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition">
+                Start free trial
               </Link>
             </motion.div>
 
             {/* Annual */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="bg-gradient-to-br from-ocean-800 to-ocean-900 rounded-2xl p-6 border border-signal/50 relative"
+              className="bg-[#1a1a1a] text-white rounded-2xl p-6 md:p-8 relative"
             >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-signal text-white text-xs px-3 py-1 rounded-full">
-                Save €552/year
+              <div className="absolute -top-3 right-6 md:right-8 bg-[#C9A227] text-[#1a1a1a] text-xs font-medium px-3 py-1 rounded-full">
+                Save €552
               </div>
-              <div className="text-lg font-medium text-text-primary mb-2">Annual</div>
-              <div className="text-4xl font-bold text-text-primary mb-1">
-                €249<span className="text-lg text-text-muted">/mo</span>
+              <p className="text-white/40 uppercase tracking-wider text-sm mb-4">Annual</p>
+              <div className="flex items-baseline gap-2 mb-6">
+                <span className="font-serif text-4xl md:text-5xl">€249</span>
+                <span className="text-white/40">/month</span>
               </div>
-              <div className="text-text-muted text-sm mb-6">Billed yearly (€2,988)</div>
-              <ul className="space-y-2 mb-6">
+              <ul className="space-y-3 mb-8 text-white/70">
                 {annualFeatures.map((feature) => (
-                  <li key={feature} className="text-text-muted text-sm flex gap-2">
-                    <span className="text-signal">✓</span> {feature}
+                  <li key={feature} className="flex gap-3">
+                    <span className="text-[#C9A227]">✓</span> {feature}
                   </li>
                 ))}
               </ul>
-              <Link href="/signup?plan=annual" className="block">
-                <Button variant="signal" className="w-full">
-                  Start Free Trial
-                </Button>
+              <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#1a1a1a] rounded-full hover:bg-white/90 transition">
+                Start free trial
               </Link>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* About / Team */}
-      <section className="py-20 px-6">
+      {/* Section 7: About - Short */}
+      <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF]">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl font-bold text-text-primary mb-6">Built by Hospitality People</h2>
-            <p className="text-text-muted mb-6">
-              We&apos;ve worked in restaurants. We&apos;ve seen the chaos of a busy service, the guesswork of menu planning,
-              and the disconnect between what operators think guests want and what they actually order.
+            <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">Our Story</p>
+            <h2 className="font-serif text-3xl md:text-4xl text-[#1a1a1a] mb-6">Built by hospitality people</h2>
+            <p className="text-base md:text-lg text-[#1a1a1a]/60 leading-relaxed mb-4">
+              We&apos;ve worked the floor. We&apos;ve seen guests paralyzed by choice, servers repeating the same recommendations,
+              and kitchens guessing what to prep.
             </p>
-            <p className="text-text-muted mb-8">
-              Mesa + Eatsight bridges that gap — giving guests a faster way to decide, and operators
-              the data they need to serve smarter.
+            <p className="text-base md:text-lg text-[#1a1a1a]/60 leading-relaxed">
+              Mesa + Eatsight bridges the gap between what guests want and what you serve.
             </p>
-            <p className="text-text-muted/70 text-sm">
-              Based in Amsterdam 🇳🇱 • Built for hospitality
-            </p>
+            <p className="text-[#1a1a1a]/40 mt-8">Amsterdam 🇳🇱</p>
           </motion.div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-20 px-6 bg-gradient-to-t from-signal/10 to-transparent">
-        <div className="max-w-2xl mx-auto text-center">
+      {/* Section 8: Final CTA - Full bleed */}
+      <section className="py-20 md:py-32 px-6 md:px-8 bg-[#722F37] text-white">
+        <div className="max-w-3xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl font-bold text-text-primary mb-4">Ready to understand your guests?</h2>
-            <p className="text-text-muted mb-8">Set up in 15 minutes. See your first insights today.</p>
-            <Link href="/signup">
-              <Button size="lg" variant="signal" className="px-12">
-                Start Your Free Trial
-              </Button>
+            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6">
+              Ready to understand<br />your guests?
+            </h2>
+            <p className="text-white/70 text-base md:text-lg mb-10">
+              Set up in 15 minutes. See insights from day one.
+            </p>
+            <Link href="/signup" className="inline-block bg-white text-[#722F37] px-10 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition">
+              Start your free trial
             </Link>
-            <p className="text-text-muted/70 text-sm mt-4">14-day free trial • No credit card required</p>
+            <p className="text-white/50 text-sm mt-6">14 days free • No credit card</p>
           </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-ocean-800">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-text-muted text-sm">© 2026 Eatsight. All rights reserved.</p>
-          <div className="flex items-center gap-6 text-sm">
-            <a href="#" className="text-text-muted hover:text-text-primary">Privacy</a>
-            <a href="#" className="text-text-muted hover:text-text-primary">Terms</a>
-            <a href="mailto:hello@eatsight.io" className="text-text-muted hover:text-text-primary">Contact</a>
+      <footer className="py-10 md:py-12 px-6 md:px-8 bg-[#1a1a1a] text-white/60">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="font-serif text-xl text-white">Eatsight</div>
+          <div className="flex gap-6 md:gap-8 text-sm">
+            <a href="#" className="hover:text-white transition">Privacy</a>
+            <a href="#" className="hover:text-white transition">Terms</a>
+            <a href="mailto:hello@eatsight.io" className="hover:text-white transition">Contact</a>
           </div>
+          <div className="text-sm">© 2026 Eatsight</div>
         </div>
       </footer>
     </div>
