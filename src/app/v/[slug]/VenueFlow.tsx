@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { QuestionFlow, Intent } from '@/components/guest/QuestionFlow'
 import { RecommendationCard } from '@/components/guest/RecommendationCard'
 import { RecommendedItem } from '@/lib/recommendations'
+import { createClient } from '@/lib/supabase/client'
 
 interface Venue {
   id: string
@@ -19,15 +20,51 @@ interface VenueFlowProps {
   tableRef: string | null
 }
 
-type Screen = 'landing' | 'intent' | 'questions' | 'recommendations'
+type Screen = 'loading' | 'empty' | 'landing' | 'intent' | 'questions' | 'recommendations'
 
 export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
-  const [screen, setScreen] = useState<Screen>('landing')
+  const [screen, setScreen] = useState<Screen>('loading')
   const [intent, setIntent] = useState<Intent>('both')
   const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
   const [showFallbackMessage, setShowFallbackMessage] = useState(false)
   const [unmetPreferences, setUnmetPreferences] = useState<string[]>([])
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
+
+  // Check if venue has menu items on load
+  useEffect(() => {
+    const checkMenu = async () => {
+      const supabase = createClient()
+
+      // Get the published menu for this venue
+      const { data: menu } = await supabase
+        .from('menus')
+        .select('id')
+        .eq('venue_id', venue.id)
+        .eq('status', 'published')
+        .single()
+
+      if (!menu) {
+        setScreen('empty')
+        return
+      }
+
+      // Check if menu has available items
+      const { count } = await supabase
+        .from('menu_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('menu_id', menu.id)
+        .eq('is_available', true)
+
+      if (!count || count === 0) {
+        setScreen('empty')
+        return
+      }
+
+      setScreen('landing')
+    }
+
+    checkMenu()
+  }, [venue.id])
 
   const handleStartQuestions = () => {
     setScreen('intent')
@@ -104,6 +141,54 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
 
       {/* Main content with padding for header */}
       <main className="pt-20 min-h-screen">
+        {/* Loading Screen */}
+        {screen === 'loading' && (
+          <div className="min-h-[calc(100vh-80px)] flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-4xl mb-4 animate-pulse">🍽️</div>
+              <p className="text-[#1a1a1a]/50">Loading...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Empty Menu State */}
+        {screen === 'empty' && (
+          <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6">
+            <div className="text-center max-w-md">
+              <div className="text-5xl mb-6">📋</div>
+              <h1 className="text-2xl font-medium text-[#1a1a1a] mb-3">
+                Menu coming soon
+              </h1>
+              <p className="text-[#1a1a1a]/50 mb-2">
+                {venue.name} is still setting up their menu.
+              </p>
+              <p className="text-[#1a1a1a]/40 text-sm mb-8">
+                Check back soon for personalized recommendations!
+              </p>
+
+              {/* For operators viewing their own empty venue */}
+              <div className="p-4 bg-[#F5F3EF] rounded-xl mb-6">
+                <p className="text-sm text-[#1a1a1a]/60 mb-3">
+                  Are you the owner?
+                </p>
+                <Link
+                  href="/dashboard/menu"
+                  className="inline-block px-5 py-2 bg-[#722F37] text-white rounded-lg text-sm hover:bg-[#5a252c] transition"
+                >
+                  Add menu items →
+                </Link>
+              </div>
+
+              <Link
+                href="/"
+                className="text-sm text-[#1a1a1a]/40 hover:text-[#1a1a1a]/60"
+              >
+                ← Back to homepage
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Landing Screen */}
         {screen === 'landing' && (
           <div className="relative overflow-hidden min-h-[calc(100vh-56px)]">

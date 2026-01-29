@@ -168,7 +168,7 @@ export async function getRecommendationsWithFallback(
     return { recommendations: [], fallbackItems: [], showFallbackMessage: false, missingPreferences: null }
   }
 
-  // 2. Get all menu items with their tags
+  // 2. Get all available menu items with their tags
   const { data: items, error: itemsError } = await supabase
     .from('menu_items')
     .select(`
@@ -180,18 +180,20 @@ export async function getRecommendationsWithFallback(
       popularity_score,
       is_push,
       is_out_of_stock,
+      is_available,
       item_tags (tag)
     `)
     .eq('menu_id', menu.id)
+    .eq('is_available', true)
 
   if (itemsError || !items) {
     console.error('Failed to fetch menu items:', itemsError?.message, itemsError?.details, itemsError?.hint, itemsError)
     return { recommendations: [], fallbackItems: [], showFallbackMessage: false, missingPreferences: null }
   }
 
-  // 3. Transform items with tags
+  // 3. Transform items with tags (also filter out of stock items)
   const itemsWithTags = items
-    .filter(item => !item.is_out_of_stock)
+    .filter(item => !item.is_out_of_stock && item.is_available !== false)
     .map(item => ({
       id: item.id,
       name: item.name,
@@ -286,7 +288,7 @@ export async function getDrinkRecommendations(
     return []
   }
 
-  // 2. Get all drink items with their tags
+  // 2. Get all available drink items with their tags
   const { data: items, error: itemsError } = await supabase
     .from('menu_items')
     .select(`
@@ -298,9 +300,11 @@ export async function getDrinkRecommendations(
       popularity_score,
       is_push,
       is_out_of_stock,
+      is_available,
       item_tags (tag)
     `)
     .eq('menu_id', menu.id)
+    .eq('is_available', true)
 
   if (itemsError || !items) {
     console.error('Failed to fetch menu items:', itemsError?.message)
@@ -308,13 +312,22 @@ export async function getDrinkRecommendations(
   }
 
   // 3. Filter to only drinks (by category)
-  const drinkCategories = ['cocktails', 'wines', 'beers', 'spirits', 'mocktails', 'soft drinks', 'smoothies', 'coffee', 'tea', 'juice', 'drinks']
+  const drinkCategories = ['cocktails', 'wines', 'beers', 'spirits', 'mocktails', 'soft drinks', 'smoothies', 'coffee', 'tea', 'juice', 'drinks', 'hot drinks', 'beverages', 'wine', 'beer', 'cider']
 
   const drinkItems = items
-    .filter(item => !item.is_out_of_stock)
+    .filter(item => !item.is_out_of_stock && item.is_available !== false)
     .filter(item => {
       const cat = item.category?.toLowerCase() || ''
-      return drinkCategories.some(dc => cat.includes(dc))
+      // Check if category matches any drink category
+      const isDrinkCategory = drinkCategories.some(dc => cat.includes(dc))
+      // Also check for drink-related tags
+      const hasDrinkTag = (item.item_tags as { tag: string }[])?.some(t =>
+        t.tag.startsWith('drink_') ||
+        t.tag.startsWith('abv_') ||
+        t.tag === 'temp_hot' ||
+        t.tag.startsWith('strength_')
+      )
+      return isDrinkCategory || hasDrinkTag
     })
     .map(item => ({
       id: item.id,
@@ -371,18 +384,27 @@ export async function getDrinkRecommendations(
     if (preferences.drinkMood) {
       const moodTagMap: Record<string, string[]> = {
         'drink_refreshing': ['format_crisp', 'format_refreshing', 'flavor_tangy', 'temp_chilled'],
-        'drink_warming': ['format_warming', 'temp_hot', 'flavor_smoky'],
+        'drink_warming': ['format_warming', 'temp_hot', 'flavor_smoky', 'mood_comfort'],
         'drink_celebratory': ['format_sparkling', 'format_celebratory'],
-        'drink_relaxing': ['format_smooth', 'mood_comfort'],
+        'drink_relaxing': ['format_smooth', 'mood_comfort', 'format_creamy'],
         'drink_energizing': ['format_bold', 'temp_hot'],
       }
       const targetTags = moodTagMap[preferences.drinkMood] || []
       targetTags.forEach(tag => {
         if (drink.tags.includes(tag as MenuTag)) {
-          score += 3
+          // Higher boost for temp_hot when user wants warming drinks
+          const boost = (preferences.drinkMood === 'drink_warming' && tag === 'temp_hot') ? 10 : 3
+          score += boost
           matchedTags.push(tag as MenuTag)
         }
       })
+
+      // Also check category for Hot Drinks when warming is requested
+      if (preferences.drinkMood === 'drink_warming') {
+        if (drink.category?.toLowerCase().includes('hot')) {
+          score += 8
+        }
+      }
     }
 
     // Style match
