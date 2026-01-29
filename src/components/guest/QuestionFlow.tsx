@@ -55,7 +55,7 @@ const priceOptions: { id: PriceTag; label: string; icon: string }[] = [
 
 const slideVariants = {
   enter: (direction: number) => ({
-    y: direction > 0 ? 100 : -100,
+    y: direction > 0 ? 50 : -50,
     opacity: 0,
   }),
   center: {
@@ -63,23 +63,44 @@ const slideVariants = {
     opacity: 1,
   },
   exit: (direction: number) => ({
-    y: direction < 0 ? 100 : -100,
+    y: direction < 0 ? 50 : -50,
     opacity: 0,
   }),
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.15,
+    },
+  },
+}
+
 const chipVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 20, scale: 0.9 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
+    scale: 1,
     transition: {
       delay: i * 0.05,
       type: 'spring' as const,
       stiffness: 300,
-      damping: 24,
+      damping: 20,
     },
   }),
+}
+
+const titleVariants = {
+  hidden: { opacity: 0, y: -10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: 'easeOut' as const },
+  },
 }
 
 export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: QuestionFlowProps) {
@@ -233,13 +254,14 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
       variants={chipVariants}
       initial="hidden"
       animate="visible"
+      whileTap={{ scale: 0.95 }}
       onClick={onClick}
       className={`
         flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium transition-all
         ${
           selected
-            ? 'bg-white border-2 border-mesa-500 text-mesa-500 shadow-sm shadow-mesa-500/20'
-            : 'bg-white text-mesa-ink border-2 border-gray-200 hover:border-gray-300'
+            ? 'bg-white border-2 border-mesa-500 text-mesa-500 shadow-md shadow-mesa-500/20 scale-[1.02]'
+            : 'bg-white text-mesa-ink border-2 border-gray-200 hover:border-gray-300 hover:shadow-sm'
         }
       `}
     >
@@ -250,12 +272,22 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
 
   return (
     <div className="min-h-screen flex flex-col bg-mesa-ivory relative overflow-hidden">
+      {/* Fixed top progress bar */}
+      <div className="fixed top-0 left-0 right-0 h-1 bg-mesa-sand z-50">
+        <motion.div
+          className="h-full bg-mesa-500"
+          initial={{ width: 0 }}
+          animate={{ width: `${(step / 5) * 100}%` }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        />
+      </div>
+
       {/* Warm gradient blobs */}
       <div className="blob blob-mesa w-[300px] h-[300px] top-1/4 -right-32 opacity-15" />
       <div className="blob blob-mesa w-[200px] h-[200px] bottom-1/4 -left-16 opacity-10" />
 
       <div className="relative z-10 flex flex-col flex-1">
-        {/* Progress bar */}
+        {/* Progress indicator */}
         <div className="px-6 pt-6">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-mesa-graphite/60">Step {step} of 5</span>
@@ -294,11 +326,28 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
                 className="max-w-sm mx-auto"
               >
-                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-mesa-ink mb-2"
+                >
                   What are you in the mood for?
-                </h1>
-                <p className="text-mesa-graphite mb-8">Select one option</p>
-                <div className="flex flex-wrap gap-3">
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-mesa-graphite mb-8"
+                >
+                  Select one option
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {moodOptions.map((option, i) =>
                     renderChip(
                       preferences.mood === option.id,
@@ -308,7 +357,7 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                       i
                     )
                   )}
-                </div>
+                </motion.div>
               </motion.div>
             )}
 
@@ -323,11 +372,28 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
                 className="max-w-sm mx-auto"
               >
-                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-mesa-ink mb-2"
+                >
                   Pick your flavour direction
-                </h1>
-                <p className="text-mesa-graphite mb-8">Select up to 2 (optional)</p>
-                <div className="flex flex-wrap gap-3">
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-mesa-graphite mb-8"
+                >
+                  Select up to 2 (optional)
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {flavorOptions.map((option, i) =>
                     renderChip(
                       preferences.flavors.includes(option.id),
@@ -337,7 +403,7 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                       i
                     )
                   )}
-                </div>
+                </motion.div>
               </motion.div>
             )}
 
@@ -352,11 +418,28 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
                 className="max-w-sm mx-auto"
               >
-                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-mesa-ink mb-2"
+                >
                   How hungry are you?
-                </h1>
-                <p className="text-mesa-graphite mb-8">Select one option</p>
-                <div className="flex flex-wrap gap-3">
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-mesa-graphite mb-8"
+                >
+                  Select one option
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {portionOptions.map((option, i) =>
                     renderChip(
                       preferences.portion === option.id,
@@ -366,7 +449,7 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                       i
                     )
                   )}
-                </div>
+                </motion.div>
               </motion.div>
             )}
 
@@ -381,11 +464,28 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
                 className="max-w-sm mx-auto"
               >
-                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-mesa-ink mb-2"
+                >
                   Any dietary needs?
-                </h1>
-                <p className="text-mesa-graphite mb-8">Select all that apply (optional)</p>
-                <div className="flex flex-wrap gap-3">
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-mesa-graphite mb-8"
+                >
+                  Select all that apply (optional)
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {dietOptions.map((option, i) =>
                     renderChip(
                       preferences.dietary.includes(option.id),
@@ -395,7 +495,7 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                       i
                     )
                   )}
-                </div>
+                </motion.div>
                 {preferences.dietary.length > 0 && (
                   <motion.button
                     initial={{ opacity: 0 }}
@@ -420,11 +520,28 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
                 className="max-w-sm mx-auto"
               >
-                <h1 className="text-2xl font-bold text-mesa-ink mb-2">
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-mesa-ink mb-2"
+                >
                   Budget?
-                </h1>
-                <p className="text-mesa-graphite mb-8">Optional - skip if no preference</p>
-                <div className="flex flex-wrap gap-3">
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-mesa-graphite mb-8"
+                >
+                  Optional - skip if no preference
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {priceOptions.map((option, i) =>
                     renderChip(
                       preferences.price === option.id,
@@ -434,7 +551,7 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                       i
                     )
                   )}
-                </div>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>

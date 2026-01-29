@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef } from 'react'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { useRef, useEffect } from 'react'
+import { motion, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion'
 import Link from 'next/link'
 
 const steps = [
@@ -27,6 +27,23 @@ export default function LandingPage() {
     offset: ["start start", "end end"]
   })
 
+  // Mouse tracking for reveal effect
+  const cursorX = useMotionValue(typeof window !== 'undefined' ? window.innerWidth / 2 : 0)
+  const cursorY = useMotionValue(typeof window !== 'undefined' ? window.innerHeight / 2 : 0)
+
+  const springConfig = { damping: 25, stiffness: 200 }
+  const cursorXSpring = useSpring(cursorX, springConfig)
+  const cursorYSpring = useSpring(cursorY, springConfig)
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      cursorX.set(e.clientX)
+      cursorY.set(e.clientY)
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [cursorX, cursorY])
+
   // Parallax transforms
   const blob1Y = useTransform(scrollYProgress, [0, 0.2], [0, -100])
   const blob2Y = useTransform(scrollYProgress, [0, 0.2], [0, -150])
@@ -34,6 +51,13 @@ export default function LandingPage() {
 
   return (
     <div ref={containerRef} className="bg-[#FDFBF7]">
+      {/* Smooth scrolling */}
+      <style jsx global>{`
+        html {
+          scroll-behavior: smooth;
+        }
+      `}</style>
+
       {/* Navigation - Fixed, minimal */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-8 py-5 flex justify-between items-center bg-[#FDFBF7]/90 backdrop-blur-sm border-b border-[#1a1a1a]/5">
         <div className="font-serif text-2xl text-[#1a1a1a]">Eatsight</div>
@@ -47,19 +71,71 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Section 1: Hero - Full viewport, centered */}
+      {/* Section 1: Hero - Full viewport with mouse reveal effect */}
       <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20 bg-[#FDFBF7]">
+        {/* Background: Chaotic menus layer (revealed on hover) */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          {/* Scattered menu cards */}
+          <div className="absolute top-[12%] left-[5%] rotate-[-15deg] bg-white p-4 rounded-lg shadow-lg w-56 text-xs text-gray-600 font-mono">
+            <div className="font-bold mb-2 text-[#722F37]">Today&apos;s Specials</div>
+            <div>Grilled Salmon............€24</div>
+            <div>Pasta Carbonara..........€18</div>
+            <div>Chef&apos;s Burger.............€16</div>
+            <div>Vegan Bowl................€15</div>
+          </div>
+          <div className="absolute top-[18%] right-[8%] rotate-[8deg] bg-white p-4 rounded-lg shadow-lg w-64 text-xs text-gray-600 font-mono">
+            <div className="font-bold mb-2 text-[#722F37]">DRINKS</div>
+            <div>House Red.................€7</div>
+            <div>Craft Beer................€6</div>
+            <div>Espresso Martini.........€12</div>
+          </div>
+          <div className="absolute bottom-[28%] left-[12%] rotate-[5deg] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-600 font-mono">
+            <div className="font-bold mb-2 text-[#722F37]">MAINS</div>
+            <div>Ribeye Steak 300g........€32</div>
+            <div>Fish & Chips.............€19</div>
+            <div>Mushroom Risotto.........€17</div>
+          </div>
+          <div className="absolute bottom-[18%] right-[15%] rotate-[-10deg] bg-white p-4 rounded-lg shadow-lg w-48 text-xs text-gray-600 font-mono">
+            <div className="font-bold mb-2 text-[#722F37]">DESSERTS</div>
+            <div>Tiramisu..................€8</div>
+            <div>Chocolate Lava...........€9</div>
+          </div>
+          <div className="absolute top-[45%] left-[35%] rotate-[3deg] bg-white p-4 rounded-lg shadow-lg w-56 text-xs text-gray-600 font-mono opacity-70">
+            <div className="font-bold mb-2 text-[#722F37]">APPETIZERS</div>
+            <div>Bruschetta................€9</div>
+            <div>Calamari.................€12</div>
+            <div>Soup of the Day...........€7</div>
+          </div>
+          <div className="absolute top-[60%] right-[30%] rotate-[-5deg] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-600 font-mono opacity-60">
+            <div className="font-bold mb-2 text-[#722F37]">SIDES</div>
+            <div>Truffle Fries.............€6</div>
+            <div>Mixed Salad...............€5</div>
+          </div>
+        </div>
+
+        {/* Reveal circle that follows mouse */}
+        <motion.div
+          className="pointer-events-none fixed w-[500px] h-[500px] rounded-full z-10 hidden md:block"
+          style={{
+            x: cursorXSpring,
+            y: cursorYSpring,
+            translateX: '-50%',
+            translateY: '-50%',
+            background: 'radial-gradient(circle, rgba(253,251,247,1) 0%, rgba(253,251,247,1) 40%, rgba(253,251,247,0) 70%)',
+          }}
+        />
+
         {/* Parallax background elements */}
         <motion.div
-          className="absolute top-20 left-10 md:left-20 w-48 md:w-64 h-48 md:h-64 rounded-full bg-[#722F37]/5"
+          className="absolute top-20 left-10 md:left-20 w-48 md:w-64 h-48 md:h-64 rounded-full bg-[#722F37]/5 z-0"
           style={{ y: blob1Y }}
         />
         <motion.div
-          className="absolute bottom-20 right-10 md:right-32 w-64 md:w-96 h-64 md:h-96 rounded-full bg-[#7D8471]/5"
+          className="absolute bottom-20 right-10 md:right-32 w-64 md:w-96 h-64 md:h-96 rounded-full bg-[#7D8471]/5 z-0"
           style={{ y: blob2Y }}
         />
 
-        <div className="text-center px-6 md:px-8 max-w-4xl relative z-10">
+        <div className="text-center px-6 md:px-8 max-w-4xl relative z-20">
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -89,9 +165,13 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
           >
             <Link href="/signup" className="inline-block bg-[#1a1a1a] text-white px-8 py-4 rounded-full text-lg hover:bg-[#333] transition">
               Start your free trial
+            </Link>
+            <Link href="/demo" className="inline-block border-2 border-[#1a1a1a] text-[#1a1a1a] px-8 py-4 rounded-full text-lg hover:bg-[#1a1a1a] hover:text-white transition">
+              Try the demo →
             </Link>
           </motion.div>
         </div>
@@ -289,9 +369,9 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="border border-[#1a1a1a]/10 rounded-2xl p-6 md:p-8 hover:border-[#1a1a1a]/20 transition-colors"
+              className="border-2 border-[#1a1a1a]/10 rounded-2xl p-6 md:p-8 bg-white hover:border-[#1a1a1a]/20 transition-colors"
             >
-              <p className="text-[#1a1a1a]/40 uppercase tracking-wider text-sm mb-4">Monthly</p>
+              <p className="text-[#1a1a1a]/60 uppercase tracking-wider text-sm mb-4">Monthly</p>
               <div className="flex items-baseline gap-2 mb-6">
                 <span className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">€295</span>
                 <span className="text-[#1a1a1a]/40">/month</span>
@@ -303,7 +383,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/signup?plan=monthly" className="block text-center py-3 border border-[#1a1a1a] rounded-full text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition">
+              <Link href="/signup?plan=monthly" className="block text-center py-3 border-2 border-[#1a1a1a] rounded-full text-[#1a1a1a] font-medium hover:bg-[#1a1a1a] hover:text-white transition">
                 Start free trial
               </Link>
             </motion.div>
@@ -331,7 +411,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#1a1a1a] rounded-full hover:bg-white/90 transition">
+              <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#1a1a1a] rounded-full font-medium hover:bg-white/90 transition">
                 Start free trial
               </Link>
             </motion.div>
