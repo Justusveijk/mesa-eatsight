@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { QuestionFlow } from '@/components/guest/QuestionFlow'
-import { RecommendationCards } from '@/components/guest/RecommendationCards'
 import { RecommendedItem } from '@/lib/recommendations'
 
 interface Venue {
@@ -19,14 +18,21 @@ interface VenueFlowProps {
   tableRef: string | null
 }
 
-type Screen = 'landing' | 'questions' | 'recommendations'
+type Screen = 'landing' | 'intent' | 'questions' | 'recommendations'
+type Intent = 'drinks' | 'food' | 'both'
 
 export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [screen, setScreen] = useState<Screen>('landing')
+  const [intent, setIntent] = useState<Intent>('both')
   const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
   const [showFallbackMessage, setShowFallbackMessage] = useState(false)
 
   const handleStartQuestions = () => {
+    setScreen('intent')
+  }
+
+  const handleIntentSelect = (selectedIntent: Intent) => {
+    setIntent(selectedIntent)
     setScreen('questions')
   }
 
@@ -40,106 +46,417 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     setScreen('landing')
     setRecommendations([])
     setShowFallbackMessage(false)
+    setIntent('both')
   }
 
-  // Landing Screen - MESA warm theme
-  if (screen === 'landing') {
-    return (
-      <div className="min-h-screen bg-mesa-ivory relative overflow-hidden">
-        {/* Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center bg-[#FDFBF7]/90 backdrop-blur-sm border-b border-[#1a1a1a]/5">
-          <Link
-            href="/"
-            className="text-sm text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition flex items-center gap-1"
+  // Separate food and drink recommendations
+  const foodItems = recommendations.filter(item => {
+    const isDrink = item.tags?.some(t =>
+      t.startsWith('drink') ||
+      t.includes('cocktail') ||
+      t.includes('wine') ||
+      t.includes('beer')
+    ) || ['drinks', 'beverages', 'cocktails', 'beer', 'wine'].includes(item.category?.toLowerCase() || '')
+    return !isDrink
+  })
+
+  const drinkItems = recommendations.filter(item => {
+    const isDrink = item.tags?.some(t =>
+      t.startsWith('drink') ||
+      t.includes('cocktail') ||
+      t.includes('wine') ||
+      t.includes('beer')
+    ) || ['drinks', 'beverages', 'cocktails', 'beer', 'wine'].includes(item.category?.toLowerCase() || '')
+    return isDrink
+  })
+
+  return (
+    <div className="min-h-screen bg-[#FDFBF7]">
+      {/* PERSISTENT HEADER - Always visible */}
+      <header className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center bg-[#FDFBF7]/95 backdrop-blur-sm border-b border-[#1a1a1a]/5">
+        <Link
+          href="/"
+          className="text-sm text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition"
+        >
+          ← Back
+        </Link>
+        <span className="text-sm font-medium text-[#1a1a1a]">{venue.name}</span>
+        <Link
+          href="/demo"
+          className="text-sm text-[#722F37] hover:text-[#5a252c] transition"
+        >
+          Dashboard
+        </Link>
+      </header>
+
+      {/* Main content with padding for header */}
+      <main className="pt-14 min-h-screen">
+        {/* Landing Screen */}
+        {screen === 'landing' && (
+          <div className="relative overflow-hidden min-h-[calc(100vh-56px)]">
+            {/* Warm gradient blobs */}
+            <div className="absolute w-[400px] h-[400px] -top-32 -right-32 bg-[#B2472A]/10 rounded-full blur-3xl" />
+            <div className="absolute w-[300px] h-[300px] bottom-0 -left-32 bg-[#B2472A]/10 rounded-full blur-3xl" />
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="relative z-10 flex flex-col items-center justify-center px-6 py-12 min-h-[calc(100vh-56px)]"
+            >
+              <div className="text-center max-w-sm">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  className="w-20 h-20 bg-[#B2472A]/10 rounded-2xl flex items-center justify-center mx-auto mb-8"
+                >
+                  <span className="text-4xl">🍽️</span>
+                </motion.div>
+                <motion.h1
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
+                >
+                  Welcome to {venue.name}
+                </motion.h1>
+                {tableRef && (
+                  <motion.p
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="text-sm text-[#1a1a1a]/50 mb-6"
+                  >
+                    Table {tableRef}
+                  </motion.p>
+                )}
+                <motion.p
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-[#1a1a1a]/60 mb-8"
+                >
+                  Answer a few quick questions and we&apos;ll recommend the perfect dishes for you.
+                </motion.p>
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Button
+                    onClick={handleStartQuestions}
+                    className="w-full bg-[#B2472A] hover:bg-[#8a341f] text-white py-3 rounded-full"
+                  >
+                    Get recommendations
+                  </Button>
+                </motion.div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Intent Selection Screen */}
+        {screen === 'intent' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-6"
           >
-            ← Back
-          </Link>
-          <span className="text-sm font-medium text-[#1a1a1a]">{venue.name}</span>
-          <Link
-            href="/demo"
-            className="text-sm text-[#722F37] hover:text-[#5a252c] transition"
-          >
-            Dashboard
-          </Link>
+            <h2 className="text-2xl font-medium text-[#1a1a1a] mb-3 text-center">
+              What are you looking for?
+            </h2>
+            <p className="text-[#1a1a1a]/50 mb-8 text-center">
+              We&apos;ll tailor our recommendations
+            </p>
+
+            <div className="flex flex-col gap-4 w-full max-w-xs">
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                onClick={() => handleIntentSelect('drinks')}
+                className="flex items-center justify-center gap-3 px-6 py-5 bg-white border-2 border-[#1a1a1a]/10 rounded-2xl hover:border-[#1a1a1a]/30 transition-all"
+              >
+                <span className="text-2xl">🍸</span>
+                <span className="text-lg text-[#1a1a1a]">Just drinks</span>
+              </motion.button>
+
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                onClick={() => handleIntentSelect('food')}
+                className="flex items-center justify-center gap-3 px-6 py-5 bg-white border-2 border-[#1a1a1a]/10 rounded-2xl hover:border-[#1a1a1a]/30 transition-all"
+              >
+                <span className="text-2xl">🍽️</span>
+                <span className="text-lg text-[#1a1a1a]">Just food</span>
+              </motion.button>
+
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                onClick={() => handleIntentSelect('both')}
+                className="flex items-center justify-center gap-3 px-6 py-5 bg-[#B2472A] text-white rounded-2xl hover:bg-[#8a341f] transition-all"
+              >
+                <span className="text-2xl">✨</span>
+                <span className="text-lg">Food & drinks</span>
+              </motion.button>
+            </div>
+
+            <button
+              onClick={() => setScreen('landing')}
+              className="mt-8 text-sm text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition"
+            >
+              ← Go back
+            </button>
+          </motion.div>
+        )}
+
+        {/* Questions Flow */}
+        {screen === 'questions' && (
+          <QuestionFlow
+            venueId={venue.id}
+            tableRef={tableRef}
+            onComplete={handleQuestionsComplete}
+            onBack={() => setScreen('intent')}
+          />
+        )}
+
+        {/* Recommendations Screen */}
+        {screen === 'recommendations' && (
+          <RecommendationResults
+            foodItems={foodItems}
+            drinkItems={drinkItems}
+            intent={intent}
+            venueName={venue.name}
+            showFallbackMessage={showFallbackMessage}
+            onStartOver={handleStartOver}
+          />
+        )}
+      </main>
+    </div>
+  )
+}
+
+// Recommendation Results Component
+interface RecommendationResultsProps {
+  foodItems: RecommendedItem[]
+  drinkItems: RecommendedItem[]
+  intent: Intent
+  venueName: string
+  showFallbackMessage: boolean
+  onStartOver: () => void
+}
+
+function RecommendationResults({
+  foodItems,
+  drinkItems,
+  intent,
+  venueName,
+  showFallbackMessage,
+  onStartOver
+}: RecommendationResultsProps) {
+  // Find a good pairing suggestion
+  const getPairingMessage = () => {
+    if (foodItems.length > 0 && drinkItems.length > 0) {
+      const topFood = foodItems[0]
+      const topDrink = drinkItems[0]
+      return `${topDrink.name} pairs perfectly with ${topFood.name}`
+    }
+    return null
+  }
+
+  const pairingMessage = getPairingMessage()
+
+  return (
+    <div className="px-6 py-8 max-w-lg mx-auto pb-32">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center mb-8"
+      >
+        <h2 className="text-2xl font-medium text-[#1a1a1a] mb-2">
+          Our picks for you
+        </h2>
+        <p className="text-[#1a1a1a]/50">
+          Based on your preferences
+        </p>
+      </motion.div>
+
+      {/* Fallback message */}
+      {showFallbackMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center mb-8"
+        >
+          <p className="text-amber-800 font-medium mb-1">
+            Limited options match your dietary needs
+          </p>
+          <p className="text-amber-700 text-sm">
+            We&apos;ve let {venueName} know so they can improve!
+          </p>
+        </motion.div>
+      )}
+
+      {/* Pairing suggestion banner */}
+      {intent === 'both' && pairingMessage && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="bg-[#722F37]/10 rounded-2xl p-4 mb-8 text-center"
+        >
+          <p className="text-sm text-[#722F37] font-medium">
+            💡 Perfect pairing
+          </p>
+          <p className="text-[#1a1a1a] mt-1">
+            {pairingMessage}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Food Section */}
+      {(intent === 'food' || intent === 'both') && foodItems.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
+            <span>🍽️</span> To Eat
+          </h3>
+          <div className="space-y-3">
+            {foodItems.map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <RecommendationCard item={item} />
+              </motion.div>
+            ))}
+          </div>
         </div>
+      )}
 
-        {/* Warm gradient blobs */}
-        <div className="blob blob-mesa w-[400px] h-[400px] -top-32 -right-32 opacity-20" />
-        <div className="blob blob-mesa w-[300px] h-[300px] bottom-0 -left-32 opacity-15" />
+      {/* Drinks Section */}
+      {(intent === 'drinks' || intent === 'both') && drinkItems.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
+            <span>🍸</span> To Drink
+          </h3>
+          <div className="space-y-3">
+            {drinkItems.map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.1 }}
+              >
+                <RecommendationCard item={item} />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
+      {/* Cross-sell suggestion for drinks-only */}
+      {intent === 'drinks' && foodItems.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-12 pt-20"
+          transition={{ delay: 0.5 }}
+          className="p-4 bg-[#FDFBF7] border border-[#1a1a1a]/10 rounded-xl mb-8"
         >
-          <div className="text-center max-w-sm">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring' as const, stiffness: 300, damping: 20 }}
-              className="w-20 h-20 bg-mesa-500/10 rounded-2xl flex items-center justify-center mx-auto mb-8"
-            >
-              <span className="text-4xl">🍽️</span>
-            </motion.div>
-            <motion.h1
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-2xl font-bold text-mesa-ink mb-2"
-            >
-              Welcome to {venue.name}
-            </motion.h1>
-            {tableRef && (
-              <motion.p
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.15 }}
-                className="text-sm text-mesa-graphite/70 mb-6"
-              >
-                Table {tableRef}
-              </motion.p>
-            )}
-            <motion.p
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-mesa-graphite mb-8"
-            >
-              Answer a few quick questions and we&apos;ll recommend the perfect dishes for you.
-            </motion.p>
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Button variant="mesa" size="lg" onClick={handleStartQuestions} className="w-full">
-                Get recommendations
-              </Button>
-            </motion.div>
+          <p className="text-sm text-[#1a1a1a]/60 mb-3">
+            Feeling peckish? These pair well:
+          </p>
+          <div className="flex gap-2 overflow-x-auto">
+            {foodItems.slice(0, 2).map((item) => (
+              <div key={item.id} className="flex-shrink-0 px-3 py-2 bg-white rounded-lg text-sm border border-[#1a1a1a]/5">
+                {item.name} · <span className="text-[#722F37]">€{item.price}</span>
+              </div>
+            ))}
           </div>
         </motion.div>
+      )}
+
+      {/* Cross-sell suggestion for food-only */}
+      {intent === 'food' && drinkItems.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="p-4 bg-[#FDFBF7] border border-[#1a1a1a]/10 rounded-xl mb-8"
+        >
+          <p className="text-sm text-[#1a1a1a]/60 mb-3">
+            Something to drink with that?
+          </p>
+          <div className="flex gap-2 overflow-x-auto">
+            {drinkItems.slice(0, 2).map((item) => (
+              <div key={item.id} className="flex-shrink-0 px-3 py-2 bg-white rounded-lg text-sm border border-[#1a1a1a]/5">
+                {item.name} · <span className="text-[#722F37]">€{item.price}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* No results */}
+      {foodItems.length === 0 && drinkItems.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-12"
+        >
+          <div className="text-5xl mb-4">🤔</div>
+          <h3 className="text-xl font-medium text-[#1a1a1a] mb-2">
+            We couldn&apos;t find a match
+          </h3>
+          <p className="text-[#1a1a1a]/50 mb-6 max-w-sm mx-auto">
+            Your dietary requirements are important to us.
+            We&apos;ve let {venueName} know so they can improve their options.
+          </p>
+        </motion.div>
+      )}
+
+      {/* Start over button */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#FDFBF7] via-[#FDFBF7] to-transparent">
+        <div className="max-w-lg mx-auto">
+          <button
+            onClick={onStartOver}
+            className="w-full px-6 py-3 border-2 border-[#1a1a1a]/20 text-[#1a1a1a]/60 rounded-full hover:border-[#1a1a1a]/40 transition"
+          >
+            Start over
+          </button>
+        </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
-  // Questions Flow
-  if (screen === 'questions') {
-    return (
-      <QuestionFlow
-        venueId={venue.id}
-        tableRef={tableRef}
-        onComplete={handleQuestionsComplete}
-        onBack={handleStartOver}
-      />
-    )
-  }
-
-  // Recommendations Screen
+// Simple recommendation card component
+function RecommendationCard({ item }: { item: RecommendedItem }) {
   return (
-    <RecommendationCards
-      recommendations={recommendations}
-      onStartOver={handleStartOver}
-      showFallbackMessage={showFallbackMessage}
-    />
+    <div className="bg-white rounded-2xl border border-[#1a1a1a]/5 overflow-hidden shadow-sm">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-semibold text-[#1a1a1a] text-lg leading-tight">
+            {item.name}
+          </h3>
+          <span className="text-[#722F37] font-semibold whitespace-nowrap text-lg">
+            €{item.price}
+          </span>
+        </div>
+        <p className="text-sm text-[#1a1a1a]/50 mb-3">
+          {item.reason}
+        </p>
+        {item.description && (
+          <p className="text-sm text-[#1a1a1a]/40 line-clamp-2">
+            {item.description}
+          </p>
+        )}
+      </div>
+    </div>
   )
 }

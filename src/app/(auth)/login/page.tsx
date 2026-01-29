@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { GlassPanel } from '@/components/shared/GlassPanel'
 import { signIn, getUserVenue } from '@/lib/supabase/auth'
 
 function LoginForm() {
@@ -48,118 +46,114 @@ function LoginForm() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-md"
-    >
-      <GlassPanel className="p-8" withNoise>
-        {/* Header */}
+    <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center px-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md"
+      >
+        {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-signal flex items-center justify-center">
-              <span className="text-white font-bold text-sm">E</span>
-            </div>
-            <span className="text-text-primary font-semibold">Eatsight</span>
+          <Link href="/" className="inline-block">
+            <span className="font-serif text-3xl text-[#1a1a1a]">Eatsight</span>
           </Link>
-          <h1 className="text-2xl font-bold text-text-primary mb-2">
-            Welcome back
-          </h1>
-          <p className="text-text-muted text-sm">
-            Sign in to your dashboard
-          </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
-              {error}
-            </div>
-          )}
+        {/* Card */}
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#1a1a1a]/5">
+          <h1 className="text-2xl font-medium text-[#1a1a1a] mb-2 text-center">
+            Welcome back
+          </h1>
+          <p className="text-[#1a1a1a]/50 text-center mb-8">
+            Sign in to your dashboard
+          </p>
 
-          <div>
-            <label className="block text-sm font-medium text-text-muted mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@restaurant.com"
-              required
-              className="w-full px-4 py-3 rounded-lg bg-ocean-800 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal transition-colors"
-            />
-          </div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                {error}
+              </div>
+            )}
 
-          <div>
-            <label className="block text-sm font-medium text-text-muted mb-2">
-              Password
-            </label>
-            <div className="relative">
+            <div>
+              <label className="block text-sm text-[#1a1a1a]/60 mb-2">
+                Email
+              </label>
               <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@restaurant.com"
                 required
-                className="w-full px-4 py-3 pr-12 rounded-lg bg-ocean-800 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal transition-colors"
+                className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-[#FDFBF7] text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:border-[#722F37] transition"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
             </div>
-          </div>
 
-          <div className="flex justify-end">
-            <a href="#" className="text-sm text-signal hover:underline">
-              Forgot password?
-            </a>
-          </div>
+            <div>
+              <label className="block text-sm text-[#1a1a1a]/60 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-[#1a1a1a]/10 bg-[#FDFBF7] text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:border-[#722F37] transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1a1a1a]/40 hover:text-[#1a1a1a]"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
 
-          <Button
-            type="submit"
-            variant="signal"
-            size="lg"
-            className="w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Signing in...' : 'Sign in'}
-          </Button>
-        </form>
+            <div className="text-right">
+              <a href="#" className="text-sm text-[#722F37] hover:text-[#5a252c]">
+                Forgot password?
+              </a>
+            </div>
 
-        <p className="text-center text-sm text-text-muted mt-6">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup?plan=monthly" className="text-signal hover:underline">
-            Start free trial
-          </Link>
-        </p>
-      </GlassPanel>
-    </motion.div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 bg-[#722F37] text-white rounded-xl hover:bg-[#5a252c] transition disabled:opacity-50"
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+
+          <p className="text-center text-[#1a1a1a]/50 mt-6">
+            Don&apos;t have an account?{' '}
+            <Link href="/signup?plan=monthly" className="text-[#722F37] hover:text-[#5a252c]">
+              Start free trial
+            </Link>
+          </p>
+        </div>
+      </motion.div>
+    </div>
   )
 }
 
 function LoginFormFallback() {
   return (
-    <div className="w-full max-w-md">
-      <GlassPanel className="p-8" withNoise>
+    <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center px-6">
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-signal flex items-center justify-center">
-              <span className="text-white font-bold text-sm">E</span>
-            </div>
-            <span className="text-text-primary font-semibold">Eatsight</span>
-          </div>
-          <h1 className="text-2xl font-bold text-text-primary mb-2">
+          <span className="font-serif text-3xl text-[#1a1a1a]">Eatsight</span>
+        </div>
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#1a1a1a]/5">
+          <h1 className="text-2xl font-medium text-[#1a1a1a] mb-2 text-center">
             Welcome back
           </h1>
-          <p className="text-text-muted text-sm">Loading...</p>
+          <p className="text-[#1a1a1a]/50 text-center">Loading...</p>
         </div>
-      </GlassPanel>
+      </div>
     </div>
   )
 }

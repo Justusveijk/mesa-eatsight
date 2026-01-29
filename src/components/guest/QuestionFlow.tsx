@@ -258,11 +258,11 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
       <button
         onClick={onClick}
         className={`
-          flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-colors duration-200
+          flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all duration-200
           ${
             selected
-              ? 'border-2 border-[#B2472A] text-[#B2472A] bg-[#B2472A]/5'
-              : 'border-2 border-[#1a1a1a]/20 text-[#1a1a1a]/70 hover:border-[#1a1a1a]/40'
+              ? 'border-2 border-[#B2472A] bg-[#B2472A] text-white shadow-md'
+              : 'border-2 border-[#1a1a1a]/20 bg-white text-[#1a1a1a]/70 hover:border-[#1a1a1a]/40'
           }
         `}
       >

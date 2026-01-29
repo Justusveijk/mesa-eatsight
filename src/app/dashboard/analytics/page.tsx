@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { GlassPanel } from '@/components/shared/GlassPanel'
 import { TrendingUp, Clock, AlertTriangle, BarChart3 } from 'lucide-react'
 
 interface Analytics {
@@ -14,6 +14,15 @@ interface Analytics {
   }
   unmetDemand: { tag: string; count: number }[]
   peakHours: { hour: string; scans: number }[]
+}
+
+const fadeIn = {
+  initial: { opacity: 0, y: 20 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.25, 0.4, 0.25, 1] as const }
+  }
 }
 
 export default function AnalyticsPage() {
@@ -152,13 +161,13 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Analytics</h1>
-          <p className="text-text-muted">Deep dive into guest behavior and preferences</p>
+          <h1 className="text-3xl font-semibold text-[#1a1a1a] mb-1">Analytics</h1>
+          <p className="text-[#1a1a1a]/50">Deep dive into guest behavior and preferences</p>
         </div>
         <select
           value={dateRange}
           onChange={(e) => setDateRange(e.target.value)}
-          className="px-4 py-2 rounded-lg bg-ocean-800 border border-ocean-700 text-text-primary focus:outline-none focus:border-signal"
+          className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-white border-0 text-sm"
         >
           <option value="7">Last 7 days</option>
           <option value="30">Last 30 days</option>
@@ -168,105 +177,125 @@ export default function AnalyticsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-signal"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#722F37]"></div>
         </div>
       ) : (
         <>
           {/* Conversion Funnel */}
-          <GlassPanel className="p-6">
+          <motion.div
+            variants={fadeIn}
+            initial="initial"
+            animate="animate"
+            className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+          >
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-ocean-700 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-signal" />
+              <div className="w-10 h-10 rounded-xl bg-[#722F37]/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-[#722F37]" />
               </div>
-              <h2 className="text-lg font-semibold text-text-primary">Conversion Funnel</h2>
+              <h2 className="text-lg font-semibold text-[#1a1a1a]">Conversion Funnel</h2>
             </div>
             <div className="flex items-center justify-between">
               <div className="text-center flex-1">
-                <div className="text-4xl font-bold text-text-primary">{analytics.conversionFunnel.scans}</div>
-                <div className="text-sm text-text-muted mt-1">Scans</div>
+                <div className="text-4xl font-bold text-[#1a1a1a]">{analytics.conversionFunnel.scans}</div>
+                <div className="text-sm text-[#1a1a1a]/50 mt-1">Scans</div>
               </div>
-              <div className="text-2xl text-text-muted">→</div>
+              <div className="text-2xl text-[#1a1a1a]/30">→</div>
               <div className="text-center flex-1">
-                <div className="text-4xl font-bold text-text-primary">{analytics.conversionFunnel.completedFlow}</div>
-                <div className="text-sm text-text-muted mt-1">Completed Flow</div>
-                <div className="text-xs text-signal font-medium mt-1">
+                <div className="text-4xl font-bold text-[#1a1a1a]">{analytics.conversionFunnel.completedFlow}</div>
+                <div className="text-sm text-[#1a1a1a]/50 mt-1">Completed Flow</div>
+                <div className="text-xs text-[#722F37] font-medium mt-1">
                   {analytics.conversionFunnel.scans > 0
                     ? Math.round(analytics.conversionFunnel.completedFlow / analytics.conversionFunnel.scans * 100)
                     : 0}%
                 </div>
               </div>
-              <div className="text-2xl text-text-muted">→</div>
+              <div className="text-2xl text-[#1a1a1a]/30">→</div>
               <div className="text-center flex-1">
-                <div className="text-4xl font-bold text-text-primary">{analytics.conversionFunnel.clickedItem}</div>
-                <div className="text-sm text-text-muted mt-1">Clicked Item</div>
-                <div className="text-xs text-signal font-medium mt-1">
+                <div className="text-4xl font-bold text-[#1a1a1a]">{analytics.conversionFunnel.clickedItem}</div>
+                <div className="text-sm text-[#1a1a1a]/50 mt-1">Clicked Item</div>
+                <div className="text-xs text-[#722F37] font-medium mt-1">
                   {analytics.conversionFunnel.completedFlow > 0
                     ? Math.round(analytics.conversionFunnel.clickedItem / analytics.conversionFunnel.completedFlow * 100)
                     : 0}%
                 </div>
               </div>
             </div>
-          </GlassPanel>
+          </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Peak Hours */}
-            <GlassPanel className="p-6">
+            <motion.div
+              variants={fadeIn}
+              initial="initial"
+              animate="animate"
+              className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+            >
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-ocean-700 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-signal" />
+                <div className="w-10 h-10 rounded-xl bg-[#722F37]/10 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-[#722F37]" />
                 </div>
-                <h2 className="text-lg font-semibold text-text-primary">Peak Hours</h2>
+                <h2 className="text-lg font-semibold text-[#1a1a1a]">Peak Hours</h2>
               </div>
               {analytics.peakHours.length > 0 ? (
                 <div className="space-y-3">
                   {analytics.peakHours.map((peak, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 rounded-lg bg-ocean-800/50">
-                      <span className="text-text-primary">{peak.hour}</span>
-                      <span className="text-signal font-medium">{peak.scans} scans</span>
+                    <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-[#FDFBF7]">
+                      <span className="text-[#1a1a1a]">{peak.hour}</span>
+                      <span className="text-[#722F37] font-medium">{peak.scans} scans</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-text-muted">No data yet</p>
+                <p className="text-[#1a1a1a]/40">No data yet</p>
               )}
-            </GlassPanel>
+            </motion.div>
 
             {/* Unmet Demand */}
-            <GlassPanel className="p-6">
+            <motion.div
+              variants={fadeIn}
+              initial="initial"
+              animate="animate"
+              className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+            >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-amber-400" />
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-text-primary">Unmet Demand</h2>
-                  <p className="text-xs text-text-muted">What guests wanted but couldn&apos;t find</p>
+                  <h2 className="text-lg font-semibold text-[#1a1a1a]">Unmet Demand</h2>
+                  <p className="text-xs text-[#1a1a1a]/40">What guests wanted but couldn&apos;t find</p>
                 </div>
               </div>
               {analytics.unmetDemand.length > 0 ? (
                 <div className="space-y-3">
                   {analytics.unmetDemand.map((item, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 rounded-lg bg-ocean-800/50">
-                      <span className="text-text-primary capitalize">{formatTagLabel(item.tag)}</span>
-                      <span className="text-amber-400 font-medium">{item.count} requests</span>
+                    <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-amber-50">
+                      <span className="text-amber-800 capitalize">{formatTagLabel(item.tag)}</span>
+                      <span className="text-amber-600 font-medium">{item.count} requests</span>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <p className="text-text-muted">All guest preferences were matched!</p>
+                  <p className="text-[#1a1a1a]/40">All guest preferences were matched!</p>
                   <p className="text-2xl mt-2">🎉</p>
                 </div>
               )}
-            </GlassPanel>
+            </motion.div>
           </div>
 
           {/* Scans by Hour Chart */}
-          <GlassPanel className="p-6">
+          <motion.div
+            variants={fadeIn}
+            initial="initial"
+            animate="animate"
+            className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+          >
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-ocean-700 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-signal" />
+              <div className="w-10 h-10 rounded-xl bg-[#722F37]/10 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-[#722F37]" />
               </div>
-              <h2 className="text-lg font-semibold text-text-primary">Scans by Hour</h2>
+              <h2 className="text-lg font-semibold text-[#1a1a1a]">Scans by Hour</h2>
             </div>
             <div className="flex items-end h-48 gap-1">
               {Array.from({ length: 24 }, (_, hour) => {
@@ -279,23 +308,23 @@ export default function AnalyticsPage() {
                   <div key={hour} className="flex-1 flex flex-col items-center group">
                     <div className="relative w-full">
                       {count > 0 && (
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-ocean-700 px-2 py-1 rounded text-xs text-text-primary whitespace-nowrap">
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1a1a1a] text-white px-2 py-1 rounded text-xs whitespace-nowrap">
                           {count}
                         </div>
                       )}
                       <div
-                        className="w-full bg-signal/80 rounded-t transition-all hover:bg-signal"
+                        className="w-full bg-[#722F37]/80 rounded-t transition-all hover:bg-[#722F37]"
                         style={{ height: `${height}%`, minHeight: count > 0 ? '4px' : '0' }}
                       />
                     </div>
                     {hour % 4 === 0 && (
-                      <span className="text-xs text-text-muted mt-2">{hour}h</span>
+                      <span className="text-xs text-[#1a1a1a]/40 mt-2">{hour}h</span>
                     )}
                   </div>
                 )
               })}
             </div>
-          </GlassPanel>
+          </motion.div>
         </>
       )}
     </div>
