@@ -147,6 +147,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     let allRecommendations: RecommendedItem[] = []
     let showFallbackMessage = false
 
+    // Main food recommendations (or cross-sell if drinks only)
     if (intent === 'food' || intent === 'both') {
       const result = await getRecommendationsWithFallback(venueId, foodPreferences, intent === 'both' ? 2 : 3)
       allRecommendations = [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
@@ -156,11 +157,36 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
       if (result.showFallbackMessage && sessionId) {
         await trackUnmetDemand(venueId, sessionId, foodPreferences)
       }
+    } else if (intent === 'drinks') {
+      // Fetch food cross-sell items (use default preferences for a general selection)
+      const defaultFoodPrefs = {
+        mood: 'mood_comfort' as MoodTag,
+        flavors: [],
+        portion: 'portion_medium' as PortionTag,
+        dietary: [],
+        price: null,
+      }
+      const crossSellFood = await getRecommendationsWithFallback(venueId, defaultFoodPrefs, 2)
+      // Mark as cross-sell items
+      const crossSellItems = crossSellFood.recommendations.map(item => ({ ...item, isCrossSell: true }))
+      allRecommendations = [...allRecommendations, ...crossSellItems]
     }
 
+    // Main drink recommendations (or cross-sell if food only)
     if (intent === 'drinks' || intent === 'both') {
       const drinkRecs = await getDrinkRecommendations(venueId, drinkPreferences, intent === 'both' ? 2 : 3)
       allRecommendations = [...allRecommendations, ...drinkRecs]
+    } else if (intent === 'food') {
+      // Fetch drink cross-sell items (use default preferences for a general selection)
+      const defaultDrinkPrefs = {
+        drinkMood: 'drink_mood_social' as DrinkMood,
+        drinkStyle: 'drink_style_classic' as DrinkStyle,
+        drinkStrength: 'strength_light' as DrinkStrength,
+      }
+      const crossSellDrinks = await getDrinkRecommendations(venueId, defaultDrinkPrefs, 2)
+      // Mark as cross-sell items
+      const crossSellItems = crossSellDrinks.map(item => ({ ...item, isCrossSell: true }))
+      allRecommendations = [...allRecommendations, ...crossSellItems]
     }
 
     // Ensure loading screen shows for at least 2 seconds for effect
@@ -426,9 +452,9 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     const canContinue = canContinueFood
 
     return (
-      <div className="min-h-[calc(100vh-56px)] flex flex-col">
+      <div className="flex-1 flex flex-col">
         {/* Progress indicator */}
-        <div className="px-6 py-4">
+        <div className="px-6 pt-4 pb-2">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-[#1a1a1a]/60">
               {intent === 'both' ? `Food: Step ${step} of ${totalFoodSteps}` : `Step ${step} of ${totalFoodSteps}`}
@@ -445,7 +471,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         </div>
 
         {/* Back button */}
-        <div className="px-6">
+        <div className="px-6 pb-2">
           <button
             onClick={goBack}
             className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] text-sm flex items-center gap-1"
@@ -455,7 +481,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         </div>
 
         {/* Questions - centered vertically */}
-        <div className="flex-1 flex items-center justify-center px-6 py-4">
+        <div className="flex-1 flex items-center justify-center px-6">
           <AnimatePresence mode="wait" custom={direction}>
             {step === 1 && (
               <motion.div
@@ -730,9 +756,9 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     const canContinue = canContinueDrink
 
     return (
-      <div className="min-h-[calc(100vh-56px)] flex flex-col">
+      <div className="flex-1 flex flex-col">
         {/* Progress indicator */}
-        <div className="px-6 py-4">
+        <div className="px-6 pt-4 pb-2">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-[#1a1a1a]/60">
               {intent === 'both' ? `Drinks: Step ${step} of ${totalDrinkSteps}` : `Step ${step} of ${totalDrinkSteps}`}
@@ -749,7 +775,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         </div>
 
         {/* Back button */}
-        <div className="px-6">
+        <div className="px-6 pb-2">
           <button
             onClick={goBack}
             className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] text-sm flex items-center gap-1"
@@ -759,7 +785,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         </div>
 
         {/* Questions - centered vertically */}
-        <div className="flex-1 flex items-center justify-center px-6 py-4">
+        <div className="flex-1 flex items-center justify-center px-6">
           <AnimatePresence mode="wait" custom={direction}>
             {step === 1 && (
               <motion.div
@@ -917,22 +943,12 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#FDFBF7] relative overflow-hidden">
-      {/* Fixed top progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-[#1a1a1a]/10 z-50">
-        <motion.div
-          className="h-full bg-[#B2472A]"
-          initial={{ width: 0 }}
-          animate={{ width: `${getProgress() * 100}%` }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-        />
-      </div>
-
+    <div className="min-h-screen flex flex-col bg-[#FDFBF7] relative overflow-hidden">
       {/* Warm gradient blobs */}
       <div className="absolute w-[300px] h-[300px] top-1/4 -right-32 bg-[#B2472A]/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute w-[200px] h-[200px] bottom-1/4 -left-16 bg-[#B2472A]/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative z-10 flex-1 pt-14 overflow-hidden">
+      <div className="relative z-10 flex-1 flex flex-col">
         {/* Render appropriate flow */}
         {intent === 'drinks' && renderDrinkFlow()}
         {intent === 'food' && renderFoodFlow()}

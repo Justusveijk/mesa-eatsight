@@ -49,26 +49,28 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     setIntent('both')
   }
 
-  // Separate food and drink recommendations
-  const foodItems = recommendations.filter(item => {
+  // Helper to check if item is a drink
+  const isDrinkItem = (item: RecommendedItem) => {
     const isDrink = item.tags?.some(t =>
       t.startsWith('drink') ||
       t.includes('cocktail') ||
       t.includes('wine') ||
       t.includes('beer')
-    ) || ['drinks', 'beverages', 'cocktails', 'beer', 'wine'].includes(item.category?.toLowerCase() || '')
-    return !isDrink
-  })
-
-  const drinkItems = recommendations.filter(item => {
-    const isDrink = item.tags?.some(t =>
-      t.startsWith('drink') ||
-      t.includes('cocktail') ||
-      t.includes('wine') ||
-      t.includes('beer')
-    ) || ['drinks', 'beverages', 'cocktails', 'beer', 'wine'].includes(item.category?.toLowerCase() || '')
+    ) || ['drinks', 'beverages', 'cocktails', 'beer', 'wine', 'mocktails', 'soft drinks', 'coffee', 'tea', 'spirits'].includes(item.category?.toLowerCase() || '')
     return isDrink
-  })
+  }
+
+  // Separate main recommendations from cross-sell items
+  const mainRecommendations = recommendations.filter(item => !item.isCrossSell)
+  const crossSellRecommendations = recommendations.filter(item => item.isCrossSell)
+
+  // Main food and drink items (what user asked for)
+  const foodItems = mainRecommendations.filter(item => !isDrinkItem(item))
+  const drinkItems = mainRecommendations.filter(item => isDrinkItem(item))
+
+  // Cross-sell items (opposite of what user asked for)
+  const crossSellFoodItems = crossSellRecommendations.filter(item => !isDrinkItem(item))
+  const crossSellDrinkItems = crossSellRecommendations.filter(item => isDrinkItem(item))
 
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
@@ -229,6 +231,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
           <RecommendationResults
             foodItems={foodItems}
             drinkItems={drinkItems}
+            crossSellFoodItems={crossSellFoodItems}
+            crossSellDrinkItems={crossSellDrinkItems}
             intent={intent}
             venueName={venue.name}
             showFallbackMessage={showFallbackMessage}
@@ -244,6 +248,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
 interface RecommendationResultsProps {
   foodItems: RecommendedItem[]
   drinkItems: RecommendedItem[]
+  crossSellFoodItems: RecommendedItem[]
+  crossSellDrinkItems: RecommendedItem[]
   intent: Intent
   venueName: string
   showFallbackMessage: boolean
@@ -253,6 +259,8 @@ interface RecommendationResultsProps {
 function RecommendationResults({
   foodItems,
   drinkItems,
+  crossSellFoodItems,
+  crossSellDrinkItems,
   intent,
   venueName,
   showFallbackMessage,
@@ -375,7 +383,7 @@ function RecommendationResults({
       )}
 
       {/* Cross-sell suggestion for drinks-only */}
-      {intent === 'drinks' && foodItems.length > 0 && (
+      {intent === 'drinks' && crossSellFoodItems.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -383,10 +391,10 @@ function RecommendationResults({
           className="p-4 bg-[#FDFBF7] border border-[#1a1a1a]/10 rounded-xl mb-8"
         >
           <p className="text-sm text-[#1a1a1a]/60 mb-3">
-            Feeling peckish? These pair well:
+            🍽️ Feeling peckish? These pair well:
           </p>
-          <div className="flex gap-2 overflow-x-auto">
-            {foodItems.slice(0, 2).map((item) => (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {crossSellFoodItems.slice(0, 2).map((item) => (
               <div key={item.id} className="flex-shrink-0 px-3 py-2 bg-white rounded-lg text-sm border border-[#1a1a1a]/5">
                 {item.name} · <span className="text-[#722F37]">€{item.price}</span>
               </div>
@@ -396,7 +404,7 @@ function RecommendationResults({
       )}
 
       {/* Cross-sell suggestion for food-only */}
-      {intent === 'food' && drinkItems.length > 0 && (
+      {intent === 'food' && crossSellDrinkItems.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -404,10 +412,10 @@ function RecommendationResults({
           className="p-4 bg-[#FDFBF7] border border-[#1a1a1a]/10 rounded-xl mb-8"
         >
           <p className="text-sm text-[#1a1a1a]/60 mb-3">
-            Something to drink with that?
+            🍸 Something to drink with that?
           </p>
-          <div className="flex gap-2 overflow-x-auto">
-            {drinkItems.slice(0, 2).map((item) => (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {crossSellDrinkItems.slice(0, 2).map((item) => (
               <div key={item.id} className="flex-shrink-0 px-3 py-2 bg-white rounded-lg text-sm border border-[#1a1a1a]/5">
                 {item.name} · <span className="text-[#722F37]">€{item.price}</span>
               </div>

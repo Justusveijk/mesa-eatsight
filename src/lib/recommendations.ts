@@ -14,6 +14,7 @@ export interface RecommendedItem {
   reason: string
   score: number
   isFallback?: boolean
+  isCrossSell?: boolean
 }
 
 export interface RecommendationsResult {
