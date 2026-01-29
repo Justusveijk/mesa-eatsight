@@ -1,451 +1,402 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { GlassPanel } from '@/components/shared/GlassPanel'
-import { RefreshCw, Store, Users, Scan, TrendingUp, CreditCard, DollarSign, Target } from 'lucide-react'
+import {
+  Building2,
+  Users,
+  BarChart3,
+  TrendingUp,
+  Calendar,
+  ExternalLink,
+  Search,
+  RefreshCw,
+  DollarSign
+} from 'lucide-react'
+
+// Hardcoded admin emails - only these can access
+const ADMIN_EMAILS = [
+  'vaneijkjustus@gmail.com',
+  'justusvaneijk@hotmail.com',
+  // Add co-founder emails here
+]
 
 interface VenueWithStats {
   id: string
   name: string
   slug: string
   city: string
+  country: string
   category: string
   created_at: string
-  subscription_status: string
-  subscription_plan: string
-  total_scans: number
-  total_items: number
-  last_scan: string | null
-  owner_email: string
-}
-
-interface Stats {
-  totalVenues: number
-  activeVenues: number
-  totalScans: number
-  trialVenues: number
-  paidVenues: number
-  mrr: number
-  arr: number
-  monthlyCount: number
-  annualCount: number
+  operator_users: { email: string; role: string; created_at: string }[]
+  menus: { id: string; status: string }[]
 }
 
 export default function AdminPage() {
-  const [venues, setVenues] = useState<VenueWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [stats, setStats] = useState<Stats>({
+  const [authorized, setAuthorized] = useState(false)
+  const [venues, setVenues] = useState<VenueWithStats[]>([])
+  const [users, setUsers] = useState<any[]>([])
+  const [stats, setStats] = useState({
     totalVenues: 0,
-    activeVenues: 0,
-    totalScans: 0,
+    totalUsers: 0,
+    totalSessions: 0,
+    totalEvents: 0,
+    venuesThisWeek: 0,
+    sessionsToday: 0,
     trialVenues: 0,
     paidVenues: 0,
-    mrr: 0,
-    arr: 0,
-    monthlyCount: 0,
-    annualCount: 0
+    mrr: 0
   })
-
+  const [searchQuery, setSearchQuery] = useState('')
   const supabase = createClient()
 
-  const fetchAllVenues = async () => {
-    try {
-      // Get all venues with their operators and subscriptions
-      const { data: venuesData, error: venuesError } = await supabase
-        .from('venues')
-        .select(`
-          *,
-          operator_users (email),
-          subscriptions (status, plan)
-        `)
-        .order('created_at', { ascending: false })
+  const fetchData = async () => {
+    // Check if user is logged in and is an admin
+    const { data: { user } } = await supabase.auth.getUser()
 
-      if (venuesError) {
-        console.error('Error fetching venues:', venuesError)
-        return
-      }
-
-      // Get scan counts per venue
-      const { data: scanCounts } = await supabase
-        .from('rec_sessions')
-        .select('venue_id')
-
-      // Count scans per venue
-      const scansByVenue: Record<string, number> = {}
-      scanCounts?.forEach(s => {
-        scansByVenue[s.venue_id] = (scansByVenue[s.venue_id] || 0) + 1
-      })
-
-      // Get last scan per venue
-      const { data: lastScans } = await supabase
-        .from('rec_sessions')
-        .select('venue_id, started_at')
-        .order('started_at', { ascending: false })
-
-      const lastScanByVenue: Record<string, string> = {}
-      lastScans?.forEach(s => {
-        if (!lastScanByVenue[s.venue_id]) {
-          lastScanByVenue[s.venue_id] = s.started_at
-        }
-      })
-
-      // Get menu item counts per venue
-      const { data: menuData } = await supabase
-        .from('menus')
-        .select('id, venue_id')
-
-      const menuByVenue: Record<string, string> = {}
-      menuData?.forEach(m => {
-        if (!menuByVenue[m.venue_id]) {
-          menuByVenue[m.venue_id] = m.id
-        }
-      })
-
-      const { data: itemCounts } = await supabase
-        .from('menu_items')
-        .select('menu_id')
-
-      const itemsByMenu: Record<string, number> = {}
-      itemCounts?.forEach(i => {
-        itemsByMenu[i.menu_id] = (itemsByMenu[i.menu_id] || 0) + 1
-      })
-
-      const enrichedVenues: VenueWithStats[] = venuesData?.map(v => {
-        const operators = v.operator_users as { email: string }[] | null
-        const subscriptions = v.subscriptions as { status: string; plan: string }[] | null
-        const menuId = menuByVenue[v.id]
-
-        return {
-          id: v.id,
-          name: v.name,
-          slug: v.slug,
-          city: v.city || '-',
-          category: v.category || '-',
-          created_at: v.created_at,
-          subscription_status: subscriptions?.[0]?.status || 'none',
-          subscription_plan: subscriptions?.[0]?.plan || '-',
-          total_scans: scansByVenue[v.id] || 0,
-          total_items: menuId ? (itemsByMenu[menuId] || 0) : 0,
-          last_scan: lastScanByVenue[v.id] || null,
-          owner_email: operators?.[0]?.email || '-'
-        }
-      }) || []
-
-      setVenues(enrichedVenues)
-
-      // Calculate overall stats
-      const sevenDaysAgo = new Date()
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
-      // Calculate MRR
-      const monthlyCount = enrichedVenues.filter(v =>
-        v.subscription_status === 'active' && v.subscription_plan === 'monthly'
-      ).length
-      const annualCount = enrichedVenues.filter(v =>
-        v.subscription_status === 'active' && v.subscription_plan === 'annual'
-      ).length
-      const mrr = (monthlyCount * 295) + (annualCount * 249)
-      const arr = mrr * 12
-
-      setStats({
-        totalVenues: enrichedVenues.length,
-        activeVenues: enrichedVenues.filter(v =>
-          v.last_scan && new Date(v.last_scan) > sevenDaysAgo
-        ).length,
-        totalScans: Object.values(scansByVenue).reduce((a, b) => a + b, 0),
-        trialVenues: enrichedVenues.filter(v => v.subscription_status === 'trialing').length,
-        paidVenues: enrichedVenues.filter(v => v.subscription_status === 'active').length,
-        mrr,
-        arr,
-        monthlyCount,
-        annualCount
-      })
-    } catch (error) {
-      console.error('Error in fetchAllVenues:', error)
+    if (!user || !ADMIN_EMAILS.includes(user.email || '')) {
+      setAuthorized(false)
+      setLoading(false)
+      return
     }
+
+    setAuthorized(true)
+
+    // Load all venues with their operators
+    const { data: venuesData } = await supabase
+      .from('venues')
+      .select(`
+        *,
+        operator_users (email, role, created_at),
+        menus (id, status)
+      `)
+      .order('created_at', { ascending: false })
+
+    setVenues(venuesData || [])
+
+    // Load all operator users
+    const { data: usersData } = await supabase
+      .from('operator_users')
+      .select(`
+        *,
+        venues (name, slug)
+      `)
+      .order('created_at', { ascending: false })
+
+    setUsers(usersData || [])
+
+    // Get stats
+    const { count: venueCount } = await supabase
+      .from('venues')
+      .select('*', { count: 'exact', head: true })
+
+    const { count: userCount } = await supabase
+      .from('operator_users')
+      .select('*', { count: 'exact', head: true })
+
+    const { count: sessionCount } = await supabase
+      .from('rec_sessions')
+      .select('*', { count: 'exact', head: true })
+
+    const { count: eventCount } = await supabase
+      .from('events')
+      .select('*', { count: 'exact', head: true })
+
+    // Venues this week
+    const weekAgo = new Date()
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    const { count: venuesThisWeek } = await supabase
+      .from('venues')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', weekAgo.toISOString())
+
+    // Sessions today
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const { count: sessionsToday } = await supabase
+      .from('rec_sessions')
+      .select('*', { count: 'exact', head: true })
+      .gte('started_at', today.toISOString())
+
+    // Get subscription stats
+    const { data: subscriptions } = await supabase
+      .from('subscriptions')
+      .select('status, plan')
+
+    const trialVenues = subscriptions?.filter(s => s.status === 'trialing').length || 0
+    const paidVenues = subscriptions?.filter(s => s.status === 'active').length || 0
+    const monthlyCount = subscriptions?.filter(s => s.status === 'active' && s.plan === 'monthly').length || 0
+    const annualCount = subscriptions?.filter(s => s.status === 'active' && s.plan === 'annual').length || 0
+    const mrr = (monthlyCount * 295) + (annualCount * 249)
+
+    setStats({
+      totalVenues: venueCount || 0,
+      totalUsers: userCount || 0,
+      totalSessions: sessionCount || 0,
+      totalEvents: eventCount || 0,
+      venuesThisWeek: venuesThisWeek || 0,
+      sessionsToday: sessionsToday || 0,
+      trialVenues,
+      paidVenues,
+      mrr
+    })
+
+    setLoading(false)
   }
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      await fetchAllVenues()
-      setLoading(false)
-    }
-    load()
+    fetchData()
   }, [])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchAllVenues()
+    await fetchData()
     setRefreshing(false)
   }
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-[#722F37] border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-white/50">Loading admin panel...</p>
+        </div>
+      </div>
+    )
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-500/20 text-green-400'
-      case 'trialing':
-        return 'bg-yellow-500/20 text-yellow-400'
-      case 'canceled':
-        return 'bg-red-500/20 text-red-400'
-      default:
-        return 'bg-gray-500/20 text-gray-400'
-    }
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center px-6">
+        <div className="text-center">
+          <div className="text-5xl mb-6">🔒</div>
+          <h1 className="text-2xl font-semibold text-white mb-4">Admin Access Only</h1>
+          <p className="text-white/60 mb-8">You don&apos;t have permission to view this page.</p>
+          <Link href="/login" className="text-[#722F37] hover:text-[#5a252c]">
+            Login with admin account →
+          </Link>
+        </div>
+      </div>
+    )
   }
+
+  const filteredVenues = venues.filter(v =>
+    v.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.slug?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.city?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   return (
-    <div className="min-h-screen bg-ocean-950 text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary">Admin Dashboard</h1>
-            <p className="text-text-muted">Internal view of all venues and metrics</p>
+    <div className="min-h-screen bg-[#1a1a1a]">
+      {/* Header */}
+      <header className="bg-[#1a1a1a] border-b border-white/10 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-xl font-semibold text-white">🛡️ Eatsight Admin</span>
+            <span className="text-white/40 text-sm">Platform Overview</span>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-ocean-700 border border-line text-text-primary hover:bg-ocean-600 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-3 py-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <Link href="/" className="text-white/60 hover:text-white text-sm">
+              ← Back to site
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="flex items-center gap-2 text-white/40 text-sm mb-2">
+              <Building2 size={16} />
+              Total Venues
+            </div>
+            <div className="text-3xl font-semibold text-white">{stats.totalVenues}</div>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="flex items-center gap-2 text-white/40 text-sm mb-2">
+              <Users size={16} />
+              Total Users
+            </div>
+            <div className="text-3xl font-semibold text-white">{stats.totalUsers}</div>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="flex items-center gap-2 text-white/40 text-sm mb-2">
+              <BarChart3 size={16} />
+              Total Sessions
+            </div>
+            <div className="text-3xl font-semibold text-white">{stats.totalSessions}</div>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="flex items-center gap-2 text-white/40 text-sm mb-2">
+              <TrendingUp size={16} />
+              Total Events
+            </div>
+            <div className="text-3xl font-semibold text-white">{stats.totalEvents}</div>
+          </div>
+
+          <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/20">
+            <div className="flex items-center gap-2 text-green-400 text-sm mb-2">
+              <Calendar size={16} />
+              New This Week
+            </div>
+            <div className="text-3xl font-semibold text-green-400">{stats.venuesThisWeek}</div>
+          </div>
+
+          <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/20">
+            <div className="flex items-center gap-2 text-blue-400 text-sm mb-2">
+              <TrendingUp size={16} />
+              Sessions Today
+            </div>
+            <div className="text-3xl font-semibold text-blue-400">{stats.sessionsToday}</div>
+          </div>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <GlassPanel className="p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-ocean-700 flex items-center justify-center">
-                <Store className="w-5 h-5 text-signal" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-text-primary">
-              {loading ? '-' : stats.totalVenues}
-            </div>
-            <div className="text-sm text-text-muted">Total Venues</div>
-          </GlassPanel>
-
-          <GlassPanel className="p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-green-400" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-green-400">
-              {loading ? '-' : stats.activeVenues}
-            </div>
-            <div className="text-sm text-text-muted">Active (7d)</div>
-          </GlassPanel>
-
-          <GlassPanel className="p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-ocean-700 flex items-center justify-center">
-                <Scan className="w-5 h-5 text-signal" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-text-primary">
-              {loading ? '-' : stats.totalScans}
-            </div>
-            <div className="text-sm text-text-muted">Total Scans</div>
-          </GlassPanel>
-
-          <GlassPanel className="p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-yellow-400" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-yellow-400">
-              {loading ? '-' : stats.trialVenues}
-            </div>
-            <div className="text-sm text-text-muted">On Trial</div>
-          </GlassPanel>
-
-          <GlassPanel className="p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-signal/20 flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-signal" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-signal">
-              {loading ? '-' : stats.paidVenues}
-            </div>
-            <div className="text-sm text-text-muted">Paid</div>
-          </GlassPanel>
-        </div>
-
-        {/* Revenue Card */}
+        {/* Revenue Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <GlassPanel className="p-6 bg-gradient-to-br from-signal/10 to-ocean-800 border-signal/30">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-signal/20 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-signal" />
-              </div>
-              <div>
-                <div className="text-sm text-text-muted">Monthly Recurring Revenue</div>
-                <div className="text-3xl font-bold text-text-primary">€{loading ? '-' : stats.mrr.toLocaleString()}</div>
-              </div>
+          <div className="bg-[#722F37]/20 rounded-xl p-6 border border-[#722F37]/30">
+            <div className="flex items-center gap-3 mb-2">
+              <DollarSign className="w-6 h-6 text-[#722F37]" />
+              <span className="text-white/60">Monthly Recurring Revenue</span>
             </div>
-            <div className="text-sm text-text-muted">
-              ARR: €{loading ? '-' : stats.arr.toLocaleString()}
+            <div className="text-4xl font-bold text-white">€{stats.mrr.toLocaleString()}</div>
+            <div className="text-sm text-white/40 mt-1">ARR: €{(stats.mrr * 12).toLocaleString()}</div>
+          </div>
+
+          <div className="bg-yellow-500/10 rounded-xl p-6 border border-yellow-500/20">
+            <div className="flex items-center gap-2 text-yellow-400 text-sm mb-2">
+              <Users size={16} />
+              On Trial
             </div>
-            <div className="text-xs text-text-muted mt-1">
-              {stats.monthlyCount} monthly × €295 + {stats.annualCount} annual × €249
+            <div className="text-4xl font-bold text-yellow-400">{stats.trialVenues}</div>
+            <div className="text-sm text-white/40 mt-1">14-day free trials</div>
+          </div>
+
+          <div className="bg-green-500/10 rounded-xl p-6 border border-green-500/20">
+            <div className="flex items-center gap-2 text-green-400 text-sm mb-2">
+              <TrendingUp size={16} />
+              Paid Customers
             </div>
-          </GlassPanel>
-
-          {/* Milestones */}
-          <div className="md:col-span-2">
-            <GlassPanel className="p-6 h-full">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-ocean-700 flex items-center justify-center">
-                  <Target className="w-5 h-5 text-signal" />
-                </div>
-                <h2 className="text-lg font-semibold text-text-primary">Milestones</h2>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {/* Milestone 1: First 10 Venues */}
-                <div className="p-3 rounded-lg bg-ocean-700/50">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-text-muted">First 10 Venues</span>
-                    <span className={`text-xs ${stats.totalVenues >= 10 ? 'text-green-400' : 'text-text-muted'}`}>
-                      {stats.totalVenues >= 10 ? '✓' : `${stats.totalVenues}/10`}
-                    </span>
-                  </div>
-                  <div className="w-full bg-ocean-600 rounded-full h-1.5">
-                    <div
-                      className="bg-signal h-1.5 rounded-full transition-all"
-                      style={{ width: `${Math.min(stats.totalVenues / 10 * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Milestone 2: First €1K MRR */}
-                <div className="p-3 rounded-lg bg-ocean-700/50">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-text-muted">First €1K MRR</span>
-                    <span className={`text-xs ${stats.mrr >= 1000 ? 'text-green-400' : 'text-text-muted'}`}>
-                      {stats.mrr >= 1000 ? '✓' : `€${stats.mrr}`}
-                    </span>
-                  </div>
-                  <div className="w-full bg-ocean-600 rounded-full h-1.5">
-                    <div
-                      className="bg-signal h-1.5 rounded-full transition-all"
-                      style={{ width: `${Math.min(stats.mrr / 1000 * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Milestone 3: 5 Paid Venues */}
-                <div className="p-3 rounded-lg bg-ocean-700/50">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-text-muted">5 Paid Venues</span>
-                    <span className={`text-xs ${stats.paidVenues >= 5 ? 'text-green-400' : 'text-text-muted'}`}>
-                      {stats.paidVenues >= 5 ? '✓' : `${stats.paidVenues}/5`}
-                    </span>
-                  </div>
-                  <div className="w-full bg-ocean-600 rounded-full h-1.5">
-                    <div
-                      className="bg-signal h-1.5 rounded-full transition-all"
-                      style={{ width: `${Math.min(stats.paidVenues / 5 * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Milestone 4: 1,000 Total Scans */}
-                <div className="p-3 rounded-lg bg-ocean-700/50">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-text-muted">1K Scans</span>
-                    <span className={`text-xs ${stats.totalScans >= 1000 ? 'text-green-400' : 'text-text-muted'}`}>
-                      {stats.totalScans >= 1000 ? '✓' : `${stats.totalScans}`}
-                    </span>
-                  </div>
-                  <div className="w-full bg-ocean-600 rounded-full h-1.5">
-                    <div
-                      className="bg-signal h-1.5 rounded-full transition-all"
-                      style={{ width: `${Math.min(stats.totalScans / 1000 * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </GlassPanel>
+            <div className="text-4xl font-bold text-green-400">{stats.paidVenues}</div>
+            <div className="text-sm text-white/40 mt-1">Active subscriptions</div>
           </div>
         </div>
 
-        {/* Venues Table */}
-        <GlassPanel className="overflow-hidden">
-          <div className="p-6 border-b border-line">
-            <h2 className="text-xl font-semibold text-text-primary">All Venues</h2>
+        {/* Search */}
+        <div className="mb-6">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={20} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search venues..."
+              className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+            />
+          </div>
+        </div>
+
+        {/* Venues List */}
+        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h2 className="text-lg font-semibold text-white">All Venues ({filteredVenues.length})</h2>
           </div>
 
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-signal mx-auto"></div>
-              <p className="text-text-muted mt-4">Loading venues...</p>
-            </div>
-          ) : venues.length === 0 ? (
-            <div className="p-8 text-center">
-              <Store className="w-12 h-12 text-text-muted mx-auto mb-4" />
-              <p className="text-text-muted">No venues registered yet</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-line text-left">
-                    <th className="p-4 text-sm font-medium text-text-muted">Venue</th>
-                    <th className="p-4 text-sm font-medium text-text-muted">Owner</th>
-                    <th className="p-4 text-sm font-medium text-text-muted">City</th>
-                    <th className="p-4 text-sm font-medium text-text-muted">Plan</th>
-                    <th className="p-4 text-sm font-medium text-text-muted">Status</th>
-                    <th className="p-4 text-sm font-medium text-text-muted">Items</th>
-                    <th className="p-4 text-sm font-medium text-text-muted">Scans</th>
-                    <th className="p-4 text-sm font-medium text-text-muted">Last Active</th>
-                    <th className="p-4 text-sm font-medium text-text-muted">Signed Up</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {venues.map(venue => (
-                    <tr key={venue.id} className="border-b border-line/50 hover:bg-ocean-700/30">
-                      <td className="p-4">
-                        <div className="font-medium text-text-primary">{venue.name}</div>
-                        <div className="text-sm text-text-muted">/v/{venue.slug}</div>
-                      </td>
-                      <td className="p-4 text-sm text-text-muted">{venue.owner_email}</td>
-                      <td className="p-4 text-text-muted">{venue.city}</td>
-                      <td className="p-4 text-text-muted capitalize">{venue.subscription_plan}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-xs ${getStatusColor(venue.subscription_status)}`}>
-                          {venue.subscription_status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-text-muted">{venue.total_items}</td>
-                      <td className="p-4 text-text-muted">{venue.total_scans}</td>
-                      <td className="p-4 text-sm text-text-muted">
-                        {venue.last_scan ? formatDate(venue.last_scan) : '-'}
-                      </td>
-                      <td className="p-4 text-sm text-text-muted">
-                        {formatDate(venue.created_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </GlassPanel>
-      </div>
+          <div className="divide-y divide-white/10">
+            {filteredVenues.map((venue) => (
+              <div key={venue.id} className="px-6 py-4 hover:bg-white/5 transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-medium text-white">{venue.name}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        venue.slug === 'bella-taverna'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'bg-white/10 text-white/60'
+                      }`}>
+                        {venue.slug === 'bella-taverna' ? 'Demo' : venue.category || 'venue'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1 text-sm text-white/40">
+                      <span>{venue.city || 'Unknown'}, {venue.country || 'Unknown'}</span>
+                      <span>·</span>
+                      <span>/{venue.slug}</span>
+                      <span>·</span>
+                      <span>{new Date(venue.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {venue.operator_users?.length > 0 && (
+                      <div className="mt-2 text-sm text-white/60">
+                        👤 {venue.operator_users.map((op) => op.email).join(', ')}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`/v/${venue.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition"
+                    >
+                      <ExternalLink size={18} />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {filteredVenues.length === 0 && (
+              <div className="px-6 py-12 text-center text-white/40">
+                No venues found
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Recent Users */}
+        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h2 className="text-lg font-semibold text-white">Recent Signups</h2>
+          </div>
+
+          <div className="divide-y divide-white/10">
+            {users.slice(0, 10).map((user) => (
+              <div key={user.id} className="px-6 py-3 flex items-center justify-between">
+                <div>
+                  <div className="text-white">{user.email}</div>
+                  <div className="text-sm text-white/40">
+                    {user.venues?.name || 'No venue'} · {user.role}
+                  </div>
+                </div>
+                <div className="text-sm text-white/40">
+                  {new Date(user.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+
+            {users.length === 0 && (
+              <div className="px-6 py-8 text-center text-white/40">
+                No users yet
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   )
 }
