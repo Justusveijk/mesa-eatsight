@@ -96,6 +96,10 @@
   font-family: var(--font-playfair), Georgia, 'Times New Roman', serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
-import { motion, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion'
+import { useRef, useState, useEffect } from 'react'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
 
 const steps = [
@@ -22,42 +22,46 @@ const annualFeatures = ['Everything in Monthly', '1 month free', 'Priority suppo
 
 export default function LandingPage() {
   const containerRef = useRef(null)
+  const heroRef = useRef<HTMLElement>(null)
+  const [isInHero, setIsInHero] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
   })
 
-  // Mouse tracking for reveal effect
-  const cursorX = useMotionValue(typeof window !== 'undefined' ? window.innerWidth / 2 : 0)
-  const cursorY = useMotionValue(typeof window !== 'undefined' ? window.innerHeight / 2 : 0)
-
-  const springConfig = { damping: 25, stiffness: 200 }
-  const cursorXSpring = useSpring(cursorX, springConfig)
-  const cursorYSpring = useSpring(cursorY, springConfig)
-
+  // Mouse tracking for reveal effect - only in hero
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      cursorX.set(e.clientX)
-      cursorY.set(e.clientY)
+      if (heroRef.current) {
+        const rect = heroRef.current.getBoundingClientRect()
+        const isInside = (
+          e.clientY >= rect.top &&
+          e.clientY <= rect.bottom &&
+          e.clientX >= rect.left &&
+          e.clientX <= rect.right
+        )
+        setIsInHero(isInside)
+
+        if (isInside) {
+          setMousePos({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+          })
+        }
+      }
     }
+
     window.addEventListener('mousemove', handleMouseMove)
     return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [cursorX, cursorY])
+  }, [])
 
   // Parallax transforms
-  const blob1Y = useTransform(scrollYProgress, [0, 0.2], [0, -100])
-  const blob2Y = useTransform(scrollYProgress, [0, 0.2], [0, -150])
   const solutionBlobY = useTransform(scrollYProgress, [0.2, 0.5], [100, -100])
 
   return (
     <div ref={containerRef} className="bg-[#FDFBF7]">
-      {/* Smooth scrolling */}
-      <style jsx global>{`
-        html {
-          scroll-behavior: smooth;
-        }
-      `}</style>
-
       {/* Navigation - Fixed, minimal */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-8 py-5 flex justify-between items-center bg-[#FDFBF7]/90 backdrop-blur-sm border-b border-[#1a1a1a]/5">
         <div className="font-serif text-2xl text-[#1a1a1a]">Eatsight</div>
@@ -72,69 +76,58 @@ export default function LandingPage() {
       </nav>
 
       {/* Section 1: Hero - Full viewport with mouse reveal effect */}
-      <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20 bg-[#FDFBF7]">
-        {/* Background: Chaotic menus layer (revealed on hover) */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none">
-          {/* Scattered menu cards */}
-          <div className="absolute top-[12%] left-[5%] rotate-[-15deg] bg-white p-4 rounded-lg shadow-lg w-56 text-xs text-gray-600 font-mono">
-            <div className="font-bold mb-2 text-[#722F37]">Today&apos;s Specials</div>
+      <section
+        ref={heroRef}
+        className="h-screen flex items-center justify-center relative overflow-hidden pt-16 bg-[#FDFBF7]"
+      >
+        {/* Background menu items - always visible but faded */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[15%] left-[8%] rotate-[-12deg] bg-white p-4 rounded-lg shadow-lg w-48 text-xs text-gray-400 font-mono opacity-30">
+            <div className="font-bold mb-2 text-[#722F37]/50">Today&apos;s Specials</div>
             <div>Grilled Salmon............€24</div>
             <div>Pasta Carbonara..........€18</div>
             <div>Chef&apos;s Burger.............€16</div>
-            <div>Vegan Bowl................€15</div>
           </div>
-          <div className="absolute top-[18%] right-[8%] rotate-[8deg] bg-white p-4 rounded-lg shadow-lg w-64 text-xs text-gray-600 font-mono">
-            <div className="font-bold mb-2 text-[#722F37]">DRINKS</div>
+          <div className="absolute top-[20%] right-[10%] rotate-[8deg] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-400 font-mono opacity-30">
+            <div className="font-bold mb-2 text-[#722F37]/50">DRINKS</div>
             <div>House Red.................€7</div>
             <div>Craft Beer................€6</div>
             <div>Espresso Martini.........€12</div>
           </div>
-          <div className="absolute bottom-[28%] left-[12%] rotate-[5deg] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-600 font-mono">
-            <div className="font-bold mb-2 text-[#722F37]">MAINS</div>
-            <div>Ribeye Steak 300g........€32</div>
+          <div className="absolute bottom-[25%] left-[12%] rotate-[5deg] bg-white p-4 rounded-lg shadow-lg w-44 text-xs text-gray-400 font-mono opacity-30">
+            <div className="font-bold mb-2 text-[#722F37]/50">MAINS</div>
+            <div>Ribeye Steak.............€32</div>
             <div>Fish & Chips.............€19</div>
-            <div>Mushroom Risotto.........€17</div>
           </div>
-          <div className="absolute bottom-[18%] right-[15%] rotate-[-10deg] bg-white p-4 rounded-lg shadow-lg w-48 text-xs text-gray-600 font-mono">
-            <div className="font-bold mb-2 text-[#722F37]">DESSERTS</div>
+          <div className="absolute bottom-[20%] right-[15%] rotate-[-8deg] bg-white p-4 rounded-lg shadow-lg w-40 text-xs text-gray-400 font-mono opacity-30">
+            <div className="font-bold mb-2 text-[#722F37]/50">DESSERTS</div>
             <div>Tiramisu..................€8</div>
             <div>Chocolate Lava...........€9</div>
           </div>
-          <div className="absolute top-[45%] left-[35%] rotate-[3deg] bg-white p-4 rounded-lg shadow-lg w-56 text-xs text-gray-600 font-mono opacity-70">
-            <div className="font-bold mb-2 text-[#722F37]">APPETIZERS</div>
+          <div className="absolute top-[45%] left-[30%] rotate-[3deg] bg-white p-4 rounded-lg shadow-lg w-44 text-xs text-gray-400 font-mono opacity-20 hidden md:block">
+            <div className="font-bold mb-2 text-[#722F37]/50">APPETIZERS</div>
             <div>Bruschetta................€9</div>
             <div>Calamari.................€12</div>
-            <div>Soup of the Day...........€7</div>
-          </div>
-          <div className="absolute top-[60%] right-[30%] rotate-[-5deg] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-600 font-mono opacity-60">
-            <div className="font-bold mb-2 text-[#722F37]">SIDES</div>
-            <div>Truffle Fries.............€6</div>
-            <div>Mixed Salad...............€5</div>
           </div>
         </div>
 
-        {/* Reveal circle that follows mouse */}
-        <motion.div
-          className="pointer-events-none fixed w-[500px] h-[500px] rounded-full z-10 hidden md:block"
-          style={{
-            x: cursorXSpring,
-            y: cursorYSpring,
-            translateX: '-50%',
-            translateY: '-50%',
-            background: 'radial-gradient(circle, rgba(253,251,247,1) 0%, rgba(253,251,247,1) 40%, rgba(253,251,247,0) 70%)',
-          }}
-        />
+        {/* Mouse reveal spotlight - only shows in hero */}
+        {isInHero && (
+          <div
+            className="absolute pointer-events-none z-10 transition-opacity duration-200 hidden md:block"
+            style={{
+              left: mousePos.x,
+              top: mousePos.y,
+              transform: 'translate(-50%, -50%)',
+              width: '400px',
+              height: '400px',
+              background: 'radial-gradient(circle, transparent 0%, transparent 30%, rgba(253,251,247,0.95) 60%, rgba(253,251,247,1) 100%)',
+              borderRadius: '50%',
+            }}
+          />
+        )}
 
-        {/* Parallax background elements */}
-        <motion.div
-          className="absolute top-20 left-10 md:left-20 w-48 md:w-64 h-48 md:h-64 rounded-full bg-[#722F37]/5 z-0"
-          style={{ y: blob1Y }}
-        />
-        <motion.div
-          className="absolute bottom-20 right-10 md:right-32 w-64 md:w-96 h-64 md:h-96 rounded-full bg-[#7D8471]/5 z-0"
-          style={{ y: blob2Y }}
-        />
-
+        {/* Main hero content - always on top */}
         <div className="text-center px-6 md:px-8 max-w-4xl relative z-20">
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -148,7 +141,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="font-serif text-5xl md:text-7xl lg:text-8xl text-[#1a1a1a] leading-[0.9] mb-8"
+            className="font-serif text-5xl md:text-7xl lg:text-8xl text-[#1a1a1a] leading-[0.95] mb-8"
           >
             Know what<br />your guests<br />
             <span className="italic text-[#722F37]">crave</span>
@@ -170,7 +163,7 @@ export default function LandingPage() {
             <Link href="/signup" className="inline-block bg-[#1a1a1a] text-white px-8 py-4 rounded-full text-lg hover:bg-[#333] transition">
               Start your free trial
             </Link>
-            <Link href="/demo" className="inline-block border-2 border-[#1a1a1a] text-[#1a1a1a] px-8 py-4 rounded-full text-lg hover:bg-[#1a1a1a] hover:text-white transition">
+            <Link href="/v/bella-taverna" className="inline-block border-2 border-[#1a1a1a] text-[#1a1a1a] px-8 py-4 rounded-full text-lg hover:bg-[#1a1a1a] hover:text-white transition">
               Try the demo →
             </Link>
           </motion.div>
@@ -178,12 +171,12 @@ export default function LandingPage() {
 
         {/* Scroll indicator */}
         <motion.div
-          className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 10, 0] }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20"
+          animate={{ y: [0, 8, 0] }}
           transition={{ repeat: Infinity, duration: 2 }}
         >
-          <div className="w-6 h-10 border-2 border-[#1a1a1a]/20 rounded-full flex justify-center pt-2">
-            <div className="w-1.5 h-3 bg-[#1a1a1a]/30 rounded-full" />
+          <div className="w-6 h-10 border-2 border-[#1a1a1a]/30 rounded-full flex justify-center pt-2">
+            <div className="w-1.5 h-3 bg-[#1a1a1a]/40 rounded-full" />
           </div>
         </motion.div>
       </section>
@@ -202,7 +195,7 @@ export default function LandingPage() {
               Menus are overwhelming.<br />
               <span className="text-[#1a1a1a]/40">Decisions are hard.</span>
             </h2>
-            <p className="text-lg text-[#1a1a1a]/60 leading-relaxed">
+            <p className="text-lg text-[#1a1a1a]/70 leading-relaxed">
               Your guests stare at the menu for minutes. They ask the server what&apos;s good.
               They order safe choices instead of your best dishes.
             </p>
@@ -216,22 +209,22 @@ export default function LandingPage() {
             className="relative"
           >
             <div className="bg-white rounded-3xl p-8 shadow-xl shadow-[#1a1a1a]/5 border border-[#1a1a1a]/5">
-              <div className="space-y-4 text-[#1a1a1a]/40 font-mono text-sm">
+              <div className="space-y-4 text-[#1a1a1a]/50 font-mono text-sm">
                 <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
                   <span>Menu items</span>
-                  <span>47</span>
+                  <span className="text-[#1a1a1a]/70">47</span>
                 </div>
                 <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
                   <span>Average decision time</span>
-                  <span>4+ min</span>
+                  <span className="text-[#1a1a1a]/70">4+ min</span>
                 </div>
                 <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
                   <span>Guests who ask server</span>
-                  <span>68%</span>
+                  <span className="text-[#1a1a1a]/70">68%</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Orders that match preference</span>
-                  <span className="text-[#722F37]">~40%</span>
+                  <span className="text-[#722F37] font-medium">~40%</span>
                 </div>
               </div>
             </div>
@@ -241,7 +234,8 @@ export default function LandingPage() {
 
       {/* Section 3: The Solution - Big statement */}
       <section className="min-h-screen flex items-center justify-center bg-[#1a1a1a] text-white py-20 md:py-32 px-6 md:px-8 relative overflow-hidden">
-        {/* Parallax decorative elements */}
+        {/* Background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#722F37]/20 rounded-full blur-3xl" />
         <motion.div
           className="absolute top-0 right-0 w-[400px] md:w-[600px] h-[400px] md:h-[600px] rounded-full bg-[#722F37]/10 blur-3xl"
           style={{ y: solutionBlobY }}
@@ -261,7 +255,7 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="font-serif text-4xl md:text-5xl lg:text-7xl leading-tight mb-8"
+            className="font-serif text-4xl md:text-6xl lg:text-7xl leading-tight mb-8 text-white"
           >
             Three questions.<br />
             <span className="italic text-[#C9A227]">Perfect match.</span>
@@ -271,7 +265,7 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto"
+            className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto"
           >
             Guest scans the QR code. Answers three simple questions about mood, flavor, and hunger.
             Gets three perfect recommendations in under 15 seconds.
@@ -307,7 +301,7 @@ export default function LandingPage() {
                 <span className="text-3xl md:text-4xl md:w-16">{step.icon}</span>
                 <div className="flex-1">
                   <h3 className="font-serif text-2xl md:text-3xl text-[#1a1a1a] mb-2">{step.title}</h3>
-                  <p className="text-[#1a1a1a]/60">{step.desc}</p>
+                  <p className="text-[#1a1a1a]/70">{step.desc}</p>
                 </div>
                 <div className="text-[#722F37] opacity-0 group-hover:opacity-100 transition-opacity hidden md:block text-2xl">
                   →
@@ -342,7 +336,7 @@ export default function LandingPage() {
                 className="bg-white p-6 md:p-8 rounded-2xl"
               >
                 <h3 className="font-serif text-xl md:text-2xl text-[#1a1a1a] mb-3">{item.title}</h3>
-                <p className="text-[#1a1a1a]/60">{item.desc}</p>
+                <p className="text-[#1a1a1a]/70">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -356,24 +350,24 @@ export default function LandingPage() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-center mb-12 md:mb-16"
+            className="text-center mb-16"
           >
             <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">Pricing</p>
             <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4">Simple & fair</h2>
             <p className="text-[#1a1a1a]/60">Start free. No credit card required.</p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Monthly */}
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {/* Monthly Card */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="border-2 border-[#1a1a1a]/10 rounded-2xl p-6 md:p-8 bg-white hover:border-[#1a1a1a]/20 transition-colors"
+              className="border-2 border-[#1a1a1a]/10 rounded-2xl p-8 bg-white hover:border-[#1a1a1a]/20 transition-colors"
             >
-              <p className="text-[#1a1a1a]/60 uppercase tracking-wider text-sm mb-4">Monthly</p>
+              <p className="text-[#1a1a1a]/50 uppercase tracking-wider text-sm mb-4">Monthly</p>
               <div className="flex items-baseline gap-2 mb-6">
-                <span className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">€295</span>
+                <span className="font-serif text-5xl text-[#1a1a1a]">€295</span>
                 <span className="text-[#1a1a1a]/40">/month</span>
               </div>
               <ul className="space-y-3 mb-8 text-[#1a1a1a]/70">
@@ -383,25 +377,25 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/signup?plan=monthly" className="block text-center py-3 border-2 border-[#1a1a1a] rounded-full text-[#1a1a1a] font-medium hover:bg-[#1a1a1a] hover:text-white transition">
+              <Link href="/signup?plan=monthly" className="block text-center py-3 border-2 border-[#1a1a1a] rounded-full text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition font-medium">
                 Start free trial
               </Link>
             </motion.div>
 
-            {/* Annual */}
+            {/* Annual Card - HIGHLIGHTED */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="bg-[#1a1a1a] text-white rounded-2xl p-6 md:p-8 relative"
+              className="bg-[#1a1a1a] text-white rounded-2xl p-8 relative"
             >
-              <div className="absolute -top-3 right-6 md:right-8 bg-[#C9A227] text-[#1a1a1a] text-xs font-medium px-3 py-1 rounded-full">
+              <div className="absolute -top-3 right-8 bg-[#C9A227] text-[#1a1a1a] text-xs font-bold px-3 py-1 rounded-full">
                 Save €552
               </div>
-              <p className="text-white/40 uppercase tracking-wider text-sm mb-4">Annual</p>
+              <p className="text-white/50 uppercase tracking-wider text-sm mb-4">Annual</p>
               <div className="flex items-baseline gap-2 mb-6">
-                <span className="font-serif text-4xl md:text-5xl">€249</span>
+                <span className="font-serif text-5xl text-white">€249</span>
                 <span className="text-white/40">/month</span>
               </div>
               <ul className="space-y-3 mb-8 text-white/70">
@@ -411,7 +405,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#1a1a1a] rounded-full font-medium hover:bg-white/90 transition">
+              <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#1a1a1a] rounded-full hover:bg-white/90 transition font-medium">
                 Start free trial
               </Link>
             </motion.div>
@@ -429,11 +423,11 @@ export default function LandingPage() {
           >
             <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">Our Story</p>
             <h2 className="font-serif text-3xl md:text-4xl text-[#1a1a1a] mb-6">Built by hospitality people</h2>
-            <p className="text-base md:text-lg text-[#1a1a1a]/60 leading-relaxed mb-4">
+            <p className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed mb-4">
               We&apos;ve worked the floor. We&apos;ve seen guests paralyzed by choice, servers repeating the same recommendations,
               and kitchens guessing what to prep.
             </p>
-            <p className="text-base md:text-lg text-[#1a1a1a]/60 leading-relaxed">
+            <p className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed">
               Mesa + Eatsight bridges the gap between what guests want and what you serve.
             </p>
             <p className="text-[#1a1a1a]/40 mt-8">Amsterdam 🇳🇱</p>
@@ -452,13 +446,13 @@ export default function LandingPage() {
             <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6">
               Ready to understand<br />your guests?
             </h2>
-            <p className="text-white/70 text-base md:text-lg mb-10">
+            <p className="text-white/80 text-base md:text-lg mb-10">
               Set up in 15 minutes. See insights from day one.
             </p>
             <Link href="/signup" className="inline-block bg-white text-[#722F37] px-10 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition">
               Start your free trial
             </Link>
-            <p className="text-white/50 text-sm mt-6">14 days free • No credit card</p>
+            <p className="text-white/60 text-sm mt-6">14 days free • No credit card</p>
           </motion.div>
         </div>
       </section>

@@ -135,9 +135,16 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
       trackEvent(venueId, sessionId, 'flow_completed', { preferences })
     }
 
-    // Fetch real recommendations from Supabase with fallback support
+    // Start fetching recommendations
+    const fetchStart = Date.now()
     const result = await getRecommendationsWithFallback(venueId, preferences, 3)
     const allRecommendations = [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
+
+    // Ensure loading screen shows for at least 2 seconds for effect
+    const elapsed = Date.now() - fetchStart
+    if (elapsed < 2000) {
+      await new Promise(resolve => setTimeout(resolve, 2000 - elapsed))
+    }
 
     // Track unmet demand if we had to show fallback items
     if (result.showFallbackMessage && sessionId) {
@@ -269,6 +276,84 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
       <span>{label}</span>
     </motion.button>
   )
+
+  // Loading screen
+  if (isLoading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 bg-[#FDFBF7] flex items-center justify-center z-50"
+      >
+        <div className="text-center">
+          {/* Animated logo/icon */}
+          <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, -5, 0]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="text-6xl mb-8"
+          >
+            🍽️
+          </motion.div>
+
+          {/* Brand name with animation */}
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="font-serif text-4xl text-[#1a1a1a] mb-4"
+          >
+            MESA
+          </motion.h2>
+
+          {/* Tagline */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="text-[#1a1a1a]/60 text-lg italic"
+          >
+            Menus made manageable
+          </motion.p>
+
+          {/* Loading dots */}
+          <motion.div className="flex justify-center gap-2 mt-8">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-2 h-2 bg-[#B2472A] rounded-full"
+                animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [0.5, 1, 0.5]
+                }}
+                transition={{
+                  duration: 1,
+                  repeat: Infinity,
+                  delay: i * 0.2
+                }}
+              />
+            ))}
+          </motion.div>
+
+          {/* Subtle message */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="text-[#1a1a1a]/40 text-sm mt-6"
+          >
+            Finding your perfect match...
+          </motion.p>
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-mesa-ivory relative overflow-hidden">

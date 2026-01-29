@@ -41,12 +41,12 @@ function StatCard({ title, value, trend, icon: Icon, loading }: StatCardProps) {
   return (
     <GlassPanel className="p-5">
       <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl bg-ocean-700 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-signal" />
+        <div className="w-10 h-10 rounded-xl bg-[#1e3a5f] dark:bg-ocean-700 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-white dark:text-signal" />
         </div>
         {trend !== undefined && (
           <div className={`flex items-center gap-1 text-sm ${
-            isPositive ? 'text-green-400' : isNegative ? 'text-red-400' : 'text-text-muted'
+            isPositive ? 'text-green-600 dark:text-green-400' : isNegative ? 'text-red-600 dark:text-red-400' : 'text-[#1a1a1a]/50 dark:text-text-muted'
           }`}>
             {isPositive && <TrendingUp className="w-4 h-4" />}
             {isNegative && <TrendingDown className="w-4 h-4" />}
@@ -55,11 +55,11 @@ function StatCard({ title, value, trend, icon: Icon, loading }: StatCardProps) {
           </div>
         )}
       </div>
-      <p className="text-text-muted text-sm mb-1">{title}</p>
+      <p className="text-[#1a1a1a]/50 dark:text-text-muted text-sm mb-1">{title}</p>
       {loading ? (
-        <div className="h-8 w-16 bg-ocean-700 animate-pulse rounded" />
+        <div className="h-8 w-16 bg-gray-200 dark:bg-ocean-700 animate-pulse rounded" />
       ) : (
-        <p className="text-2xl font-bold text-text-primary">{value}</p>
+        <p className="text-2xl font-bold text-[#1a1a1a] dark:text-text-primary">{value}</p>
       )}
     </GlassPanel>
   )
@@ -318,21 +318,21 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
-          <p className="text-text-muted">Overview of your menu performance</p>
+          <h1 className="text-2xl font-bold text-[#1a1a1a] dark:text-text-primary">Dashboard</h1>
+          <p className="text-[#1a1a1a]/50 dark:text-text-muted">Overview of your menu performance</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 rounded-lg bg-ocean-700 border border-line text-text-muted hover:text-text-primary transition-colors disabled:opacity-50"
+            className="p-2 rounded-lg bg-gray-100 dark:bg-ocean-700 border border-gray-200 dark:border-line text-[#1a1a1a]/50 dark:text-text-muted hover:text-[#1a1a1a] dark:hover:text-text-primary transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as typeof dateRange)}
-            className="px-4 py-2 rounded-lg bg-ocean-700 border border-line text-text-primary text-sm focus:outline-none focus:border-signal"
+            className="px-4 py-2 rounded-lg bg-white dark:bg-ocean-700 border border-gray-200 dark:border-line text-[#1a1a1a] dark:text-text-primary text-sm focus:outline-none focus:border-[#1e3a5f] dark:focus:border-signal"
           >
             <option value="7">Last 7 days</option>
             <option value="30">Last 30 days</option>
@@ -344,11 +344,11 @@ export default function DashboardPage() {
       {/* Empty state */}
       {!loading && metrics.scansWeek === 0 && metrics.clicksWeek === 0 && (
         <GlassPanel className="p-8 text-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-signal/20 flex items-center justify-center mx-auto mb-4">
-            <Scan className="w-8 h-8 text-signal" />
+          <div className="w-16 h-16 rounded-full bg-[#1e3a5f]/20 dark:bg-signal/20 flex items-center justify-center mx-auto mb-4">
+            <Scan className="w-8 h-8 text-[#1e3a5f] dark:text-signal" />
           </div>
-          <h3 className="text-lg font-semibold text-text-primary mb-2">No activity yet</h3>
-          <p className="text-text-muted max-w-md mx-auto">
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-text-primary mb-2">No activity yet</h3>
+          <p className="text-[#1a1a1a]/50 dark:text-text-muted max-w-md mx-auto">
             Share your QR code with guests to start receiving recommendations data.
             Go to Settings to download your QR codes.
           </p>
@@ -388,11 +388,11 @@ export default function DashboardPage() {
 
           {/* Top Cravings (Moods) */}
           <GlassPanel className="p-6">
-            <h3 className="font-semibold text-text-primary mb-4">Top cravings</h3>
+            <h3 className="font-semibold text-[#1a1a1a] dark:text-text-primary mb-4">Top cravings</h3>
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-8 bg-ocean-700 animate-pulse rounded" />
+                  <div key={i} className="h-8 bg-gray-200 dark:bg-ocean-700 animate-pulse rounded" />
                 ))}
               </div>
             ) : metrics.topMoods.length > 0 ? (
@@ -400,12 +400,12 @@ export default function DashboardPage() {
                 {metrics.topMoods.map((item) => (
                   <div key={item.tag} className="space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-text-muted capitalize">{item.tag}</span>
-                      <span className="text-text-primary">{item.count}</span>
+                      <span className="text-[#1a1a1a]/60 dark:text-text-muted capitalize">{item.tag}</span>
+                      <span className="text-[#1a1a1a] dark:text-text-primary">{item.count}</span>
                     </div>
-                    <div className="h-2 bg-ocean-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-gray-200 dark:bg-ocean-700 rounded-full overflow-hidden">
                       <motion.div
-                        className="h-full bg-signal rounded-full"
+                        className="h-full bg-[#1e3a5f] dark:bg-signal rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${(item.count / maxMoodCount) * 100}%` }}
                         transition={{ duration: 0.5, delay: 0.1 }}
@@ -415,24 +415,24 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-text-muted text-sm">No mood data yet</p>
+              <p className="text-[#1a1a1a]/50 dark:text-text-muted text-sm">No mood data yet</p>
             )}
           </GlassPanel>
 
           {/* Top Flavors */}
           {metrics.topFlavors.length > 0 && (
             <GlassPanel className="p-6">
-              <h3 className="font-semibold text-text-primary mb-4">Top flavors</h3>
+              <h3 className="font-semibold text-[#1a1a1a] dark:text-text-primary mb-4">Top flavors</h3>
               <div className="space-y-3">
                 {metrics.topFlavors.map((item) => (
                   <div key={item.tag} className="space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-text-muted capitalize">{item.tag}</span>
-                      <span className="text-text-primary">{item.count}</span>
+                      <span className="text-[#1a1a1a]/60 dark:text-text-muted capitalize">{item.tag}</span>
+                      <span className="text-[#1a1a1a] dark:text-text-primary">{item.count}</span>
                     </div>
-                    <div className="h-2 bg-ocean-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-gray-200 dark:bg-ocean-700 rounded-full overflow-hidden">
                       <motion.div
-                        className="h-full bg-signal/70 rounded-full"
+                        className="h-full bg-[#1e3a5f]/70 dark:bg-signal/70 rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${(item.count / maxFlavorCount) * 100}%` }}
                         transition={{ duration: 0.5, delay: 0.1 }}
@@ -446,11 +446,11 @@ export default function DashboardPage() {
 
           {/* Top Clicked Items */}
           <GlassPanel className="p-6">
-            <h3 className="font-semibold text-text-primary mb-4">Most clicked items</h3>
+            <h3 className="font-semibold text-[#1a1a1a] dark:text-text-primary mb-4">Most clicked items</h3>
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-8 bg-ocean-700 animate-pulse rounded" />
+                  <div key={i} className="h-8 bg-gray-200 dark:bg-ocean-700 animate-pulse rounded" />
                 ))}
               </div>
             ) : metrics.topItems.length > 0 ? (
@@ -458,17 +458,17 @@ export default function DashboardPage() {
                 {metrics.topItems.map((item, index) => (
                   <div key={item.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-signal/20 text-signal text-xs font-medium flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-full bg-[#1e3a5f]/20 dark:bg-signal/20 text-[#1e3a5f] dark:text-signal text-xs font-medium flex items-center justify-center">
                         {index + 1}
                       </span>
-                      <span className="text-text-primary">{item.name}</span>
+                      <span className="text-[#1a1a1a] dark:text-text-primary">{item.name}</span>
                     </div>
-                    <span className="text-text-muted">{item.clicks} clicks</span>
+                    <span className="text-[#1a1a1a]/50 dark:text-text-muted">{item.clicks} clicks</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-text-muted text-sm">No click data yet</p>
+              <p className="text-[#1a1a1a]/50 dark:text-text-muted text-sm">No click data yet</p>
             )}
           </GlassPanel>
         </div>
@@ -477,16 +477,16 @@ export default function DashboardPage() {
         <div className="lg:col-span-1">
           <GlassPanel className="p-6 h-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-text-primary">Live activity</h3>
-              <span className="flex items-center gap-2 text-xs text-text-muted">
-                <span className="w-2 h-2 bg-signal rounded-full animate-pulse" />
+              <h3 className="font-semibold text-[#1a1a1a] dark:text-text-primary">Live activity</h3>
+              <span className="flex items-center gap-2 text-xs text-[#1a1a1a]/50 dark:text-text-muted">
+                <span className="w-2 h-2 bg-[#1e3a5f] dark:bg-signal rounded-full animate-pulse" />
                 Live
               </span>
             </div>
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-12 bg-ocean-700 animate-pulse rounded" />
+                  <div key={i} className="h-12 bg-gray-200 dark:bg-ocean-700 animate-pulse rounded" />
                 ))}
               </div>
             ) : recentActivity.length > 0 ? (
@@ -498,23 +498,23 @@ export default function DashboardPage() {
                       key={event.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex items-start gap-3 py-2 border-b border-line/50 last:border-0"
+                      className="flex items-start gap-3 py-2 border-b border-gray-200 dark:border-line/50 last:border-0"
                     >
                       <span
                         className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                          eventInfo.type === 'click' ? 'bg-signal' : 'bg-ocean-600'
+                          eventInfo.type === 'click' ? 'bg-[#1e3a5f] dark:bg-signal' : 'bg-gray-400 dark:bg-ocean-600'
                         }`}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-text-primary truncate">{eventInfo.message}</p>
-                        <p className="text-xs text-text-muted">{timeAgo(event.ts)}</p>
+                        <p className="text-sm text-[#1a1a1a] dark:text-text-primary truncate">{eventInfo.message}</p>
+                        <p className="text-xs text-[#1a1a1a]/50 dark:text-text-muted">{timeAgo(event.ts)}</p>
                       </div>
                     </motion.div>
                   )
                 })}
               </div>
             ) : (
-              <p className="text-text-muted text-sm">No recent activity</p>
+              <p className="text-[#1a1a1a]/50 dark:text-text-muted text-sm">No recent activity</p>
             )}
           </GlassPanel>
         </div>
