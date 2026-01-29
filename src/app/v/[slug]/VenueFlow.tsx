@@ -81,6 +81,15 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     unmet?: string[],
     feedback?: string | null
   ) => {
+    console.log('🎯 VenueFlow handleQuestionsComplete received:')
+    console.log('  Total recommendations:', recs.length)
+    console.log('  Items:', recs.map(r => ({
+      name: r.name,
+      category: r.category,
+      isCrossSell: r.isCrossSell,
+      score: r.score
+    })))
+
     setRecommendations(recs)
     setShowFallbackMessage(hasFallback || false)
     setUnmetPreferences(unmet || [])
@@ -99,12 +108,23 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
 
   // Helper to check if item is a drink
   const isDrinkItem = (item: RecommendedItem) => {
-    const isDrink = item.tags?.some(t =>
+    const category = (item.category || '').toLowerCase().trim()
+    const drinkCategories = [
+      'drinks', 'beverages', 'cocktails', 'beer', 'wine', 'mocktails',
+      'soft drinks', 'coffee', 'tea', 'spirits', 'hot drinks', 'juices',
+      'smoothies', 'wines', 'beers'
+    ]
+    const isDrinkCategory = drinkCategories.some(dc => category.includes(dc) || dc.includes(category))
+    const hasDrinkTag = item.tags?.some(t =>
       t.startsWith('drink') ||
+      t.startsWith('abv_') ||
       t.includes('cocktail') ||
       t.includes('wine') ||
-      t.includes('beer')
-    ) || ['drinks', 'beverages', 'cocktails', 'beer', 'wine', 'mocktails', 'soft drinks', 'coffee', 'tea', 'spirits'].includes(item.category?.toLowerCase() || '')
+      t.includes('beer') ||
+      t === 'temp_hot'
+    )
+    const isDrink = isDrinkCategory || hasDrinkTag
+    console.log(`isDrinkItem: "${item.name}" category="${category}" → ${isDrink}`)
     return isDrink
   }
 

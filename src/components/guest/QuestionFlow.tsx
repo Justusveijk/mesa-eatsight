@@ -144,6 +144,11 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
   const handleComplete = useCallback(async () => {
     setIsLoading(true)
 
+    console.log('🔥 QuestionFlow handleComplete CALLED')
+    console.log('  Intent:', intent)
+    console.log('  Food Preferences:', foodPreferences)
+    console.log('  Drink Preferences:', drinkPreferences)
+
     if (sessionId) {
       trackEvent(venueId, sessionId, 'flow_completed', { foodPreferences, drinkPreferences, intent })
     }
@@ -191,7 +196,12 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
 
     // Main drink recommendations (or cross-sell if food only)
     if (intent === 'drinks' || intent === 'both') {
+      console.log('🍹 Fetching drink recommendations...')
+      console.log('  Drink preferences:', drinkPreferences)
       const drinkRecs = await getDrinkRecommendations(venueId, drinkPreferences, intent === 'both' ? 2 : 3)
+      console.log('🍹 Drink recommendations received:', drinkRecs.length)
+      console.log('  Drinks:', drinkRecs.map(d => ({ name: d.name, category: d.category, score: d.score })))
+
       allRecommendations = [...allRecommendations, ...drinkRecs]
 
       // Check for unmet drink preferences
@@ -245,6 +255,14 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         unmetPreferences,
       })
     }
+
+    console.log('📤 QuestionFlow calling onComplete with:')
+    console.log('  Total recommendations:', allRecommendations.length)
+    console.log('  Items:', allRecommendations.map(r => ({
+      name: r.name,
+      category: r.category,
+      isCrossSell: r.isCrossSell
+    })))
 
     setIsLoading(false)
     onComplete(allRecommendations, showFallbackMessage, unmetPreferences, feedbackMessage)
