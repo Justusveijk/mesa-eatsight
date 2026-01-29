@@ -48,6 +48,29 @@ export default function ContactPage() {
               Start free trial
             </Link>
           </div>
+
+          <div className="p-6 bg-white rounded-2xl border border-[#1a1a1a]/5">
+            <div className="text-2xl mb-3">📸</div>
+            <h3 className="font-medium text-[#1a1a1a] mb-1">Follow us</h3>
+            <div className="space-y-2">
+              <a
+                href="https://instagram.com/eatsight.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-[#722F37] hover:text-[#5a252c]"
+              >
+                @eatsight.io
+              </a>
+              <a
+                href="https://instagram.com/mesa.menu"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-[#722F37] hover:text-[#5a252c]"
+              >
+                @mesa.menu
+              </a>
+            </div>
+          </div>
         </div>
 
         <div className="mt-12">

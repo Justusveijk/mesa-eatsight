@@ -672,11 +672,14 @@ export default function LandingPage() {
               © 2026 Mesa & Eatsight. Made with ❤️ in Amsterdam.
             </p>
             <div className="flex gap-4">
+              <a href="https://instagram.com/eatsight.io" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white transition">
+                @eatsight.io
+              </a>
+              <a href="https://instagram.com/mesa.menu" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white transition">
+                @mesa.menu
+              </a>
               <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white transition">
                 LinkedIn
-              </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white transition">
-                Twitter
               </a>
             </div>
           </div>
