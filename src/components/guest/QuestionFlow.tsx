@@ -24,16 +24,23 @@ import {
 
 export type Intent = 'drinks' | 'food' | 'both'
 
+// Structured results with food and drinks separated
+export interface RecommendationResults {
+  primaryFood: RecommendedItem[]
+  primaryDrinks: RecommendedItem[]
+  pairingFood: RecommendedItem[]
+  pairingDrinks: RecommendedItem[]
+  intent: Intent
+  showFallbackMessage: boolean
+  unmetPreferences: string[]
+  feedbackMessage: string | null
+}
+
 interface QuestionFlowProps {
   venueId: string
   tableRef: string | null
   intent: Intent
-  onComplete: (
-    recommendations: RecommendedItem[],
-    showFallbackMessage?: boolean,
-    unmetPreferences?: string[],
-    feedbackMessage?: string | null
-  ) => void
+  onComplete: (results: RecommendationResults) => void
   onBack: () => void
 }
 
@@ -155,20 +162,26 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
 
     // Start fetching recommendations
     const fetchStart = Date.now()
-    let allRecommendations: RecommendedItem[] = []
     let showFallbackMessage = false
     const unmetPreferences: string[] = []
 
-    // Main food recommendations (or cross-sell if drinks only)
+    // Keep food and drinks SEPARATE from the start
+    let primaryFood: RecommendedItem[] = []
+    let primaryDrinks: RecommendedItem[] = []
+    let pairingFood: RecommendedItem[] = []
+    let pairingDrinks: RecommendedItem[] = []
+
+    // Main food recommendations
     if (intent === 'food' || intent === 'both') {
+      console.log('🍔 Fetching food recommendations...')
       const result = await getRecommendationsWithFallback(venueId, foodPreferences, intent === 'both' ? 2 : 3)
-      allRecommendations = [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
+      primaryFood = [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
       showFallbackMessage = result.showFallbackMessage
+      console.log('🍔 Food recommendations received:', primaryFood.length, primaryFood.map(f => f.name))
 
       // Track unmet demand if we had to show fallback items
       if (result.showFallbackMessage && sessionId) {
         await trackUnmetDemand(venueId, sessionId, foodPreferences)
-        // Track what specifically wasn't met
         if (foodPreferences.dietary.includes('diet_vegan')) {
           unmetPreferences.push('vegan options')
         }
@@ -179,56 +192,53 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
           unmetPreferences.push('gluten-free options')
         }
       }
-    } else if (intent === 'drinks') {
-      // Fetch food cross-sell items (use default preferences for a general selection)
-      const defaultFoodPrefs = {
-        mood: 'mood_comfort' as MoodTag,
-        flavors: [],
-        portion: 'portion_medium' as PortionTag,
-        dietary: [],
-        price: null,
-      }
-      const crossSellFood = await getRecommendationsWithFallback(venueId, defaultFoodPrefs, 2)
-      // Mark as cross-sell items
-      const crossSellItems = crossSellFood.recommendations.map(item => ({ ...item, isCrossSell: true }))
-      allRecommendations = [...allRecommendations, ...crossSellItems]
     }
 
-    // Main drink recommendations (or cross-sell if food only)
+    // Main drink recommendations
     if (intent === 'drinks' || intent === 'both') {
       console.log('🍹 Fetching drink recommendations...')
       console.log('  Drink preferences:', drinkPreferences)
       const drinkRecs = await getDrinkRecommendations(venueId, drinkPreferences, intent === 'both' ? 2 : 3)
-      console.log('🍹 Drink recommendations received:', drinkRecs.length)
-      console.log('  Drinks:', drinkRecs.map(d => ({ name: d.name, category: d.category, score: d.score })))
-
-      allRecommendations = [...allRecommendations, ...drinkRecs]
+      primaryDrinks = drinkRecs
+      console.log('🍹 Drink recommendations received:', primaryDrinks.length, primaryDrinks.map(d => d.name))
 
       // Check for unmet drink preferences
-      const mainDrinks = drinkRecs.filter(d => !d.isCrossSell)
       const isNonAlcoholic = drinkPreferences.drinkStrength === 'abv_zero' || drinkPreferences.drinkStrength === 'strength_none'
-      if (isNonAlcoholic && mainDrinks.length === 0) {
+      if (isNonAlcoholic && primaryDrinks.length === 0) {
         unmetPreferences.push('non-alcoholic drinks')
       }
-    } else if (intent === 'food') {
-      // Fetch drink cross-sell items (use default preferences for a general selection)
+    }
+
+    // Cross-sell: If drinks only, suggest food
+    if (intent === 'drinks') {
+      const defaultFoodPrefs = {
+        mood: 'mood_comfort' as MoodTag,
+        flavors: [],
+        portion: 'portion_standard' as PortionTag,
+        dietary: [],
+        price: null,
+      }
+      const crossSellFood = await getRecommendationsWithFallback(venueId, defaultFoodPrefs, 2)
+      pairingFood = crossSellFood.recommendations.map(item => ({ ...item, isCrossSell: true }))
+      console.log('🍔 Pairing food:', pairingFood.map(f => f.name))
+    }
+
+    // Cross-sell: If food only, suggest drinks
+    if (intent === 'food') {
       const defaultDrinkPrefs: DrinkPreferences = {
         drinkStrength: 'abv_light',
         drinkFeel: 'format_crisp',
         drinkTaste: [],
       }
       const crossSellDrinks = await getDrinkRecommendations(venueId, defaultDrinkPrefs, 2)
-      // Mark as cross-sell items
-      const crossSellItems = crossSellDrinks.map(item => ({ ...item, isCrossSell: true }))
-      allRecommendations = [...allRecommendations, ...crossSellItems]
+      pairingDrinks = crossSellDrinks.map(item => ({ ...item, isCrossSell: true }))
+      console.log('🍹 Pairing drinks:', pairingDrinks.map(d => d.name))
     }
 
     // Generate feedback message if we have unmet preferences
     let feedbackMessage: string | null = null
     if (unmetPreferences.length > 0) {
       feedbackMessage = `We'll share your interest in ${unmetPreferences.join(' and ')} with the restaurant.`
-
-      // Log unmet demand to analytics
       if (sessionId) {
         trackEvent(venueId, sessionId, 'unmet_demand', { preferences: unmetPreferences })
       }
@@ -240,32 +250,44 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
       await new Promise(resolve => setTimeout(resolve, 2000 - elapsed))
     }
 
+    // Save results to analytics
+    const allItems = [...primaryFood, ...primaryDrinks, ...pairingFood, ...pairingDrinks]
     if (sessionId) {
-      // Save results with actual scores
-      const resultsToSave = allRecommendations.map(r => ({
+      const resultsToSave = allItems.map(r => ({
         id: r.id,
         score: r.score,
         reason: r.reason,
       }))
       await saveRecResults(sessionId, resultsToSave)
       trackEvent(venueId, sessionId, 'recommendations_shown', {
-        count: allRecommendations.length,
-        items: allRecommendations.map(r => r.id),
+        count: allItems.length,
+        items: allItems.map(r => r.id),
         hasFallback: showFallbackMessage,
         unmetPreferences,
       })
     }
 
-    console.log('📤 QuestionFlow calling onComplete with:')
-    console.log('  Total recommendations:', allRecommendations.length)
-    console.log('  Items:', allRecommendations.map(r => ({
-      name: r.name,
-      category: r.category,
-      isCrossSell: r.isCrossSell
-    })))
+    // Build structured result
+    const results: RecommendationResults = {
+      primaryFood,
+      primaryDrinks,
+      pairingFood,
+      pairingDrinks,
+      intent,
+      showFallbackMessage,
+      unmetPreferences,
+      feedbackMessage,
+    }
+
+    console.log('📤 QuestionFlow calling onComplete with structured results:')
+    console.log('  Intent:', results.intent)
+    console.log('  Primary Food:', results.primaryFood.map(f => f.name))
+    console.log('  Primary Drinks:', results.primaryDrinks.map(d => d.name))
+    console.log('  Pairing Food:', results.pairingFood.map(f => f.name))
+    console.log('  Pairing Drinks:', results.pairingDrinks.map(d => d.name))
 
     setIsLoading(false)
-    onComplete(allRecommendations, showFallbackMessage, unmetPreferences, feedbackMessage)
+    onComplete(results)
   }, [venueId, foodPreferences, drinkPreferences, sessionId, onComplete, intent])
 
   // Food flow navigation

@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { QuestionFlow, Intent } from '@/components/guest/QuestionFlow'
+import { QuestionFlow, Intent, RecommendationResults } from '@/components/guest/QuestionFlow'
 import { RecommendationCard } from '@/components/guest/RecommendationCard'
-import { RecommendedItem } from '@/lib/recommendations'
 import { createClient } from '@/lib/supabase/client'
 
 interface Venue {
@@ -25,10 +24,7 @@ type Screen = 'loading' | 'empty' | 'landing' | 'intent' | 'questions' | 'recomm
 export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [screen, setScreen] = useState<Screen>('loading')
   const [intent, setIntent] = useState<Intent>('both')
-  const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
-  const [showFallbackMessage, setShowFallbackMessage] = useState(false)
-  const [unmetPreferences, setUnmetPreferences] = useState<string[]>([])
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
+  const [results, setResults] = useState<RecommendationResults | null>(null)
 
   // Check if venue has menu items on load
   useEffect(() => {
@@ -75,70 +71,23 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     setScreen('questions')
   }
 
-  const handleQuestionsComplete = (
-    recs: RecommendedItem[],
-    hasFallback?: boolean,
-    unmet?: string[],
-    feedback?: string | null
-  ) => {
+  const handleQuestionsComplete = (newResults: RecommendationResults) => {
     console.log('🎯 VenueFlow handleQuestionsComplete received:')
-    console.log('  Total recommendations:', recs.length)
-    console.log('  Items:', recs.map(r => ({
-      name: r.name,
-      category: r.category,
-      isCrossSell: r.isCrossSell,
-      score: r.score
-    })))
+    console.log('  Intent:', newResults.intent)
+    console.log('  Primary Food:', newResults.primaryFood.map(f => f.name))
+    console.log('  Primary Drinks:', newResults.primaryDrinks.map(d => d.name))
+    console.log('  Pairing Food:', newResults.pairingFood.map(f => f.name))
+    console.log('  Pairing Drinks:', newResults.pairingDrinks.map(d => d.name))
 
-    setRecommendations(recs)
-    setShowFallbackMessage(hasFallback || false)
-    setUnmetPreferences(unmet || [])
-    setFeedbackMessage(feedback || null)
+    setResults(newResults)
     setScreen('recommendations')
   }
 
   const handleStartOver = () => {
     setScreen('landing')
-    setRecommendations([])
-    setShowFallbackMessage(false)
-    setUnmetPreferences([])
-    setFeedbackMessage(null)
+    setResults(null)
     setIntent('both')
   }
-
-  // Helper to check if item is a drink
-  const isDrinkItem = (item: RecommendedItem) => {
-    const category = (item.category || '').toLowerCase().trim()
-    const drinkCategories = [
-      'drinks', 'beverages', 'cocktails', 'beer', 'wine', 'mocktails',
-      'soft drinks', 'coffee', 'tea', 'spirits', 'hot drinks', 'juices',
-      'smoothies', 'wines', 'beers'
-    ]
-    const isDrinkCategory = drinkCategories.some(dc => category.includes(dc) || dc.includes(category))
-    const hasDrinkTag = item.tags?.some(t =>
-      t.startsWith('drink') ||
-      t.startsWith('abv_') ||
-      t.includes('cocktail') ||
-      t.includes('wine') ||
-      t.includes('beer') ||
-      t === 'temp_hot'
-    )
-    const isDrink = isDrinkCategory || hasDrinkTag
-    console.log(`isDrinkItem: "${item.name}" category="${category}" → ${isDrink}`)
-    return isDrink
-  }
-
-  // Separate main recommendations from cross-sell items
-  const mainRecommendations = recommendations.filter(item => !item.isCrossSell)
-  const crossSellRecommendations = recommendations.filter(item => item.isCrossSell)
-
-  // Main food and drink items (what user asked for)
-  const foodItems = mainRecommendations.filter(item => !isDrinkItem(item))
-  const drinkItems = mainRecommendations.filter(item => isDrinkItem(item))
-
-  // Cross-sell items (opposite of what user asked for)
-  const crossSellFoodItems = crossSellRecommendations.filter(item => !isDrinkItem(item))
-  const crossSellDrinkItems = crossSellRecommendations.filter(item => isDrinkItem(item))
 
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
@@ -343,17 +292,10 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
         )}
 
         {/* Recommendations Screen */}
-        {screen === 'recommendations' && (
-          <RecommendationResults
-            foodItems={foodItems}
-            drinkItems={drinkItems}
-            crossSellFoodItems={crossSellFoodItems}
-            crossSellDrinkItems={crossSellDrinkItems}
-            intent={intent}
+        {screen === 'recommendations' && results && (
+          <RecommendationResultsView
+            results={results}
             venueName={venue.name}
-            showFallbackMessage={showFallbackMessage}
-            unmetPreferences={unmetPreferences}
-            feedbackMessage={feedbackMessage}
             onStartOver={handleStartOver}
           />
         )}
@@ -362,44 +304,36 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   )
 }
 
-// Recommendation Results Component
-interface RecommendationResultsProps {
-  foodItems: RecommendedItem[]
-  drinkItems: RecommendedItem[]
-  crossSellFoodItems: RecommendedItem[]
-  crossSellDrinkItems: RecommendedItem[]
-  intent: Intent
+// Recommendation Results Component - Uses structured results
+interface RecommendationResultsViewProps {
+  results: RecommendationResults
   venueName: string
-  showFallbackMessage: boolean
-  unmetPreferences: string[]
-  feedbackMessage: string | null
   onStartOver: () => void
 }
 
-function RecommendationResults({
-  foodItems,
-  drinkItems,
-  crossSellFoodItems,
-  crossSellDrinkItems,
-  intent,
+function RecommendationResultsView({
+  results,
   venueName,
-  showFallbackMessage,
-  unmetPreferences,
-  feedbackMessage,
   onStartOver
-}: RecommendationResultsProps) {
-  // Generate pairing message only when we have both food and drinks
-  const pairingMessage = (() => {
-    if (intent !== 'both') return null
-    if (foodItems.length === 0 || drinkItems.length === 0) return null
+}: RecommendationResultsViewProps) {
+  const {
+    primaryFood,
+    primaryDrinks,
+    pairingFood,
+    pairingDrinks,
+    intent,
+    showFallbackMessage,
+    unmetPreferences,
+    feedbackMessage
+  } = results
 
-    const topFood = foodItems[0]
-    const topDrink = drinkItems[0]
-
-    if (!topFood?.name || !topDrink?.name) return null
-
-    return `${topDrink.name} pairs perfectly with ${topFood.name}`
-  })()
+  console.log('🎯 RecommendationResultsView rendering:', {
+    intent,
+    primaryFood: primaryFood.map(f => f.name),
+    primaryDrinks: primaryDrinks.map(d => d.name),
+    pairingFood: pairingFood.map(f => f.name),
+    pairingDrinks: pairingDrinks.map(d => d.name),
+  })
 
   return (
     <div className="px-6 py-8 max-w-lg mx-auto pb-32">
@@ -452,121 +386,165 @@ function RecommendationResults({
         </motion.div>
       )}
 
-      {/* Pairing suggestion banner - only show when we have a valid pairing */}
-      {pairingMessage && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="bg-[#722F37]/10 rounded-2xl p-4 mb-8 text-center"
-        >
-          <p className="text-sm text-[#722F37] font-medium">
-            💡 Perfect pairing
-          </p>
-          <p className="text-[#1a1a1a] mt-1">
-            {pairingMessage}
-          </p>
-        </motion.div>
-      )}
-
-      {/* Food Section */}
-      {(intent === 'food' || intent === 'both') && foodItems.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
-            <span>🍽️</span> To Eat
-          </h3>
-          <div className="space-y-3">
-            {foodItems.map((item, i) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <RecommendationCard
-                  item={item}
-                  pairing={intent === 'both' && drinkItems[0] ? {
-                    name: drinkItems[0].name,
-                    price: drinkItems[0].price
-                  } : undefined}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Drinks Section */}
-      {(intent === 'drinks' || intent === 'both') && drinkItems.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
-            <span>🍸</span> To Drink
-          </h3>
-          <div className="space-y-3">
-            {drinkItems.map((item, i) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.1 }}
-              >
-                <RecommendationCard
-                  item={item}
-                  pairing={intent === 'both' && foodItems[0] ? {
-                    name: foodItems[0].name,
-                    price: foodItems[0].price
-                  } : undefined}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Cross-sell suggestion for drinks-only */}
-      {intent === 'drinks' && crossSellFoodItems.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="p-4 bg-[#FDFBF7] border border-[#1a1a1a]/10 rounded-xl mb-8"
-        >
-          <p className="text-sm text-[#1a1a1a]/60 mb-3">
-            🍽️ Feeling peckish? These pair well:
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {crossSellFoodItems.slice(0, 2).map((item) => (
-              <div key={item.id} className="flex-shrink-0 px-3 py-2 bg-white rounded-lg text-sm border border-[#1a1a1a]/5">
-                {item.name} · <span className="text-[#722F37]">€{item.price}</span>
+      {/* INTENT: FOOD ONLY */}
+      {intent === 'food' && (
+        <>
+          {primaryFood.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
+                <span>🍽️</span> TO EAT
+              </h3>
+              <div className="space-y-3">
+                {primaryFood.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <RecommendationCard item={item} />
+                  </motion.div>
+                ))}
               </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
+            </div>
+          )}
 
-      {/* Cross-sell suggestion for food-only */}
-      {intent === 'food' && crossSellDrinkItems.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="p-4 bg-[#FDFBF7] border border-[#1a1a1a]/10 rounded-xl mb-8"
-        >
-          <p className="text-sm text-[#1a1a1a]/60 mb-3">
-            🍸 Something to drink with that?
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {crossSellDrinkItems.slice(0, 2).map((item) => (
-              <div key={item.id} className="flex-shrink-0 px-3 py-2 bg-white rounded-lg text-sm border border-[#1a1a1a]/5">
-                {item.name} · <span className="text-[#722F37]">€{item.price}</span>
+          {/* Cross-sell drinks */}
+          {pairingDrinks.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-8 pt-6 border-t border-[#1a1a1a]/10"
+            >
+              <div className="text-center mb-4">
+                <p className="text-sm text-[#1a1a1a]/60">🍸 Something to drink?</p>
+                <p className="text-xs text-[#1a1a1a]/40">These pair well with your food</p>
               </div>
-            ))}
-          </div>
-        </motion.div>
+              <div className="space-y-3">
+                {pairingDrinks.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center px-4 py-3 bg-white rounded-xl border border-[#1a1a1a]/5">
+                    <span className="text-[#1a1a1a]">{item.name}</span>
+                    <span className="text-[#722F37] font-medium">€{item.price}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </>
       )}
 
-      {/* No results */}
-      {foodItems.length === 0 && drinkItems.length === 0 && (
+      {/* INTENT: DRINKS ONLY */}
+      {intent === 'drinks' && (
+        <>
+          {primaryDrinks.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
+                <span>🍸</span> TO DRINK
+              </h3>
+              <div className="space-y-3">
+                {primaryDrinks.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <RecommendationCard item={item} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cross-sell food */}
+          {pairingFood.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-8 pt-6 border-t border-[#1a1a1a]/10"
+            >
+              <div className="text-center mb-4">
+                <p className="text-sm text-[#1a1a1a]/60">🍽️ Feeling peckish?</p>
+                <p className="text-xs text-[#1a1a1a]/40">These pair well with your drinks</p>
+              </div>
+              <div className="space-y-3">
+                {pairingFood.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center px-4 py-3 bg-white rounded-xl border border-[#1a1a1a]/5">
+                    <span className="text-[#1a1a1a]">{item.name}</span>
+                    <span className="text-[#722F37] font-medium">€{item.price}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </>
+      )}
+
+      {/* INTENT: BOTH FOOD AND DRINKS - TWO SEPARATE SECTIONS */}
+      {intent === 'both' && (
+        <>
+          {/* Food section */}
+          {primaryFood.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
+                <span>🍽️</span> TO EAT
+              </h3>
+              <div className="space-y-3">
+                {primaryFood.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <RecommendationCard item={item} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Drinks section - SEPARATE */}
+          {primaryDrinks.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
+                <span>🍸</span> TO DRINK
+              </h3>
+              <div className="space-y-3">
+                {primaryDrinks.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + i * 0.1 }}
+                  >
+                    <RecommendationCard item={item} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pairing suggestion if we have both */}
+          {primaryFood.length > 0 && primaryDrinks.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-4 p-4 bg-[#722F37]/5 rounded-xl text-center"
+            >
+              <p className="text-sm text-[#722F37]">
+                💡 <strong>{primaryDrinks[0].name}</strong> pairs beautifully with <strong>{primaryFood[0].name}</strong>
+              </p>
+            </motion.div>
+          )}
+        </>
+      )}
+
+      {/* No results state */}
+      {primaryFood.length === 0 && primaryDrinks.length === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -574,12 +552,17 @@ function RecommendationResults({
         >
           <div className="text-5xl mb-4">🤔</div>
           <h3 className="text-xl font-medium text-[#1a1a1a] mb-2">
-            We couldn&apos;t find a match
+            No perfect matches found
           </h3>
           <p className="text-[#1a1a1a]/50 mb-6 max-w-sm mx-auto">
-            Your dietary requirements are important to us.
-            We&apos;ve let {venueName} know so they can improve their options.
+            Your preferences are important to us. We&apos;ve let {venueName} know!
           </p>
+          <button
+            onClick={onStartOver}
+            className="px-6 py-3 bg-[#B2472A] text-white rounded-full"
+          >
+            Try again
+          </button>
         </motion.div>
       )}
 
