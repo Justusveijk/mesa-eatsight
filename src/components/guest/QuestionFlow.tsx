@@ -4,54 +4,35 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag, PriceTag } from '@/lib/types/taxonomy'
 import { Button } from '@/components/ui/button'
-import { createRecSession, trackEvent, getRecommendationsWithFallback, saveRecResults, RecommendedItem, trackUnmetDemand, RecommendationsResult } from '@/lib/recommendations'
+import { createRecSession, trackEvent, getRecommendationsWithFallback, saveRecResults, RecommendedItem, trackUnmetDemand } from '@/lib/recommendations'
+import {
+  foodMoodOptions,
+  foodFlavorOptions,
+  foodPortionOptions,
+  foodDietOptions,
+  foodPriceOptions,
+  drinkMoodOptions,
+  drinkStyleOptions,
+  drinkStrengthOptions,
+  DrinkMood,
+  DrinkStyle,
+  DrinkStrength,
+  DrinkPreferences,
+  defaultDrinkPreferences,
+} from '@/lib/questions'
+
+export type Intent = 'drinks' | 'food' | 'both'
 
 interface QuestionFlowProps {
   venueId: string
   tableRef: string | null
+  intent: Intent
   onComplete: (recommendations: RecommendedItem[], showFallbackMessage?: boolean) => void
   onBack: () => void
 }
 
-type Step = 1 | 2 | 3 | 4 | 5
-
-const moodOptions: { id: MoodTag; label: string; icon: string }[] = [
-  { id: 'mood_comfort', label: 'Comfort / Indulgent', icon: '🍔' },
-  { id: 'mood_light', label: 'Fresh / Light', icon: '🥗' },
-  { id: 'mood_protein', label: 'High-protein / Filling', icon: '💪' },
-  { id: 'mood_warm', label: 'Warm / Cozy', icon: '🍜' },
-  { id: 'mood_treat', label: 'Sweet Treat', icon: '🍰' },
-]
-
-const flavorOptions: { id: FlavorTag; label: string; icon: string }[] = [
-  { id: 'flavor_umami', label: 'Savoury / Umami', icon: '🧀' },
-  { id: 'flavor_spicy', label: 'Spicy', icon: '🌶️' },
-  { id: 'flavor_sweet', label: 'Sweet', icon: '🍯' },
-  { id: 'flavor_tangy', label: 'Tangy / Sour', icon: '🍋' },
-  { id: 'flavor_smoky', label: 'Smoky', icon: '🔥' },
-]
-
-const portionOptions: { id: PortionTag; label: string; icon: string }[] = [
-  { id: 'portion_bite', label: 'Just a bite', icon: '🥄' },
-  { id: 'portion_standard', label: 'Normal hungry', icon: '🍽️' },
-  { id: 'portion_hearty', label: 'Very hungry', icon: '🍖' },
-]
-
-const dietOptions: { id: DietTag; label: string }[] = [
-  { id: 'diet_vegetarian', label: 'Vegetarian' },
-  { id: 'diet_vegan', label: 'Vegan' },
-  { id: 'diet_gluten_free', label: 'Gluten-free' },
-  { id: 'diet_dairy_free', label: 'Dairy-free' },
-  { id: 'diet_halal', label: 'Halal' },
-  { id: 'diet_no_pork', label: 'No pork' },
-  { id: 'allergy_nut_free', label: 'Nut allergy' },
-]
-
-const priceOptions: { id: PriceTag; label: string; icon: string }[] = [
-  { id: 'price_1', label: '€ Best value', icon: '💚' },
-  { id: 'price_2', label: '€€ Mid-range', icon: '⭐' },
-  { id: 'price_3', label: '€€€ Treat yourself', icon: '✨' },
-]
+type FoodStep = 1 | 2 | 3 | 4 | 5
+type DrinkStep = 1 | 2 | 3
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -100,12 +81,11 @@ const titleVariants = {
   },
 }
 
-export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: QuestionFlowProps) {
-  const [step, setStep] = useState<Step>(1)
-  const [direction, setDirection] = useState(1)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [preferences, setPreferences] = useState<GuestPreferences>({
+export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: QuestionFlowProps) {
+  // Food flow state
+  const [foodStep, setFoodStep] = useState<FoodStep>(1)
+  const [foodDirection, setFoodDirection] = useState(1)
+  const [foodPreferences, setFoodPreferences] = useState<GuestPreferences>({
     mood: null,
     flavors: [],
     portion: null,
@@ -113,28 +93,58 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
     price: null,
   })
 
+  // Drink flow state
+  const [drinkStep, setDrinkStep] = useState<DrinkStep>(1)
+  const [drinkDirection, setDrinkDirection] = useState(1)
+  const [drinkPreferences, setDrinkPreferences] = useState<DrinkPreferences>(defaultDrinkPreferences)
+
+  // Which flow are we in (for 'both' intent)
+  const [currentFlow, setCurrentFlow] = useState<'food' | 'drinks'>(intent === 'drinks' ? 'drinks' : 'food')
+
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const totalFoodSteps = 5
+  const totalDrinkSteps = 3
+
+  // Calculate overall progress
+  const getProgress = () => {
+    if (intent === 'food') {
+      return foodStep / totalFoodSteps
+    } else if (intent === 'drinks') {
+      return drinkStep / totalDrinkSteps
+    } else {
+      // Both: food first, then drinks
+      if (currentFlow === 'food') {
+        return (foodStep / totalFoodSteps) * 0.6 // Food is 60% of journey
+      } else {
+        return 0.6 + (drinkStep / totalDrinkSteps) * 0.4 // Drinks is 40%
+      }
+    }
+  }
+
   // Create session when flow starts
   useEffect(() => {
     async function initSession() {
       const id = await createRecSession(venueId, tableRef)
       setSessionId(id)
       if (id) {
-        trackEvent(venueId, id, 'flow_started', { tableRef })
+        trackEvent(venueId, id, 'flow_started', { tableRef, intent })
       }
     }
     initSession()
-  }, [venueId, tableRef])
+  }, [venueId, tableRef, intent])
 
   const handleComplete = useCallback(async () => {
     setIsLoading(true)
 
     if (sessionId) {
-      trackEvent(venueId, sessionId, 'flow_completed', { preferences })
+      trackEvent(venueId, sessionId, 'flow_completed', { foodPreferences, drinkPreferences, intent })
     }
 
     // Start fetching recommendations
     const fetchStart = Date.now()
-    const result = await getRecommendationsWithFallback(venueId, preferences, 3)
+    const result = await getRecommendationsWithFallback(venueId, foodPreferences, 3)
     const allRecommendations = [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
 
     // Ensure loading screen shows for at least 2 seconds for effect
@@ -145,7 +155,7 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
 
     // Track unmet demand if we had to show fallback items
     if (result.showFallbackMessage && sessionId) {
-      await trackUnmetDemand(venueId, sessionId, preferences)
+      await trackUnmetDemand(venueId, sessionId, foodPreferences)
     }
 
     if (sessionId) {
@@ -165,44 +175,82 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
 
     setIsLoading(false)
     onComplete(allRecommendations, result.showFallbackMessage)
-  }, [venueId, preferences, sessionId, onComplete])
+  }, [venueId, foodPreferences, drinkPreferences, sessionId, onComplete, intent])
 
-  const goNext = () => {
-    if (step < 5) {
+  // Food flow navigation
+  const goNextFood = () => {
+    if (foodStep < 5) {
       if (sessionId) {
-        trackEvent(venueId, sessionId, 'step_completed', { step, preferences })
+        trackEvent(venueId, sessionId, 'food_step_completed', { step: foodStep, foodPreferences })
       }
-      setDirection(1)
-      setStep((s) => (s + 1) as Step)
+      setFoodDirection(1)
+      setFoodStep((s) => (s + 1) as FoodStep)
     } else {
-      handleComplete()
+      // Food flow done
+      if (intent === 'both') {
+        // Move to drinks
+        setCurrentFlow('drinks')
+      } else {
+        handleComplete()
+      }
     }
   }
 
-  const goBack = () => {
-    if (step > 1) {
+  const goBackFood = () => {
+    if (foodStep > 1) {
       if (sessionId) {
-        trackEvent(venueId, sessionId, 'step_back', { step })
+        trackEvent(venueId, sessionId, 'food_step_back', { step: foodStep })
       }
-      setDirection(-1)
-      setStep((s) => (s - 1) as Step)
+      setFoodDirection(-1)
+      setFoodStep((s) => (s - 1) as FoodStep)
     } else {
       if (sessionId) {
-        trackEvent(venueId, sessionId, 'flow_abandoned', { step })
+        trackEvent(venueId, sessionId, 'flow_abandoned', { step: foodStep })
       }
       onBack()
     }
   }
 
-  const selectMood = (mood: MoodTag) => {
-    setPreferences((p) => ({ ...p, mood }))
-    if (sessionId) {
-      trackEvent(venueId, sessionId, 'mood_selected', { mood })
+  // Drink flow navigation
+  const goNextDrink = () => {
+    if (drinkStep < 3) {
+      if (sessionId) {
+        trackEvent(venueId, sessionId, 'drink_step_completed', { step: drinkStep, drinkPreferences })
+      }
+      setDrinkDirection(1)
+      setDrinkStep((s) => (s + 1) as DrinkStep)
+    } else {
+      handleComplete()
     }
   }
 
+  const goBackDrink = () => {
+    if (drinkStep > 1) {
+      if (sessionId) {
+        trackEvent(venueId, sessionId, 'drink_step_back', { step: drinkStep })
+      }
+      setDrinkDirection(-1)
+      setDrinkStep((s) => (s - 1) as DrinkStep)
+    } else {
+      if (intent === 'both') {
+        // Go back to food flow
+        setCurrentFlow('food')
+      } else {
+        if (sessionId) {
+          trackEvent(venueId, sessionId, 'flow_abandoned', { step: drinkStep })
+        }
+        onBack()
+      }
+    }
+  }
+
+  // Food selections
+  const selectMood = (mood: MoodTag) => {
+    setFoodPreferences((p) => ({ ...p, mood }))
+  }
+
   const toggleFlavor = (flavor: FlavorTag) => {
-    setPreferences((p) => {
+    setFoodPreferences((p) => {
       if (p.flavors.includes(flavor)) {
         return { ...p, flavors: p.flavors.filter((f) => f !== flavor) }
       }
@@ -212,11 +260,11 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
   }
 
   const selectPortion = (portion: PortionTag) => {
-    setPreferences((p) => ({ ...p, portion }))
+    setFoodPreferences((p) => ({ ...p, portion }))
   }
 
   const toggleDiet = (diet: DietTag) => {
-    setPreferences((p) => {
+    setFoodPreferences((p) => {
       if (p.dietary.includes(diet)) {
         return { ...p, dietary: p.dietary.filter((d) => d !== diet) }
       }
@@ -225,23 +273,40 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
   }
 
   const selectPrice = (price: PriceTag | null) => {
-    setPreferences((p) => ({ ...p, price }))
+    setFoodPreferences((p) => ({ ...p, price }))
   }
 
-  const canContinue = () => {
-    switch (step) {
-      case 1:
-        return preferences.mood !== null
-      case 2:
-        return true
-      case 3:
-        return preferences.portion !== null
-      case 4:
-        return true
-      case 5:
-        return true
-      default:
-        return false
+  // Drink selections
+  const selectDrinkMood = (mood: DrinkMood) => {
+    setDrinkPreferences((p) => ({ ...p, drinkMood: mood }))
+  }
+
+  const selectDrinkStyle = (style: DrinkStyle) => {
+    setDrinkPreferences((p) => ({ ...p, drinkStyle: style }))
+  }
+
+  const selectDrinkStrength = (strength: DrinkStrength) => {
+    setDrinkPreferences((p) => ({ ...p, drinkStrength: strength }))
+  }
+
+  // Can continue checks
+  const canContinueFood = () => {
+    switch (foodStep) {
+      case 1: return foodPreferences.mood !== null
+      case 2: return true
+      case 3: return foodPreferences.portion !== null
+      case 4: return true
+      case 5: return true
+      default: return false
+    }
+  }
+
+  const canContinueDrink = () => {
+    switch (drinkStep) {
+      case 1: return drinkPreferences.drinkMood !== null
+      case 2: return drinkPreferences.drinkStyle !== null
+      case 3: return drinkPreferences.drinkStrength !== null
+      default: return false
     }
   }
 
@@ -281,7 +346,6 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
         className="fixed inset-0 bg-[#FDFBF7] flex items-center justify-center z-50"
       >
         <div className="text-center">
-          {/* Animated logo/icon */}
           <motion.div
             animate={{
               scale: [1, 1.1, 1],
@@ -294,10 +358,8 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
             }}
             className="text-6xl mb-8"
           >
-            🍽️
+            {intent === 'drinks' ? '🍸' : '🍽️'}
           </motion.div>
-
-          {/* Brand name with animation */}
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -306,8 +368,6 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
           >
             MESA
           </motion.h2>
-
-          {/* Tagline */}
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -316,8 +376,6 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
           >
             Menus made manageable
           </motion.p>
-
-          {/* Loading dots */}
           <motion.div className="flex justify-center gap-2 mt-8">
             {[0, 1, 2].map((i) => (
               <motion.div
@@ -335,8 +393,6 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
               />
             ))}
           </motion.div>
-
-          {/* Subtle message */}
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -350,33 +406,28 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
     )
   }
 
-  return (
-    <div className="min-h-screen flex flex-col bg-mesa-ivory relative overflow-hidden">
-      {/* Fixed top progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-mesa-sand z-50">
-        <motion.div
-          className="h-full bg-mesa-500"
-          initial={{ width: 0 }}
-          animate={{ width: `${(step / 5) * 100}%` }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-        />
-      </div>
+  // Render food flow
+  const renderFoodFlow = () => {
+    const goNext = goNextFood
+    const goBack = goBackFood
+    const step = foodStep
+    const direction = foodDirection
+    const canContinue = canContinueFood
 
-      {/* Warm gradient blobs */}
-      <div className="blob blob-mesa w-[300px] h-[300px] top-1/4 -right-32 opacity-15" />
-      <div className="blob blob-mesa w-[200px] h-[200px] bottom-1/4 -left-16 opacity-10" />
-
-      <div className="relative z-10 flex flex-col flex-1">
+    return (
+      <>
         {/* Progress indicator */}
         <div className="px-6 pt-6">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-mesa-graphite/60">Step {step} of 5</span>
+            <span className="text-xs text-[#1a1a1a]/60">
+              {intent === 'both' ? `Food: Step ${step} of ${totalFoodSteps}` : `Step ${step} of ${totalFoodSteps}`}
+            </span>
           </div>
-          <div className="h-1 bg-mesa-sand rounded-full overflow-hidden">
+          <div className="h-1 bg-[#1a1a1a]/10 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-mesa-500"
+              className="h-full bg-[#B2472A]"
               initial={false}
-              animate={{ width: `${(step / 5) * 100}%` }}
+              animate={{ width: `${getProgress() * 100}%` }}
               transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
             />
           </div>
@@ -386,31 +437,31 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
         <div className="px-6 pt-4">
           <button
             onClick={goBack}
-            className="text-mesa-graphite/70 hover:text-mesa-ink text-sm flex items-center gap-1"
+            className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] text-sm flex items-center gap-1"
           >
             <span>←</span> Back
           </button>
         </div>
 
         {/* Questions */}
-        <div className="flex-1 px-6 py-8 overflow-hidden">
+        <div className="flex-1 px-6 py-8 overflow-hidden flex items-center justify-center">
           <AnimatePresence mode="wait" custom={direction}>
             {step === 1 && (
               <motion.div
-                key="step1"
+                key="food-step1"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-                className="max-w-sm mx-auto"
+                className="w-full max-w-sm text-center"
               >
                 <motion.h1
                   variants={titleVariants}
                   initial="hidden"
                   animate="visible"
-                  className="text-2xl font-bold text-mesa-ink mb-2"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
                 >
                   What are you in the mood for?
                 </motion.h1>
@@ -418,19 +469,19 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1 }}
-                  className="text-mesa-graphite mb-8"
+                  className="text-[#1a1a1a]/60 mb-8"
                 >
                   Select one option
                 </motion.p>
                 <motion.div
-                  className="flex flex-wrap gap-3"
+                  className="flex flex-wrap gap-3 justify-center"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
-                  {moodOptions.map((option) =>
+                  {foodMoodOptions.map((option) =>
                     renderChip(
-                      preferences.mood === option.id,
+                      foodPreferences.mood === option.id,
                       option.label,
                       option.icon,
                       () => selectMood(option.id)
@@ -442,20 +493,20 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
 
             {step === 2 && (
               <motion.div
-                key="step2"
+                key="food-step2"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-                className="max-w-sm mx-auto"
+                className="w-full max-w-sm text-center"
               >
                 <motion.h1
                   variants={titleVariants}
                   initial="hidden"
                   animate="visible"
-                  className="text-2xl font-bold text-mesa-ink mb-2"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
                 >
                   Pick your flavour direction
                 </motion.h1>
@@ -463,19 +514,19 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1 }}
-                  className="text-mesa-graphite mb-8"
+                  className="text-[#1a1a1a]/60 mb-8"
                 >
                   Select up to 2 (optional)
                 </motion.p>
                 <motion.div
-                  className="flex flex-wrap gap-3"
+                  className="flex flex-wrap gap-3 justify-center"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
-                  {flavorOptions.map((option) =>
+                  {foodFlavorOptions.map((option) =>
                     renderChip(
-                      preferences.flavors.includes(option.id),
+                      foodPreferences.flavors.includes(option.id),
                       option.label,
                       option.icon,
                       () => toggleFlavor(option.id)
@@ -487,20 +538,20 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
 
             {step === 3 && (
               <motion.div
-                key="step3"
+                key="food-step3"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-                className="max-w-sm mx-auto"
+                className="w-full max-w-sm text-center"
               >
                 <motion.h1
                   variants={titleVariants}
                   initial="hidden"
                   animate="visible"
-                  className="text-2xl font-bold text-mesa-ink mb-2"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
                 >
                   How hungry are you?
                 </motion.h1>
@@ -508,19 +559,19 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1 }}
-                  className="text-mesa-graphite mb-8"
+                  className="text-[#1a1a1a]/60 mb-8"
                 >
                   Select one option
                 </motion.p>
                 <motion.div
-                  className="flex flex-wrap gap-3"
+                  className="flex flex-wrap gap-3 justify-center"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
-                  {portionOptions.map((option) =>
+                  {foodPortionOptions.map((option) =>
                     renderChip(
-                      preferences.portion === option.id,
+                      foodPreferences.portion === option.id,
                       option.label,
                       option.icon,
                       () => selectPortion(option.id)
@@ -532,20 +583,20 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
 
             {step === 4 && (
               <motion.div
-                key="step4"
+                key="food-step4"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-                className="max-w-sm mx-auto"
+                className="w-full max-w-sm text-center"
               >
                 <motion.h1
                   variants={titleVariants}
                   initial="hidden"
                   animate="visible"
-                  className="text-2xl font-bold text-mesa-ink mb-2"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
                 >
                   Any dietary needs?
                 </motion.h1>
@@ -553,31 +604,31 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1 }}
-                  className="text-mesa-graphite mb-8"
+                  className="text-[#1a1a1a]/60 mb-8"
                 >
                   Select all that apply (optional)
                 </motion.p>
                 <motion.div
-                  className="flex flex-wrap gap-3"
+                  className="flex flex-wrap gap-3 justify-center"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
-                  {dietOptions.map((option) =>
+                  {foodDietOptions.map((option) =>
                     renderChip(
-                      preferences.dietary.includes(option.id),
+                      foodPreferences.dietary.includes(option.id),
                       option.label,
                       undefined,
                       () => toggleDiet(option.id)
                     )
                   )}
                 </motion.div>
-                {preferences.dietary.length > 0 && (
+                {foodPreferences.dietary.length > 0 && (
                   <motion.button
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    onClick={() => setPreferences((p) => ({ ...p, dietary: [] }))}
-                    className="mt-4 text-sm text-mesa-graphite/70 hover:text-mesa-ink"
+                    onClick={() => setFoodPreferences((p) => ({ ...p, dietary: [] }))}
+                    className="mt-4 text-sm text-[#1a1a1a]/70 hover:text-[#1a1a1a]"
                   >
                     Clear selection
                   </motion.button>
@@ -587,20 +638,20 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
 
             {step === 5 && (
               <motion.div
-                key="step5"
+                key="food-step5"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-                className="max-w-sm mx-auto"
+                className="w-full max-w-sm text-center"
               >
                 <motion.h1
                   variants={titleVariants}
                   initial="hidden"
                   animate="visible"
-                  className="text-2xl font-bold text-mesa-ink mb-2"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
                 >
                   Budget?
                 </motion.h1>
@@ -608,22 +659,22 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1 }}
-                  className="text-mesa-graphite mb-8"
+                  className="text-[#1a1a1a]/60 mb-8"
                 >
                   Optional - skip if no preference
                 </motion.p>
                 <motion.div
-                  className="flex flex-wrap gap-3"
+                  className="flex flex-wrap gap-3 justify-center"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
-                  {priceOptions.map((option) =>
+                  {foodPriceOptions.map((option) =>
                     renderChip(
-                      preferences.price === option.id,
+                      foodPreferences.price === option.id,
                       option.label,
                       option.icon,
-                      () => selectPrice(preferences.price === option.id ? null : option.id)
+                      () => selectPrice(foodPreferences.price === option.id ? null : option.id)
                     )
                   )}
                 </motion.div>
@@ -642,7 +693,7 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
               onClick={goNext}
               disabled={!canContinue() || isLoading}
             >
-              {isLoading ? 'Finding recommendations...' : step === 5 ? 'Show recommendations' : 'Continue'}
+              {step === 5 ? (intent === 'both' ? 'Next: Drinks' : 'Show recommendations') : 'Continue'}
             </Button>
             {(step === 4 || step === 5) && (
               <Button
@@ -657,6 +708,226 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
             )}
           </div>
         </div>
+      </>
+    )
+  }
+
+  // Render drink flow
+  const renderDrinkFlow = () => {
+    const goNext = goNextDrink
+    const goBack = goBackDrink
+    const step = drinkStep
+    const direction = drinkDirection
+    const canContinue = canContinueDrink
+
+    return (
+      <>
+        {/* Progress indicator */}
+        <div className="px-6 pt-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-[#1a1a1a]/60">
+              {intent === 'both' ? `Drinks: Step ${step} of ${totalDrinkSteps}` : `Step ${step} of ${totalDrinkSteps}`}
+            </span>
+          </div>
+          <div className="h-1 bg-[#1a1a1a]/10 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-[#B2472A]"
+              initial={false}
+              animate={{ width: `${getProgress() * 100}%` }}
+              transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+            />
+          </div>
+        </div>
+
+        {/* Back button */}
+        <div className="px-6 pt-4">
+          <button
+            onClick={goBack}
+            className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] text-sm flex items-center gap-1"
+          >
+            <span>←</span> Back
+          </button>
+        </div>
+
+        {/* Questions */}
+        <div className="flex-1 px-6 py-8 overflow-hidden flex items-center justify-center">
+          <AnimatePresence mode="wait" custom={direction}>
+            {step === 1 && (
+              <motion.div
+                key="drink-step1"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="w-full max-w-sm text-center"
+              >
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
+                >
+                  What kind of drink are you after?
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-[#1a1a1a]/60 mb-8"
+                >
+                  Select one option
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3 justify-center"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {drinkMoodOptions.map((option) =>
+                    renderChip(
+                      drinkPreferences.drinkMood === option.id,
+                      option.label,
+                      option.icon,
+                      () => selectDrinkMood(option.id)
+                    )
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div
+                key="drink-step2"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="w-full max-w-sm text-center"
+              >
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
+                >
+                  How do you like it?
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-[#1a1a1a]/60 mb-8"
+                >
+                  Select one option
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3 justify-center"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {drinkStyleOptions.map((option) =>
+                    renderChip(
+                      drinkPreferences.drinkStyle === option.id,
+                      option.label,
+                      option.icon,
+                      () => selectDrinkStyle(option.id)
+                    )
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+
+            {step === 3 && (
+              <motion.div
+                key="drink-step3"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="w-full max-w-sm text-center"
+              >
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
+                >
+                  Alcohol preference?
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-[#1a1a1a]/60 mb-8"
+                >
+                  Select one option
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3 justify-center"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {drinkStrengthOptions.map((option) =>
+                    renderChip(
+                      drinkPreferences.drinkStrength === option.id,
+                      option.label,
+                      option.icon,
+                      () => selectDrinkStrength(option.id)
+                    )
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Continue button */}
+        <div className="px-6 pb-8">
+          <div className="max-w-sm mx-auto">
+            <Button
+              variant="mesa"
+              size="lg"
+              className="w-full"
+              onClick={goNext}
+              disabled={!canContinue() || isLoading}
+            >
+              {step === 3 ? 'Show recommendations' : 'Continue'}
+            </Button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FDFBF7] relative overflow-hidden">
+      {/* Fixed top progress bar */}
+      <div className="fixed top-0 left-0 right-0 h-1 bg-[#1a1a1a]/10 z-50">
+        <motion.div
+          className="h-full bg-[#B2472A]"
+          initial={{ width: 0 }}
+          animate={{ width: `${getProgress() * 100}%` }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        />
+      </div>
+
+      {/* Warm gradient blobs */}
+      <div className="absolute w-[300px] h-[300px] top-1/4 -right-32 bg-[#B2472A]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute w-[200px] h-[200px] bottom-1/4 -left-16 bg-[#B2472A]/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col flex-1 pt-14">
+        {/* Render appropriate flow */}
+        {intent === 'drinks' && renderDrinkFlow()}
+        {intent === 'food' && renderFoodFlow()}
+        {intent === 'both' && (currentFlow === 'food' ? renderFoodFlow() : renderDrinkFlow())}
       </div>
     </div>
   )

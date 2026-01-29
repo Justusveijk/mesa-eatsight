@@ -16,19 +16,6 @@
   --mesa-copper: #D47B4D;     /* Highlight accent */
 
   /* ========================================
-     Eatsight Colors (Operator-facing - analytical, premium dark)
-     ======================================== */
-  --ocean-950: #050B14;       /* Deepest background */
-  --ocean-900: #071427;       /* Base background */
-  --ocean-800: #0E1B2F;       /* Surface / sidebar */
-  --ocean-700: #132742;       /* Surface 2 / cards */
-  --ocean-600: #143A66;       /* Blob accent */
-  --text-primary: #E9EEF6;    /* Primary text */
-  --text-muted: #A9B4C6;      /* Muted text */
-  --line: #223552;            /* Subtle borders */
-  --signal: #FF6B5A;          /* Coral accent for CTAs, charts */
-
-  /* ========================================
      Landing Page Colors (Warm & Inviting)
      ======================================== */
   --landing-cream: #FDFBF7;       /* Background */
@@ -39,7 +26,7 @@
   --landing-warm-bg: #F5F3EF;     /* Alternate sections */
 
   /* ========================================
-     Dashboard Light Theme (Default)
+     Dashboard Light Theme
      ======================================== */
   --dash-bg-primary: #FDFBF7;
   --dash-bg-secondary: #F5F3EF;
@@ -53,8 +40,8 @@
   --dash-accent-dark: #0f2440;
 
   /* Legacy support */
-  --background: #ffffff;
-  --foreground: #111827;
+  --background: #FDFBF7;
+  --foreground: #1a1a1a;
 }
 
 @theme inline {
@@ -69,17 +56,6 @@
   --color-mesa-border: var(--mesa-border);
   --color-mesa-olive: var(--mesa-olive);
   --color-mesa-copper: var(--mesa-copper);
-
-  /* Eatsight */
-  --color-ocean-950: var(--ocean-950);
-  --color-ocean-900: var(--ocean-900);
-  --color-ocean-800: var(--ocean-800);
-  --color-ocean-700: var(--ocean-700);
-  --color-ocean-600: var(--ocean-600);
-  --color-text-primary: var(--text-primary);
-  --color-text-muted: var(--text-muted);
-  --color-line: var(--line);
-  --color-signal: var(--signal);
 
   /* Legacy */
   --color-background: var(--background);
@@ -107,16 +83,16 @@ body {
 }
 
 /* ========================================
-   Liquid Glass Design System
+   Glass Panel Design System (Light)
    ======================================== */
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
 }
 
 .glass-panel-light {
@@ -131,10 +107,6 @@ body {
 /* Gradient backgrounds */
 .gradient-mesa-hero {
   background: linear-gradient(135deg, #7A2A18, #B2472A, #E28B55);
-}
-
-.gradient-eatsight {
-  background: linear-gradient(180deg, #050B14, #071427, #0B2342);
 }
 
 /* Noise overlay for texture */
@@ -153,7 +125,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+  background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
   pointer-events: none;
 }
 
@@ -166,25 +138,8 @@ body {
   pointer-events: none;
 }
 
-.blob-coral {
-  background: var(--signal);
-}
-
-.blob-ocean {
-  background: var(--ocean-600);
-}
-
 .blob-mesa {
   background: var(--mesa-200);
-}
-
-/* Custom scrollbar for dark theme */
-.dark-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--line);
-}
-
-.dark-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--ocean-600);
 }
 
 /* Default scrollbar */

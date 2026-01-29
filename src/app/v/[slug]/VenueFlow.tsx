@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { QuestionFlow } from '@/components/guest/QuestionFlow'
+import { QuestionFlow, Intent } from '@/components/guest/QuestionFlow'
 import { RecommendedItem } from '@/lib/recommendations'
 
 interface Venue {
@@ -19,7 +19,6 @@ interface VenueFlowProps {
 }
 
 type Screen = 'landing' | 'intent' | 'questions' | 'recommendations'
-type Intent = 'drinks' | 'food' | 'both'
 
 export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [screen, setScreen] = useState<Screen>('landing')
@@ -218,6 +217,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
           <QuestionFlow
             venueId={venue.id}
             tableRef={tableRef}
+            intent={intent}
             onComplete={handleQuestionsComplete}
             onBack={() => setScreen('intent')}
           />
@@ -257,17 +257,18 @@ function RecommendationResults({
   showFallbackMessage,
   onStartOver
 }: RecommendationResultsProps) {
-  // Find a good pairing suggestion
-  const getPairingMessage = () => {
-    if (foodItems.length > 0 && drinkItems.length > 0) {
-      const topFood = foodItems[0]
-      const topDrink = drinkItems[0]
-      return `${topDrink.name} pairs perfectly with ${topFood.name}`
-    }
-    return null
-  }
+  // Generate pairing message only when we have both food and drinks
+  const pairingMessage = (() => {
+    if (intent !== 'both') return null
+    if (foodItems.length === 0 || drinkItems.length === 0) return null
 
-  const pairingMessage = getPairingMessage()
+    const topFood = foodItems[0]
+    const topDrink = drinkItems[0]
+
+    if (!topFood?.name || !topDrink?.name) return null
+
+    return `${topDrink.name} pairs perfectly with ${topFood.name}`
+  })()
 
   return (
     <div className="px-6 py-8 max-w-lg mx-auto pb-32">
@@ -301,8 +302,8 @@ function RecommendationResults({
         </motion.div>
       )}
 
-      {/* Pairing suggestion banner */}
-      {intent === 'both' && pairingMessage && (
+      {/* Pairing suggestion banner - only show when we have a valid pairing */}
+      {pairingMessage && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}

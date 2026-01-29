@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Upload, Search, Star, Plus, Pencil, Trash2, AlertCircle, Check, X, FileText, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { GlassPanel } from '@/components/shared/GlassPanel'
 import { TagEditor } from '@/components/dashboard/TagEditor'
 import { MenuTag, TAG_LABELS } from '@/lib/types/taxonomy'
 import { parseCSV, ParsedItem, ParseResult, downloadSimpleTemplate, downloadDetailedTemplate } from '@/lib/menu-import'
@@ -550,7 +549,7 @@ export default function MenuPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-signal"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]"></div>
       </div>
     )
   }
@@ -562,8 +561,8 @@ export default function MenuPage() {
         <div
           className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${
             toast.type === 'success'
-              ? 'bg-green-500/90 text-white'
-              : 'bg-red-500/90 text-white'
+              ? 'bg-green-500 text-white'
+              : 'bg-red-500 text-white'
           }`}
         >
           {toast.type === 'success' ? (
@@ -578,16 +577,16 @@ export default function MenuPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Menu Management</h1>
-          <p className="text-text-muted">
+          <h1 className="text-2xl font-bold text-[#1a1a1a]">Menu Management</h1>
+          <p className="text-[#1a1a1a]/50">
             {items.length} items
             {menu?.status === 'published' && (
-              <span className="ml-2 text-green-400">
+              <span className="ml-2 text-green-600">
                 (Published)
               </span>
             )}
             {menu?.status === 'draft' && (
-              <span className="ml-2 text-yellow-400">
+              <span className="ml-2 text-amber-600">
                 (Draft)
               </span>
             )}
@@ -595,13 +594,14 @@ export default function MenuPage() {
         </div>
         <div className="flex items-center gap-3">
           <Button
-            variant="signal-outline"
+            variant="outline"
             onClick={handlePublish}
             disabled={publishing || items.length === 0}
+            className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5"
           >
             {publishing ? 'Publishing...' : 'Publish Menu'}
           </Button>
-          <Button variant="signal" onClick={() => setShowAddModal(true)}>
+          <Button onClick={() => setShowAddModal(true)} className="bg-[#1e3a5f] hover:bg-[#0f2440] text-white">
             <Plus className="w-4 h-4 mr-2" />
             Add Item
           </Button>
@@ -610,22 +610,22 @@ export default function MenuPage() {
 
       {/* Bulk Actions Bar */}
       {selectedItems.length > 0 && (
-        <div className="flex items-center gap-4 p-4 mb-6 bg-ocean-800 border border-line rounded-lg">
-          <span className="text-text-primary font-medium">
+        <div className="flex items-center gap-4 p-4 mb-6 bg-white border border-gray-200 rounded-xl shadow-sm">
+          <span className="text-[#1a1a1a] font-medium">
             {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
           </span>
           <Button
-            variant="signal-outline"
+            variant="outline"
             size="sm"
             onClick={handleBulkDelete}
             disabled={deletingBulk}
-            className="text-red-400 border-red-400/50 hover:bg-red-500/10"
+            className="text-red-600 border-red-200 hover:bg-red-50"
           >
             <Trash2 className="w-4 h-4 mr-2" />
             {deletingBulk ? 'Deleting...' : 'Delete selected'}
           </Button>
           <Button
-            variant="signal-outline"
+            variant="outline"
             size="sm"
             onClick={() => setSelectedItems([])}
           >
@@ -636,21 +636,21 @@ export default function MenuPage() {
 
       {/* CSV Preview */}
       {parseResult && previewItems.length > 0 && (
-        <GlassPanel className="p-6 mb-8">
+        <div className="bg-white rounded-2xl p-6 mb-8 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-text-primary">Preview Import</h3>
+              <h3 className="font-semibold text-[#1a1a1a]">Preview Import</h3>
               <div className="flex items-center gap-4 mt-1 text-sm">
-                <span className="text-text-muted">
+                <span className="text-[#1a1a1a]/50">
                   {previewSummary.valid} of {previewSummary.total} items valid
                 </span>
                 {parseResult.isDetailedFormat && (
                   <>
-                    <span className="text-green-400">
+                    <span className="text-green-600">
                       {previewSummary.ready} ready
                     </span>
                     {previewSummary.needsReview > 0 && (
-                      <span className="text-yellow-400">
+                      <span className="text-amber-600">
                         {previewSummary.needsReview} need tag review
                       </span>
                     )}
@@ -659,13 +659,13 @@ export default function MenuPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="signal-outline" onClick={handleCancelPreview}>
+              <Button variant="outline" onClick={handleCancelPreview}>
                 Cancel
               </Button>
               <Button
-                variant="signal"
                 onClick={handleImport}
                 disabled={importing || previewSummary.valid === 0}
+                className="bg-[#1e3a5f] hover:bg-[#0f2440] text-white"
               >
                 {importing ? 'Importing...' : `Import ${previewSummary.valid} Items`}
               </Button>
@@ -674,9 +674,9 @@ export default function MenuPage() {
 
           {/* Import confirmation message */}
           {parseResult.isDetailedFormat && previewSummary.needsReview > 0 && (
-            <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-              <p className="text-sm text-yellow-400">
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <p className="text-sm text-amber-700">
                 {previewSummary.needsReview} items are missing required tags (mood, portion, temperature).
                 Click &quot;Edit&quot; to add tags before importing.
               </p>
@@ -684,25 +684,25 @@ export default function MenuPage() {
           )}
 
           {parseResult.errors.length > 0 && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               {parseResult.errors.map((error, i) => (
-                <p key={i} className="text-sm text-red-400">{error}</p>
+                <p key={i} className="text-sm text-red-600">{error}</p>
               ))}
             </div>
           )}
 
-          <div className="overflow-x-auto max-h-96 overflow-y-auto dark-scrollbar">
+          <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-ocean-800 z-10">
-                <tr className="border-b border-line">
-                  <th className="text-left py-2 px-3 text-text-muted">Status</th>
-                  <th className="text-left py-2 px-3 text-text-muted">Name</th>
-                  <th className="text-left py-2 px-3 text-text-muted">Price</th>
-                  <th className="text-left py-2 px-3 text-text-muted">Category</th>
+              <thead className="sticky top-0 bg-gray-50 z-10">
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Status</th>
+                  <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Name</th>
+                  <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Price</th>
+                  <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Category</th>
                   {parseResult.isDetailedFormat && (
-                    <th className="text-left py-2 px-3 text-text-muted">Auto Tags</th>
+                    <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Auto Tags</th>
                   )}
-                  <th className="text-right py-2 px-3 text-text-muted">Actions</th>
+                  <th className="text-right py-2 px-3 text-[#1a1a1a]/50">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -713,52 +713,52 @@ export default function MenuPage() {
                   return (
                     <tr
                       key={i}
-                      className={`border-b border-line/50 ${
+                      className={`border-b border-gray-100 ${
                         !item.isValid
-                          ? 'bg-red-500/10'
+                          ? 'bg-red-50'
                           : needsReview
-                            ? 'bg-yellow-500/5'
+                            ? 'bg-amber-50'
                             : ''
                       }`}
                     >
                       <td className="py-2 px-3">
                         {item.isValid ? (
                           itemReady ? (
-                            <Check className="w-4 h-4 text-green-400" />
+                            <Check className="w-4 h-4 text-green-600" />
                           ) : (
                             <span title="Missing required tags">
-                              <AlertCircle className="w-4 h-4 text-yellow-400" />
+                              <AlertCircle className="w-4 h-4 text-amber-600" />
                             </span>
                           )
                         ) : (
                           <span title={item.errors.join(', ')}>
-                            <X className="w-4 h-4 text-red-400" />
+                            <X className="w-4 h-4 text-red-600" />
                           </span>
                         )}
                       </td>
-                      <td className="py-2 px-3 text-text-primary font-medium">{item.name}</td>
-                      <td className="py-2 px-3 text-text-muted">
+                      <td className="py-2 px-3 text-[#1a1a1a] font-medium">{item.name}</td>
+                      <td className="py-2 px-3 text-[#1a1a1a]/70">
                         {item.isValid ? `€${item.price.toFixed(2)}` : '-'}
                       </td>
-                      <td className="py-2 px-3 text-text-muted">{item.category}</td>
+                      <td className="py-2 px-3 text-[#1a1a1a]/70">{item.category}</td>
                       {parseResult.isDetailedFormat && (
                         <td className="py-2 px-3">
                           <div className="flex flex-wrap gap-1">
                             {item.editedTags.slice(0, 4).map((tag) => (
                               <span
                                 key={tag}
-                                className="text-xs px-2 py-0.5 rounded-full bg-ocean-600/50 text-text-muted"
+                                className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/70"
                               >
                                 {TAG_LABELS[tag]}
                               </span>
                             ))}
                             {item.editedTags.length > 4 && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-ocean-600/50 text-text-muted">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/70">
                                 +{item.editedTags.length - 4}
                               </span>
                             )}
                             {item.editedTags.length === 0 && (
-                              <span className="text-xs text-text-muted/50">No tags</span>
+                              <span className="text-xs text-[#1a1a1a]/40">No tags</span>
                             )}
                           </div>
                         </td>
@@ -767,7 +767,7 @@ export default function MenuPage() {
                         {item.isValid && (
                           <button
                             onClick={() => setEditingPreviewIndex(i)}
-                            className="text-xs text-signal hover:underline"
+                            className="text-xs text-[#1e3a5f] hover:underline"
                           >
                             Edit tags
                           </button>
@@ -779,37 +779,37 @@ export default function MenuPage() {
               </tbody>
             </table>
             {previewItems.length > 50 && (
-              <p className="text-center text-sm text-text-muted py-2">
+              <p className="text-center text-sm text-[#1a1a1a]/50 py-2">
                 ... and {previewItems.length - 50} more items
               </p>
             )}
           </div>
-        </GlassPanel>
+        </div>
       )}
 
       {/* Upload Section */}
       {!parseResult && (
-        <GlassPanel className="p-6 mb-8 overflow-visible">
-          <h3 className="font-semibold text-text-primary mb-4">Import from CSV</h3>
+        <div className="bg-white rounded-2xl p-6 mb-8 border border-gray-200 shadow-sm overflow-visible">
+          <h3 className="font-semibold text-[#1a1a1a] mb-4">Import from CSV</h3>
           <div
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
               isDragging
-                ? 'border-signal bg-signal/10'
-                : 'border-line hover:border-signal'
+                ? 'border-[#1e3a5f] bg-[#1e3a5f]/5'
+                : 'border-gray-300 hover:border-[#1e3a5f]'
             }`}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <Upload className="w-8 h-8 text-text-muted mx-auto mb-3" />
-            <p className="text-text-primary mb-1">
+            <Upload className="w-8 h-8 text-[#1a1a1a]/40 mx-auto mb-3" />
+            <p className="text-[#1a1a1a] mb-1">
               Drag & drop a CSV file, or click to browse
             </p>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-[#1a1a1a]/50">
               Simple format: name, description, price, category
             </p>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-[#1a1a1a]/50">
               Detailed format: includes flavor profiles for auto-tagging
             </p>
             <input
@@ -823,20 +823,20 @@ export default function MenuPage() {
           <div className="relative mt-3 z-50" ref={templateMenuRef}>
             <button
               onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-              className="flex items-center gap-2 text-sm text-signal hover:underline"
+              className="flex items-center gap-2 text-sm text-[#1e3a5f] hover:underline"
             >
               <FileText className="w-4 h-4" />
               Download template
               <ChevronDown className="w-3 h-3" />
             </button>
             {showTemplateMenu && (
-              <div className="absolute bottom-full left-0 mb-2 bg-white border border-[#1a1a1a]/10 rounded-xl shadow-xl z-[100] py-2 min-w-[240px]">
+              <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl z-[100] py-2 min-w-[240px]">
                 <button
                   onClick={() => {
                     downloadSimpleTemplate()
                     setShowTemplateMenu(false)
                   }}
-                  className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-[#FDFBF7] transition-colors"
+                  className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-gray-50 transition-colors"
                 >
                   <div className="font-medium">Simple template</div>
                   <div className="text-xs text-[#1a1a1a]/50">name, description, price, category</div>
@@ -846,7 +846,7 @@ export default function MenuPage() {
                     downloadDetailedTemplate()
                     setShowTemplateMenu(false)
                   }}
-                  className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-[#FDFBF7] transition-colors"
+                  className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] hover:bg-gray-50 transition-colors"
                 >
                   <div className="font-medium">Detailed template</div>
                   <div className="text-xs text-[#1a1a1a]/50">With flavor profiles for auto-tagging</div>
@@ -854,25 +854,25 @@ export default function MenuPage() {
               </div>
             )}
           </div>
-        </GlassPanel>
+        </div>
       )}
 
       {/* Filters */}
       <div className="flex items-center gap-4 mb-6">
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1a1a1a]/40" />
           <input
             type="text"
             placeholder="Search items..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-ocean-700 border border-line text-text-primary placeholder-text-muted/50 text-sm focus:outline-none focus:border-signal"
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 text-sm focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2 rounded-lg bg-ocean-700 border border-line text-text-primary text-sm focus:outline-none focus:border-signal"
+          className="px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] text-sm focus:outline-none focus:border-[#1e3a5f]"
         >
           {categories.map((cat) => (
             <option key={cat} value={cat}>
@@ -884,62 +884,62 @@ export default function MenuPage() {
 
       {/* Table */}
       {items.length === 0 ? (
-        <GlassPanel className="p-12 text-center">
-          <Upload className="w-12 h-12 text-text-muted mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-text-primary mb-2">No menu items yet</h3>
-          <p className="text-text-muted mb-4">
+        <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-sm">
+          <Upload className="w-12 h-12 text-[#1a1a1a]/30 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">No menu items yet</h3>
+          <p className="text-[#1a1a1a]/50 mb-4">
             Import items from a CSV file or add items manually
           </p>
-          <Button variant="signal" onClick={() => setShowAddModal(true)}>
+          <Button onClick={() => setShowAddModal(true)} className="bg-[#1e3a5f] hover:bg-[#0f2440] text-white">
             <Plus className="w-4 h-4 mr-2" />
             Add First Item
           </Button>
-        </GlassPanel>
+        </div>
       ) : (
-        <GlassPanel className="overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-line">
-                  <th className="text-left py-4 px-4 text-sm font-medium text-text-muted w-10">
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50 w-10">
                     <input
                       type="checkbox"
                       checked={selectedItems.length === filteredItems.length && filteredItems.length > 0}
                       onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-line bg-ocean-700 text-signal focus:ring-signal"
+                      className="w-4 h-4 rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f]"
                     />
                   </th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-text-muted">Name</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-text-muted">Price</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-text-muted">Category</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-text-muted">Tags</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-text-muted">Status</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-text-muted">Actions</th>
+                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Name</th>
+                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Price</th>
+                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Category</th>
+                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Tags</th>
+                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Status</th>
+                  <th className="text-right py-4 px-6 text-sm font-medium text-[#1a1a1a]/50">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredItems.map((item) => (
-                  <tr key={item.id} className="border-b border-line/50 hover:bg-ocean-700/30">
+                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-4 px-4">
                       <input
                         type="checkbox"
                         checked={selectedItems.includes(item.id)}
                         onChange={() => toggleItemSelection(item.id)}
-                        className="w-4 h-4 rounded border-line bg-ocean-700 text-signal focus:ring-signal"
+                        className="w-4 h-4 rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f]"
                       />
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-text-primary">{item.name}</span>
+                        <span className="font-medium text-[#1a1a1a]">{item.name}</span>
                         {!hasRequiredTags(item.tags) && (
                           <span title="Missing required tags">
-                            <AlertCircle className="w-4 h-4 text-yellow-400" />
+                            <AlertCircle className="w-4 h-4 text-amber-600" />
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-text-muted">€{item.price.toFixed(2)}</td>
-                    <td className="py-4 px-4 text-text-muted">{item.category}</td>
+                    <td className="py-4 px-4 text-[#1a1a1a]/70">€{item.price.toFixed(2)}</td>
+                    <td className="py-4 px-4 text-[#1a1a1a]/70">{item.category}</td>
                     <td className="py-4 px-4">
                       <button
                         onClick={() => setEditingItem(item)}
@@ -950,19 +950,19 @@ export default function MenuPage() {
                             {getDisplayTags(item.tags).map((tag) => (
                               <span
                                 key={tag}
-                                className="text-xs px-2 py-0.5 rounded-full bg-ocean-600/50 text-text-muted group-hover:bg-signal/20 group-hover:text-signal transition-colors"
+                                className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/70 group-hover:bg-[#1e3a5f]/10 group-hover:text-[#1e3a5f] transition-colors"
                               >
                                 {TAG_LABELS[tag]}
                               </span>
                             ))}
                             {item.tags.length > 3 && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-ocean-600/50 text-text-muted">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/50">
                                 +{item.tags.length - 3}
                               </span>
                             )}
                           </>
                         ) : (
-                          <span className="text-xs text-text-muted hover:text-signal">
+                          <span className="text-xs text-[#1a1a1a]/40 hover:text-[#1e3a5f]">
                             + Add tags
                           </span>
                         )}
@@ -973,7 +973,7 @@ export default function MenuPage() {
                         <button
                           onClick={() => toggleAvailable(item.id)}
                           className={`w-10 h-5 rounded-full transition-colors relative ${
-                            item.is_out_of_stock ? 'bg-ocean-600' : 'bg-green-500'
+                            item.is_out_of_stock ? 'bg-gray-300' : 'bg-green-500'
                           }`}
                           title={item.is_out_of_stock ? 'Out of stock' : 'Available'}
                         >
@@ -987,8 +987,8 @@ export default function MenuPage() {
                           onClick={() => togglePush(item.id)}
                           className={`p-1 rounded transition-colors ${
                             item.is_push
-                              ? 'text-yellow-400'
-                              : 'text-text-muted hover:text-text-primary'
+                              ? 'text-amber-500'
+                              : 'text-[#1a1a1a]/40 hover:text-[#1a1a1a]'
                           }`}
                           title={item.is_push ? 'Featured item' : 'Feature this item'}
                         >
@@ -1000,13 +1000,13 @@ export default function MenuPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setEditingItem(item)}
-                          className="p-2 hover:bg-ocean-700 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-[#1a1a1a]/50 hover:text-[#1a1a1a]"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => deleteItem(item.id)}
-                          className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-text-muted hover:text-red-400"
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors text-[#1a1a1a]/50 hover:text-red-600"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1017,22 +1017,22 @@ export default function MenuPage() {
               </tbody>
             </table>
           </div>
-        </GlassPanel>
+        </div>
       )}
 
       {/* Add Item Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-ocean-800 border border-line rounded-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-text-primary">Add New Item</h2>
+              <h2 className="text-xl font-semibold text-[#1a1a1a]">Add New Item</h2>
               <button
                 onClick={() => {
                   setShowAddModal(false)
                   setNewItem(defaultNewItem)
                   setNewItemTags([])
                 }}
-                className="p-2 hover:bg-ocean-700 rounded-lg transition-colors text-text-muted"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-[#1a1a1a]/50"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1040,7 +1040,7 @@ export default function MenuPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">
+                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
                   Name *
                 </label>
                 <input
@@ -1048,12 +1048,12 @@ export default function MenuPage() {
                   value={newItem.name}
                   onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                   placeholder="e.g., Classic Burger"
-                  className="w-full px-4 py-2 rounded-lg bg-ocean-700 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal"
+                  className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">
+                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
                   Description
                 </label>
                 <textarea
@@ -1061,13 +1061,13 @@ export default function MenuPage() {
                   onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                   placeholder="Describe the item..."
                   rows={2}
-                  className="w-full px-4 py-2 rounded-lg bg-ocean-700 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal resize-none"
+                  className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f] resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-muted mb-1">
+                  <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
                     Price *
                   </label>
                   <input
@@ -1077,12 +1077,12 @@ export default function MenuPage() {
                     value={newItem.price}
                     onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
                     placeholder="0.00"
-                    className="w-full px-4 py-2 rounded-lg bg-ocean-700 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal"
+                    className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-text-muted mb-1">
+                  <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
                     Category
                   </label>
                   <input
@@ -1090,37 +1090,37 @@ export default function MenuPage() {
                     value={newItem.category}
                     onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
                     placeholder="e.g., Mains"
-                    className="w-full px-4 py-2 rounded-lg bg-ocean-700 border border-line text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-signal"
+                    className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-1">
+                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
                   Tags
                 </label>
                 <button
                   onClick={() => setShowNewItemTagEditor(true)}
-                  className="w-full px-4 py-2 rounded-lg bg-ocean-700 border border-line text-left hover:border-signal transition-colors"
+                  className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-left hover:border-[#1e3a5f] transition-colors"
                 >
                   {newItemTags.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {newItemTags.slice(0, 4).map((tag) => (
                         <span
                           key={tag}
-                          className="text-xs px-2 py-0.5 rounded-full bg-signal/20 text-signal"
+                          className="text-xs px-2 py-0.5 rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"
                         >
                           {TAG_LABELS[tag]}
                         </span>
                       ))}
                       {newItemTags.length > 4 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-ocean-600/50 text-text-muted">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/50">
                           +{newItemTags.length - 4}
                         </span>
                       )}
                     </div>
                   ) : (
-                    <span className="text-text-muted/50">Click to add tags...</span>
+                    <span className="text-[#1a1a1a]/40">Click to add tags...</span>
                   )}
                 </button>
               </div>
@@ -1128,7 +1128,7 @@ export default function MenuPage() {
 
             <div className="flex justify-end gap-3 mt-6">
               <Button
-                variant="signal-outline"
+                variant="outline"
                 onClick={() => {
                   setShowAddModal(false)
                   setNewItem(defaultNewItem)
@@ -1138,9 +1138,9 @@ export default function MenuPage() {
                 Cancel
               </Button>
               <Button
-                variant="signal"
                 onClick={handleAddItem}
                 disabled={addingItem || !newItem.name.trim() || !newItem.price}
+                className="bg-[#1e3a5f] hover:bg-[#0f2440] text-white"
               >
                 {addingItem ? 'Adding...' : 'Add Item'}
               </Button>
