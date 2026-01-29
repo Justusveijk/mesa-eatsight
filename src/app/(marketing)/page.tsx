@@ -35,7 +35,7 @@ export default function LandingPage() {
   return (
     <div ref={containerRef} className="bg-[#FDFBF7]">
       {/* Navigation - Fixed, minimal */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-8 py-5 flex justify-between items-center bg-[#FDFBF7]/80 backdrop-blur-sm">
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-8 py-5 flex justify-between items-center bg-[#FDFBF7]/90 backdrop-blur-sm border-b border-[#1a1a1a]/5">
         <div className="font-serif text-2xl text-[#1a1a1a]">Eatsight</div>
         <div className="flex gap-4 md:gap-8 items-center">
           <a href="#how-it-works" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">How it works</a>
@@ -48,7 +48,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Section 1: Hero - Full viewport, centered */}
-      <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20">
+      <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20 bg-[#FDFBF7]">
         {/* Parallax background elements */}
         <motion.div
           className="absolute top-20 left-10 md:left-20 w-48 md:w-64 h-48 md:h-64 rounded-full bg-[#722F37]/5"
@@ -109,7 +109,7 @@ export default function LandingPage() {
       </section>
 
       {/* Section 2: The Problem - Editorial style */}
-      <section className="min-h-screen flex items-center py-20 md:py-32 px-6 md:px-8">
+      <section className="min-h-screen flex items-center py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -200,7 +200,7 @@ export default function LandingPage() {
       </section>
 
       {/* Section 4: How it works - Menu style cards */}
-      <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8">
+      <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
@@ -270,7 +270,7 @@ export default function LandingPage() {
       </section>
 
       {/* Section 6: Pricing - Clean, minimal */}
-      <section id="pricing" className="py-20 md:py-32 px-6 md:px-8">
+      <section id="pricing" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
