@@ -3,11 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { Upload, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { getCurrentUser } from '@/lib/supabase/auth'
 
 const countries = [
   { code: 'NL', name: 'Netherlands' },
@@ -20,30 +16,6 @@ const countries = [
   { code: 'US', name: 'United States' },
 ]
 
-const timezones = [
-  'Europe/Amsterdam',
-  'Europe/Berlin',
-  'Europe/Brussels',
-  'Europe/Paris',
-  'Europe/London',
-  'Europe/Madrid',
-  'Europe/Rome',
-  'America/New_York',
-  'America/Los_Angeles',
-]
-
-const currencies = [
-  { code: 'EUR', symbol: '€', name: 'Euro' },
-  { code: 'GBP', symbol: '£', name: 'British Pound' },
-  { code: 'USD', symbol: '$', name: 'US Dollar' },
-]
-
-const categories = [
-  { id: 'restaurant', label: 'Restaurant' },
-  { id: 'bar', label: 'Bar' },
-  { id: 'cafe', label: 'Café' },
-]
-
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -51,29 +23,61 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-export default function CreateVenuePage() {
+export default function OnboardingVenuePage() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [showMoreDetails, setShowMoreDetails] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [error, setError] = useState('')
-  const [slugError, setSlugError] = useState('')
-  const [checkingSlug, setCheckingSlug] = useState(false)
+  const [user, setUser] = useState<any>(null)
 
-  // Required fields
+  // Form state
   const [venueName, setVenueName] = useState('')
   const [slug, setSlug] = useState('')
   const [slugEdited, setSlugEdited] = useState(false)
   const [country, setCountry] = useState('NL')
   const [city, setCity] = useState('')
-  const [timezone, setTimezone] = useState('Europe/Amsterdam')
   const [currency, setCurrency] = useState('EUR')
   const [language, setLanguage] = useState<'en' | 'nl'>('en')
-  const [category, setCategory] = useState<string>('restaurant')
+  const [category, setCategory] = useState<'restaurant' | 'bar' | 'cafe'>('restaurant')
 
-  // Optional fields
-  const [phone, setPhone] = useState('')
-  const [website, setWebsite] = useState('')
-  const [vatNumber, setVatNumber] = useState('')
+  // Check if user is logged in on mount
+  useEffect(() => {
+    const checkUser = async () => {
+      console.log('[Onboarding] Checking for authenticated user...')
+      const supabase = createClient()
+
+      const { data: { user }, error } = await supabase.auth.getUser()
+
+      console.log('[Onboarding] Auth check result:', { userId: user?.id, email: user?.email, error })
+
+      if (error || !user) {
+        console.log('[Onboarding] No authenticated user, redirecting to signup')
+        router.push('/signup')
+        return
+      }
+
+      setUser(user)
+
+      // Check if user already has a venue
+      const { data: existingOperator, error: opError } = await supabase
+        .from('operator_users')
+        .select('venue_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+
+      console.log('[Onboarding] Existing operator check:', { existingOperator, error: opError })
+
+      if (existingOperator?.venue_id) {
+        console.log('[Onboarding] User already has venue, redirecting to dashboard')
+        router.push('/dashboard')
+        return
+      }
+
+      setCheckingAuth(false)
+    }
+
+    checkUser()
+  }, [router])
 
   // Auto-generate slug from venue name
   useEffect(() => {
@@ -82,145 +86,81 @@ export default function CreateVenuePage() {
     }
   }, [venueName, slugEdited])
 
-  // Validate slug uniqueness (debounced)
-  useEffect(() => {
-    if (!slug) {
-      setSlugError('')
-      return
-    }
-
-    const checkSlug = async () => {
-      setCheckingSlug(true)
-      const supabase = createClient()
-
-      const { data } = await supabase
-        .from('venues')
-        .select('id')
-        .eq('slug', slug)
-        .single()
-
-      if (data) {
-        setSlugError('This URL is already taken')
-      } else {
-        setSlugError('')
-      }
-      setCheckingSlug(false)
-    }
-
-    const timer = setTimeout(checkSlug, 500)
-    return () => clearTimeout(timer)
-  }, [slug])
-
   const handleSlugChange = (value: string) => {
     setSlug(slugify(value))
     setSlugEdited(true)
   }
 
-  const isValid = venueName.trim() && slug.trim() && city.trim() && category && !slugError
+  const isValid = venueName.trim() && slug.trim() && city.trim()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isValid) return
+    if (!isValid || !user) return
 
-    setIsLoading(true)
+    setLoading(true)
     setError('')
 
+    console.log('[Onboarding] Starting venue creation for user:', user.id)
+    console.log('[Onboarding] Venue data:', { venueName, slug, country, city, currency, language, category })
+
+    const supabase = createClient()
+
     try {
-      const supabase = createClient()
-      const user = await getCurrentUser()
-
-      if (!user) {
-        setError('You must be logged in to create a venue')
-        setIsLoading(false)
-        return
-      }
-
-      // Get plan from session storage (set during signup)
-      const plan = sessionStorage.getItem('selectedPlan') || 'monthly'
-
       // 1. Create the venue
+      console.log('[Onboarding] Step 1: Creating venue...')
       const { data: venue, error: venueError } = await supabase
         .from('venues')
         .insert({
           name: venueName,
-          slug,
-          country,
-          city,
-          timezone,
-          currency,
+          slug: slug,
+          country: country,
+          city: city,
+          timezone: 'Europe/Amsterdam',
+          currency: currency,
           primary_language: language,
-          category,
-          phone: phone || null,
-          website: website || null,
-          vat_number: vatNumber || null,
+          category: category,
         })
         .select('id')
         .single()
 
       if (venueError) {
-        console.error('Venue creation error:', venueError?.message, venueError?.details, venueError?.hint, venueError?.code, venueError)
+        console.error('[Onboarding] Venue creation FAILED:', venueError)
         if (venueError.code === '23505') {
-          setError('This venue slug is already taken. Please choose a different one.')
+          setError('This URL slug is already taken. Please choose a different name.')
         } else {
-          setError(venueError.message || 'Failed to create venue')
+          setError(`Failed to create venue: ${venueError.message}`)
         }
-        setIsLoading(false)
+        setLoading(false)
         return
       }
 
-      // 2. Create or update operator_users record linking auth user to venue
-      const { data: existingOperator } = await supabase
+      console.log('[Onboarding] Venue created successfully:', venue)
+
+      // 2. Create operator_users link
+      console.log('[Onboarding] Step 2: Creating operator link...')
+      const { error: operatorError } = await supabase
         .from('operator_users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single()
-
-      let operatorError
-      if (existingOperator) {
-        // Update existing record with new venue
-        const { error } = await supabase
-          .from('operator_users')
-          .update({ venue_id: venue.id })
-          .eq('auth_user_id', user.id)
-        operatorError = error
-      } else {
-        // Insert new record
-        const { error } = await supabase
-          .from('operator_users')
-          .insert({
-            auth_user_id: user.id,
-            email: user.email,
-            role: 'owner',
-            venue_id: venue.id,
-          })
-        operatorError = error
-      }
-
-      if (operatorError) {
-        console.error('Operator user creation error:', operatorError?.message, operatorError?.details, operatorError?.hint, operatorError?.code, operatorError)
-        // Cleanup: delete the venue we just created
-        await supabase.from('venues').delete().eq('id', venue.id)
-        setError('Failed to link user to venue')
-        setIsLoading(false)
-        return
-      }
-
-      // 3. Create subscription record
-      const { error: subscriptionError } = await supabase
-        .from('subscriptions')
         .insert({
+          auth_user_id: user.id,
+          email: user.email,
+          role: 'owner',
           venue_id: venue.id,
-          status: 'trialing',
-          plan,
-          trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days
         })
 
-      if (subscriptionError) {
-        console.error('Subscription creation error:', subscriptionError?.message, subscriptionError?.details, subscriptionError?.hint, subscriptionError?.code, subscriptionError)
-        // Non-critical, continue anyway
+      if (operatorError) {
+        console.error('[Onboarding] Operator creation FAILED:', operatorError)
+        // Cleanup: delete the venue we just created
+        console.log('[Onboarding] Cleaning up venue...')
+        await supabase.from('venues').delete().eq('id', venue.id)
+        setError(`Failed to link account: ${operatorError.message}`)
+        setLoading(false)
+        return
       }
 
-      // 4. Create a draft menu for the venue
+      console.log('[Onboarding] Operator link created successfully')
+
+      // 3. Create a draft menu for the venue
+      console.log('[Onboarding] Step 3: Creating draft menu...')
       const { error: menuError } = await supabase
         .from('menus')
         .insert({
@@ -230,49 +170,72 @@ export default function CreateVenuePage() {
         })
 
       if (menuError) {
-        console.error('Menu creation error:', menuError?.message, menuError?.details, menuError?.hint, menuError?.code, menuError)
+        console.error('[Onboarding] Menu creation failed (non-critical):', menuError)
         // Non-critical, continue anyway
+      } else {
+        console.log('[Onboarding] Draft menu created successfully')
       }
 
-      // Clear the plan from session storage
-      sessionStorage.removeItem('selectedPlan')
+      // 4. Try to create venue settings (optional)
+      console.log('[Onboarding] Step 4: Creating venue settings...')
+      const { error: settingsError } = await supabase
+        .from('venue_settings')
+        .insert({
+          venue_id: venue.id,
+          upsell_enabled: false,
+          upsell_mode: 'auto',
+        })
+
+      if (settingsError) {
+        console.error('[Onboarding] Settings creation failed (non-critical):', settingsError)
+        // Non-critical, continue anyway
+      } else {
+        console.log('[Onboarding] Venue settings created successfully')
+      }
+
+      console.log('[Onboarding] SUCCESS! All steps completed. Redirecting to dashboard...')
 
       // Redirect to dashboard
       router.push('/dashboard')
+
     } catch (err) {
-      console.error('Unexpected error:', err)
-      setError('An unexpected error occurred')
-      setIsLoading(false)
+      console.error('[Onboarding] Unexpected error:', err)
+      setError('An unexpected error occurred. Please try again.')
+      setLoading(false)
     }
   }
 
+  // Loading state while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-[#722F37] border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-[#1a1a1a]/50">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#FDFBF7]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-xl"
-      >
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-[#1e3a5f] flex items-center justify-center">
-                <span className="text-white font-bold text-sm">E</span>
-              </div>
-              <span className="text-[#1a1a1a] font-semibold">Eatsight</span>
-            </Link>
-            <h1 className="text-2xl font-bold text-[#1a1a1a] mb-2">
-              Create your venue
-            </h1>
-            <p className="text-[#1a1a1a]/50 text-sm">
-              Tell us about your restaurant, bar, or café
-            </p>
-          </div>
+    <div className="min-h-screen bg-[#FDFBF7] py-12 px-6">
+      <div className="max-w-lg mx-auto">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block">
+            <span className="font-serif text-3xl text-[#1e3a5f]">Eatsight</span>
+          </Link>
+        </div>
+
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#1a1a1a]/5">
+          <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-2 text-center">
+            Create your venue
+          </h1>
+          <p className="text-[#1a1a1a]/50 text-center mb-8">
+            Tell us about your restaurant, bar, or café
+          </p>
 
           {error && (
-            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-sm text-red-600">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
               {error}
             </div>
           )}
@@ -280,8 +243,8 @@ export default function CreateVenuePage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Venue Name */}
             <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                Venue name *
+              <label className="block text-sm text-[#1a1a1a]/60 mb-2">
+                Venue name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -289,50 +252,38 @@ export default function CreateVenuePage() {
                 onChange={(e) => setVenueName(e.target.value)}
                 placeholder="Bella Taverna"
                 required
-                className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
+                className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
               />
             </div>
 
-            {/* Slug */}
+            {/* URL Slug */}
             <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                URL slug *
+              <label className="block text-sm text-[#1a1a1a]/60 mb-2">
+                URL slug <span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center gap-2">
-                <span className="text-[#1a1a1a]/50 text-sm">eatsight.ai/v/</span>
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="bella-taverna"
-                    required
-                    className={`w-full px-4 py-3 rounded-xl bg-white border text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none transition-colors ${
-                      slugError ? 'border-red-500' : 'border-gray-200 focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37]'
-                    }`}
-                  />
-                  {checkingSlug && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#1a1a1a]/50">
-                      Checking...
-                    </span>
-                  )}
-                </div>
+              <div className="flex items-center">
+                <span className="text-[#1a1a1a]/40 text-sm mr-2">eatsight.ai/v/</span>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  placeholder="bella-taverna"
+                  required
+                  className="flex-1 px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
+                />
               </div>
-              {slugError && (
-                <p className="mt-1 text-xs text-red-600">{slugError}</p>
-              )}
             </div>
 
             {/* Country & City */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                  Country *
+                <label className="block text-sm text-[#1a1a1a]/60 mb-2">
+                  Country <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
                 >
                   {countries.map((c) => (
                     <option key={c.code} value={c.code}>
@@ -342,8 +293,8 @@ export default function CreateVenuePage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                  City *
+                <label className="block text-sm text-[#1a1a1a]/60 mb-2">
+                  City <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -351,182 +302,91 @@ export default function CreateVenuePage() {
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Amsterdam"
                   required
-                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
                 />
               </div>
             </div>
 
-            {/* Timezone & Currency */}
+            {/* Currency & Language */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                  Timezone
-                </label>
-                <select
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
-                >
-                  {timezones.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz.replace('_', ' ')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                  Currency
-                </label>
+                <label className="block text-sm text-[#1a1a1a]/60 mb-2">Currency</label>
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
                 >
-                  {currencies.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.symbol} {c.code}
-                    </option>
-                  ))}
+                  <option value="EUR">€ EUR</option>
+                  <option value="GBP">£ GBP</option>
+                  <option value="USD">$ USD</option>
                 </select>
               </div>
-            </div>
-
-            {/* Language */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                Primary language
-              </label>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setLanguage('en')}
-                  className={`flex-1 px-4 py-3 rounded-xl border transition-colors ${
-                    language === 'en'
-                      ? 'bg-[#722F37]/10 border-[#722F37] text-[#1a1a1a]'
-                      : 'bg-white border-gray-200 text-[#1a1a1a]/70 hover:border-gray-300'
-                  }`}
-                >
-                  English
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLanguage('nl')}
-                  className={`flex-1 px-4 py-3 rounded-xl border transition-colors ${
-                    language === 'nl'
-                      ? 'bg-[#722F37]/10 border-[#722F37] text-[#1a1a1a]'
-                      : 'bg-white border-gray-200 text-[#1a1a1a]/70 hover:border-gray-300'
-                  }`}
-                >
-                  Nederlands
-                </button>
+              <div>
+                <label className="block text-sm text-[#1a1a1a]/60 mb-2">Language</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLanguage('en')}
+                    className={`flex-1 py-3 rounded-xl border-2 transition text-sm ${
+                      language === 'en'
+                        ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
+                        : 'border-[#1a1a1a]/10 text-[#1a1a1a]/60'
+                    }`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLanguage('nl')}
+                    className={`flex-1 py-3 rounded-xl border-2 transition text-sm ${
+                      language === 'nl'
+                        ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
+                        : 'border-[#1a1a1a]/10 text-[#1a1a1a]/60'
+                    }`}
+                  >
+                    NL
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                Category *
+              <label className="block text-sm text-[#1a1a1a]/60 mb-2">
+                Category <span className="text-red-500">*</span>
               </label>
-              <div className="flex gap-3">
-                {categories.map((cat) => (
+              <div className="grid grid-cols-3 gap-3">
+                {(['restaurant', 'bar', 'cafe'] as const).map((cat) => (
                   <button
-                    key={cat.id}
+                    key={cat}
                     type="button"
-                    onClick={() => setCategory(cat.id)}
-                    className={`flex-1 px-4 py-3 rounded-xl border transition-colors ${
-                      category === cat.id
-                        ? 'bg-[#722F37]/10 border-[#722F37] text-[#1a1a1a]'
-                        : 'bg-white border-gray-200 text-[#1a1a1a]/70 hover:border-gray-300'
+                    onClick={() => setCategory(cat)}
+                    className={`py-3 rounded-xl border-2 transition capitalize text-sm ${
+                      category === cat
+                        ? 'border-[#1e3a5f] bg-[#1e3a5f]/5 text-[#1e3a5f]'
+                        : 'border-[#1a1a1a]/10 text-[#1a1a1a]/60 hover:border-[#1a1a1a]/20'
                     }`}
                   >
-                    {cat.label}
+                    {cat === 'cafe' ? 'Café' : cat.charAt(0).toUpperCase() + cat.slice(1)}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* More Details Toggle */}
             <button
-              type="button"
-              onClick={() => setShowMoreDetails(!showMoreDetails)}
-              className="flex items-center gap-2 text-sm text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition-colors"
-            >
-              {showMoreDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              Add more details (optional)
-            </button>
-
-            {/* Optional Fields */}
-            {showMoreDetails && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-4"
-              >
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+31 20 123 4567"
-                      className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                      Website
-                    </label>
-                    <input
-                      type="url"
-                      value={website}
-                      onChange={(e) => setWebsite(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                    VAT number
-                  </label>
-                  <input
-                    type="text"
-                    value={vatNumber}
-                    onChange={(e) => setVatNumber(e.target.value)}
-                    placeholder="NL123456789B01"
-                    className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#722F37] focus:ring-1 focus:ring-[#722F37] transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-2">
-                    Logo
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-[#722F37] transition-colors cursor-pointer">
-                    <Upload className="w-6 h-6 text-[#1a1a1a]/40 mx-auto mb-2" />
-                    <p className="text-sm text-[#1a1a1a]/50">Click to upload or drag & drop</p>
-                    <p className="text-xs text-[#1a1a1a]/40 mt-1">PNG, JPG up to 2MB</p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <Button
               type="submit"
-              size="lg"
-              className="w-full bg-[#722F37] hover:bg-[#5a252c] text-white"
-              disabled={isLoading || !isValid || checkingSlug}
+              disabled={loading || !isValid}
+              className="w-full py-3 bg-[#722F37] text-white rounded-xl hover:bg-[#5a252c] transition disabled:opacity-50 font-medium mt-2"
             >
-              {isLoading ? 'Creating venue...' : 'Create venue & continue'}
-            </Button>
+              {loading ? 'Creating venue...' : 'Create venue & continue'}
+            </button>
           </form>
         </div>
-      </motion.div>
+
+        <p className="text-center text-[#1a1a1a]/40 text-sm mt-6">
+          Logged in as {user?.email}
+        </p>
+      </div>
     </div>
   )
 }

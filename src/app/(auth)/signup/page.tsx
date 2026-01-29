@@ -19,6 +19,8 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
+    console.log('[Signup] Starting signup for:', email)
+
     if (password.length < 8) {
       setError('Password must be at least 8 characters')
       setLoading(false)
@@ -32,14 +34,26 @@ export default function SignupPage() {
       password
     })
 
+    console.log('[Signup] Supabase response:', { user: data?.user?.id, session: !!data?.session, error: signUpError })
+
     if (signUpError) {
+      console.error('[Signup] Error:', signUpError)
       setError(signUpError.message)
       setLoading(false)
       return
     }
 
-    // Go to onboarding to create venue
-    router.push('/onboarding/venue')
+    if (data.user) {
+      console.log('[Signup] User created successfully:', data.user.id)
+      console.log('[Signup] Session exists:', !!data.session)
+      console.log('[Signup] Redirecting to onboarding...')
+      router.push('/onboarding/venue')
+    } else {
+      console.log('[Signup] No user returned - check email confirmation settings')
+      // If email confirmation is required, show a message
+      setError('Please check your email to confirm your account before continuing.')
+      setLoading(false)
+    }
   }
 
   return (
