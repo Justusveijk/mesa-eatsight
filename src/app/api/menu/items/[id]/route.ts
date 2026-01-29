@@ -67,11 +67,22 @@ export async function PUT(
 
     // Update tags if provided
     if (tags !== undefined) {
+      console.log(`[Tags] Updating tags for item ${id}`)
+      console.log(`[Tags] New tags:`, tags)
+
       // Delete existing tags
-      await supabase
+      const { error: deleteTagError } = await supabase
         .from('item_tags')
         .delete()
         .eq('item_id', id)
+
+      if (deleteTagError) {
+        console.error('[Tags] Delete error:', deleteTagError.message, deleteTagError.code)
+        return NextResponse.json({
+          error: `Failed to delete existing tags: ${deleteTagError.message}`
+        }, { status: 500 })
+      }
+      console.log(`[Tags] Deleted existing tags for item ${id}`)
 
       // Insert new tags
       if (tags.length > 0) {
@@ -80,14 +91,23 @@ export async function PUT(
           tag,
         }))
 
-        const { error: tagError } = await supabase
+        console.log('[Tags] Inserting tags:', tagsToInsert)
+
+        const { data: insertedTags, error: tagError } = await supabase
           .from('item_tags')
           .insert(tagsToInsert)
+          .select()
 
         if (tagError) {
-          console.error('Tag insert error:', tagError)
-          return NextResponse.json({ error: 'Failed to update tags' }, { status: 500 })
+          console.error('[Tags] Insert error:', tagError.message)
+          console.error('[Tags] Error details:', tagError.details)
+          console.error('[Tags] Error hint:', tagError.hint)
+          console.error('[Tags] Error code:', tagError.code)
+          return NextResponse.json({
+            error: `Failed to save tags: ${tagError.message} (${tagError.code})`
+          }, { status: 500 })
         }
+        console.log(`[Tags] Successfully inserted ${insertedTags?.length || tags.length} tags`)
       }
     }
 

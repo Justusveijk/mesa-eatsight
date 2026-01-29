@@ -168,6 +168,9 @@ export default function MenuPage() {
   const handleSaveTags = async (tags: MenuTag[]) => {
     if (!editingItem) return
 
+    console.log('[Menu] Saving tags for item:', editingItem.id, editingItem.name)
+    console.log('[Menu] Tags to save:', tags)
+
     try {
       const response = await fetch(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
@@ -175,8 +178,11 @@ export default function MenuPage() {
         body: JSON.stringify({ tags }),
       })
 
+      const data = await response.json()
+      console.log('[Menu] Save tags response:', data)
+
       if (!response.ok) {
-        throw new Error('Failed to save tags')
+        throw new Error(data.error || 'Failed to save tags')
       }
 
       setItems((prev) =>
@@ -187,8 +193,8 @@ export default function MenuPage() {
       setEditingItem(null)
       showToast('Tags saved successfully', 'success')
     } catch (error) {
-      console.error('Save tags error:', error)
-      showToast('Failed to save tags', 'error')
+      console.error('[Menu] Save tags error:', error)
+      showToast(`Failed to save tags: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     }
   }
 
@@ -210,6 +216,9 @@ export default function MenuPage() {
 
     setAddingItem(true)
 
+    console.log('[Menu] Adding item:', newItem.name)
+    console.log('[Menu] With tags:', newItemTags)
+
     try {
       const response = await fetch('/api/menu/import', {
         method: 'POST',
@@ -226,19 +235,30 @@ export default function MenuPage() {
       })
 
       const data = await response.json()
+      console.log('[Menu] API response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to add item')
       }
 
-      showToast('Item added successfully', 'success')
+      // Check if tags failed to save
+      if (data.tagError) {
+        console.error('[Menu] Tags failed to save:', data.tagError)
+        showToast(`Item added but tags failed: ${data.tagError}`, 'error')
+      } else if (data.tagsAttempted > 0 && data.tagsInserted === 0) {
+        console.error('[Menu] Tags were attempted but none saved')
+        showToast('Item added but tags did not save - check RLS policies', 'error')
+      } else {
+        showToast('Item added successfully', 'success')
+      }
+
       setShowAddModal(false)
       setNewItem(defaultNewItem)
       setNewItemTags([])
       fetchMenuData()
     } catch (error) {
       console.error('Add item error:', error)
-      showToast('Failed to add item', 'error')
+      showToast(`Failed to add item: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setAddingItem(false)
     }
@@ -451,6 +471,9 @@ export default function MenuPage() {
 
     setImporting(true)
 
+    console.log('[Menu] Importing items:', validItems.length)
+    console.log('[Menu] Sample item tags:', validItems[0]?.editedTags)
+
     try {
       const response = await fetch('/api/menu/import', {
         method: 'POST',
@@ -467,18 +490,29 @@ export default function MenuPage() {
       })
 
       const data = await response.json()
+      console.log('[Menu] Import response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to import')
       }
 
-      showToast(`Imported ${data.count} items successfully`, 'success')
+      // Check if tags failed
+      if (data.tagError) {
+        console.error('[Menu] Tags failed:', data.tagError)
+        showToast(`Imported ${data.count} items but tags failed: ${data.tagError}`, 'error')
+      } else if (data.tagsAttempted > 0 && data.tagsInserted === 0) {
+        console.error('[Menu] No tags were saved')
+        showToast(`Imported ${data.count} items but tags did not save`, 'error')
+      } else {
+        showToast(`Imported ${data.count} items with ${data.tagsInserted || 0} tags`, 'success')
+      }
+
       setParseResult(null)
       setPreviewItems([])
       fetchMenuData()
     } catch (error) {
       console.error('Import error:', error)
-      showToast('Failed to import items', 'error')
+      showToast(`Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setImporting(false)
     }

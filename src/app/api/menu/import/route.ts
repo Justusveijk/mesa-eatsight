@@ -140,28 +140,42 @@ export async function POST(request: NextRequest) {
     console.log(`Total tags to insert: ${allTagsToInsert.length}`)
 
     // Insert all tags in one batch
-    if (allTagsToInsert.length > 0) {
-      console.log('Inserting tags:', allTagsToInsert.slice(0, 5), '...')
+    let tagsInsertedCount = 0
+    let tagError: string | null = null
 
-      const { error: tagError } = await supabase
+    if (allTagsToInsert.length > 0) {
+      console.log('[Tags] Attempting to insert tags:', JSON.stringify(allTagsToInsert.slice(0, 5)))
+      console.log('[Tags] Total tags to insert:', allTagsToInsert.length)
+
+      const { data: insertedTags, error: insertTagError } = await supabase
         .from('item_tags')
         .insert(allTagsToInsert)
+        .select()
 
-      if (tagError) {
-        console.error('Tag insert error:', tagError?.message, tagError?.details, tagError?.hint, tagError?.code)
+      if (insertTagError) {
+        console.error('[Tags] INSERT FAILED!')
+        console.error('[Tags] Error message:', insertTagError.message)
+        console.error('[Tags] Error details:', insertTagError.details)
+        console.error('[Tags] Error hint:', insertTagError.hint)
+        console.error('[Tags] Error code:', insertTagError.code)
+        tagError = `Tag save failed: ${insertTagError.message} (${insertTagError.code})`
       } else {
-        console.log(`Successfully inserted ${allTagsToInsert.length} tags`)
+        tagsInsertedCount = insertedTags?.length || allTagsToInsert.length
+        console.log(`[Tags] Successfully inserted ${tagsInsertedCount} tags`)
       }
     }
 
     console.log('=== MENU IMPORT COMPLETE ===')
     console.log(`Success: ${successCount}, Errors: ${errorCount}`)
+    console.log(`Tags attempted: ${allTagsToInsert.length}, Tags saved: ${tagsInsertedCount}`)
 
     return NextResponse.json({
       success: true,
       count: insertedItems.length,
       items: insertedItems,
-      tagsInserted: allTagsToInsert.length,
+      tagsAttempted: allTagsToInsert.length,
+      tagsInserted: tagsInsertedCount,
+      tagError: tagError,
     })
   } catch (error) {
     console.error('Import error:', error)
