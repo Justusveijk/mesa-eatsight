@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag, PriceTag } from '@/lib/types/taxonomy'
 import { Button } from '@/components/ui/button'
-import { createRecSession, trackEvent, getRecommendationsWithFallback, saveRecResults, RecommendedItem, trackUnmetDemand } from '@/lib/recommendations'
+import { createRecSession, trackEvent, getRecommendationsWithFallback, getDrinkRecommendations, saveRecResults, RecommendedItem, trackUnmetDemand } from '@/lib/recommendations'
 import {
   foodMoodOptions,
   foodFlavorOptions,
@@ -144,18 +144,29 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
 
     // Start fetching recommendations
     const fetchStart = Date.now()
-    const result = await getRecommendationsWithFallback(venueId, foodPreferences, 3)
-    const allRecommendations = [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
+    let allRecommendations: RecommendedItem[] = []
+    let showFallbackMessage = false
+
+    if (intent === 'food' || intent === 'both') {
+      const result = await getRecommendationsWithFallback(venueId, foodPreferences, intent === 'both' ? 2 : 3)
+      allRecommendations = [...result.recommendations, ...result.fallbackItems.map(item => ({ ...item, isFallback: true }))]
+      showFallbackMessage = result.showFallbackMessage
+
+      // Track unmet demand if we had to show fallback items
+      if (result.showFallbackMessage && sessionId) {
+        await trackUnmetDemand(venueId, sessionId, foodPreferences)
+      }
+    }
+
+    if (intent === 'drinks' || intent === 'both') {
+      const drinkRecs = await getDrinkRecommendations(venueId, drinkPreferences, intent === 'both' ? 2 : 3)
+      allRecommendations = [...allRecommendations, ...drinkRecs]
+    }
 
     // Ensure loading screen shows for at least 2 seconds for effect
     const elapsed = Date.now() - fetchStart
     if (elapsed < 2000) {
       await new Promise(resolve => setTimeout(resolve, 2000 - elapsed))
-    }
-
-    // Track unmet demand if we had to show fallback items
-    if (result.showFallbackMessage && sessionId) {
-      await trackUnmetDemand(venueId, sessionId, foodPreferences)
     }
 
     if (sessionId) {
@@ -169,12 +180,12 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
       trackEvent(venueId, sessionId, 'recommendations_shown', {
         count: allRecommendations.length,
         items: allRecommendations.map(r => r.id),
-        hasFallback: result.showFallbackMessage,
+        hasFallback: showFallbackMessage,
       })
     }
 
     setIsLoading(false)
-    onComplete(allRecommendations, result.showFallbackMessage)
+    onComplete(allRecommendations, showFallbackMessage)
   }, [venueId, foodPreferences, drinkPreferences, sessionId, onComplete, intent])
 
   // Food flow navigation
@@ -415,9 +426,9 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     const canContinue = canContinueFood
 
     return (
-      <>
+      <div className="min-h-[calc(100vh-56px)] flex flex-col">
         {/* Progress indicator */}
-        <div className="px-6 pt-6">
+        <div className="px-6 py-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-[#1a1a1a]/60">
               {intent === 'both' ? `Food: Step ${step} of ${totalFoodSteps}` : `Step ${step} of ${totalFoodSteps}`}
@@ -434,7 +445,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         </div>
 
         {/* Back button */}
-        <div className="px-6 pt-4">
+        <div className="px-6">
           <button
             onClick={goBack}
             className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] text-sm flex items-center gap-1"
@@ -443,8 +454,8 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
           </button>
         </div>
 
-        {/* Questions */}
-        <div className="flex-1 px-6 py-8 overflow-hidden flex items-center justify-center">
+        {/* Questions - centered vertically */}
+        <div className="flex-1 flex items-center justify-center px-6 py-4">
           <AnimatePresence mode="wait" custom={direction}>
             {step === 1 && (
               <motion.div
@@ -683,8 +694,8 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
           </AnimatePresence>
         </div>
 
-        {/* Continue button */}
-        <div className="px-6 pb-8">
+        {/* Continue button - always visible at bottom */}
+        <div className="px-6 pb-6 pt-2">
           <div className="max-w-sm mx-auto">
             <Button
               variant="mesa"
@@ -696,19 +707,17 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
               {step === 5 ? (intent === 'both' ? 'Next: Drinks' : 'Show recommendations') : 'Continue'}
             </Button>
             {(step === 4 || step === 5) && (
-              <Button
-                variant="mesa-outline"
-                size="lg"
-                className="w-full mt-2"
+              <button
                 onClick={goNext}
                 disabled={isLoading}
+                className="w-full py-3 text-[#B2472A] text-sm font-medium mt-2"
               >
                 {step === 4 ? 'None of these' : 'Skip'}
-              </Button>
+              </button>
             )}
           </div>
         </div>
-      </>
+      </div>
     )
   }
 
@@ -721,9 +730,9 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     const canContinue = canContinueDrink
 
     return (
-      <>
+      <div className="min-h-[calc(100vh-56px)] flex flex-col">
         {/* Progress indicator */}
-        <div className="px-6 pt-6">
+        <div className="px-6 py-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-[#1a1a1a]/60">
               {intent === 'both' ? `Drinks: Step ${step} of ${totalDrinkSteps}` : `Step ${step} of ${totalDrinkSteps}`}
@@ -740,7 +749,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         </div>
 
         {/* Back button */}
-        <div className="px-6 pt-4">
+        <div className="px-6">
           <button
             onClick={goBack}
             className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] text-sm flex items-center gap-1"
@@ -749,8 +758,8 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
           </button>
         </div>
 
-        {/* Questions */}
-        <div className="flex-1 px-6 py-8 overflow-hidden flex items-center justify-center">
+        {/* Questions - centered vertically */}
+        <div className="flex-1 flex items-center justify-center px-6 py-4">
           <AnimatePresence mode="wait" custom={direction}>
             {step === 1 && (
               <motion.div
@@ -889,8 +898,8 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
           </AnimatePresence>
         </div>
 
-        {/* Continue button */}
-        <div className="px-6 pb-8">
+        {/* Continue button - always visible at bottom */}
+        <div className="px-6 pb-6 pt-2">
           <div className="max-w-sm mx-auto">
             <Button
               variant="mesa"
@@ -903,12 +912,12 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
             </Button>
           </div>
         </div>
-      </>
+      </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FDFBF7] relative overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#FDFBF7] relative overflow-hidden">
       {/* Fixed top progress bar */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-[#1a1a1a]/10 z-50">
         <motion.div
@@ -923,7 +932,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
       <div className="absolute w-[300px] h-[300px] top-1/4 -right-32 bg-[#B2472A]/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute w-[200px] h-[200px] bottom-1/4 -left-16 bg-[#B2472A]/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col flex-1 pt-14">
+      <div className="relative z-10 flex-1 pt-14 overflow-hidden">
         {/* Render appropriate flow */}
         {intent === 'drinks' && renderDrinkFlow()}
         {intent === 'food' && renderFoodFlow()}
