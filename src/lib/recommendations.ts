@@ -275,6 +275,10 @@ export async function getDrinkRecommendations(
 ): Promise<RecommendedItem[]> {
   const supabase = createClient()
 
+  console.log('========== DRINK RECOMMENDATION DEBUG ==========')
+  console.log('Venue ID:', venueId)
+  console.log('Preferences:', JSON.stringify(preferences, null, 2))
+
   // 1. Get the published menu for this venue
   const { data: menu, error: menuError } = await supabase
     .from('menus')
@@ -287,6 +291,8 @@ export async function getDrinkRecommendations(
     console.error('Failed to fetch menu:', menuError?.message)
     return []
   }
+
+  console.log('Found menu:', menu.id)
 
   // 2. Get all available drink items with their tags
   const { data: items, error: itemsError } = await supabase
@@ -310,6 +316,8 @@ export async function getDrinkRecommendations(
     console.error('Failed to fetch menu items:', itemsError?.message)
     return []
   }
+
+  console.log('Total items fetched:', items.length)
 
   // 3. Filter to only drinks (by category)
   const drinkCategories = ['cocktails', 'wines', 'beers', 'spirits', 'mocktails', 'soft drinks', 'smoothies', 'coffee', 'tea', 'juice', 'drinks', 'hot drinks', 'beverages', 'wine', 'beer', 'cider']
@@ -340,10 +348,29 @@ export async function getDrinkRecommendations(
       tags: (item.item_tags as { tag: string }[])?.map(t => t.tag as MenuTag) || [],
     }))
 
-  // 4. STRICT ABV filtering - this is mandatory
-  let filteredDrinks = drinkItems
+  console.log('Drink items found:', drinkItems.length)
+  console.log('All drinks by category:')
+  const byCategory: Record<string, string[]> = {}
+  drinkItems.forEach(item => {
+    const cat = item.category || 'Uncategorized'
+    if (!byCategory[cat]) byCategory[cat] = []
+    byCategory[cat].push(`${item.name} [tags: ${item.tags.join(', ')}]`)
+  })
+  console.log(JSON.stringify(byCategory, null, 2))
 
-  if (preferences.drinkStrength === 'strength_none') {
+  // 4. STRICT ABV filtering - this is mandatory
+  // NEW: Support both old strength_* format and new abv_* format
+  let filteredDrinks = drinkItems
+  const strengthPref = preferences.drinkStrength
+
+  console.log('Strength preference:', strengthPref)
+
+  // Map both old and new formats
+  const isNonAlcoholic = strengthPref === 'strength_none' || strengthPref === 'abv_zero'
+  const isLight = strengthPref === 'strength_light' || strengthPref === 'abv_light'
+
+  if (isNonAlcoholic) {
+    console.log('Filtering for NON-ALCOHOLIC drinks...')
     // Only non-alcoholic drinks
     filteredDrinks = drinkItems.filter(drink => {
       // Cast tags to string array for comparison with non-MenuTag values
@@ -361,9 +388,13 @@ export async function getDrinkRecommendations(
         t === 'strength_light' || t === 'strength_medium' || t === 'strength_strong'
       )
 
-      return (hasNonAlcoholicTag || isNonAlcoholicCategory) && !hasAlcoholicTag
+      const passes = (hasNonAlcoholicTag || isNonAlcoholicCategory) && !hasAlcoholicTag
+      console.log(`  ${drink.name} [${drink.category}]: hasNonAlcTag=${hasNonAlcoholicTag}, isNonAlcCat=${isNonAlcoholicCategory}, hasAlcTag=${hasAlcoholicTag} => ${passes ? 'PASS' : 'FAIL'}`)
+
+      return passes
     })
-  } else if (preferences.drinkStrength === 'strength_light') {
+  } else if (isLight) {
+    console.log('Filtering for LIGHT drinks...')
     // Light alcohol or non-alcoholic (beer, wine, spritz, hot drinks)
     filteredDrinks = drinkItems.filter(drink => {
       const tagStrings = drink.tags as unknown as string[]
@@ -381,15 +412,60 @@ export async function getDrinkRecommendations(
       return (hasLightTag || isLightCategory) && !isStrong
     })
   }
-  // For strength_medium and strength_strong, show all drinks (including alcoholic)
+  // For strength_medium/abv_regular and strength_strong/abv_strong, show all drinks (including alcoholic)
+
+  console.log(`After ABV filter: ${filteredDrinks.length} drinks remaining`)
+  console.log('Filtered drinks:', filteredDrinks.map(d => `${d.name} [${d.category}]`))
 
   // 5. Score drinks based on preferences
   const scored = filteredDrinks.map(drink => {
     let score = 0
     const matchedTags: MenuTag[] = []
+    const category = (drink.category || '').toLowerCase()
 
-    // Mood match
-    if (preferences.drinkMood) {
+    console.log(`\nScoring: ${drink.name}`)
+    console.log(`  Category: ${category}`)
+    console.log(`  Tags: ${drink.tags.join(', ')}`)
+
+    // NEW: drinkFeel scoring (temperature/format) - this replaces drinkMood
+    if (preferences.drinkFeel) {
+      console.log(`  Feel preference: ${preferences.drinkFeel}`)
+
+      if (preferences.drinkFeel === 'temp_hot') {
+        // User wants warming drinks
+        if (drink.tags.includes('temp_hot' as MenuTag)) {
+          score += 25
+          matchedTags.push('temp_hot' as MenuTag)
+          console.log(`  +25 for temp_hot tag`)
+        }
+        // Strong boost for Hot Drinks category
+        if (category === 'hot drinks' || category.includes('coffee') || category.includes('tea')) {
+          score += 20
+          console.log(`  +20 for hot drinks category`)
+        }
+      } else if (preferences.drinkFeel === 'format_crisp') {
+        if (drink.tags.includes('format_crisp' as MenuTag) || drink.tags.includes('temp_chilled' as MenuTag)) {
+          score += 20
+          matchedTags.push('format_crisp' as MenuTag)
+          console.log(`  +20 for crisp/cold`)
+        }
+      } else if (preferences.drinkFeel === 'format_sparkling') {
+        if (drink.tags.includes('format_sparkling' as MenuTag)) {
+          score += 20
+          matchedTags.push('format_sparkling' as MenuTag)
+          console.log(`  +20 for sparkling`)
+        }
+      } else if (preferences.drinkFeel === 'format_creamy') {
+        if (drink.tags.includes('format_creamy' as MenuTag)) {
+          score += 20
+          matchedTags.push('format_creamy' as MenuTag)
+          console.log(`  +20 for creamy`)
+        }
+      }
+    }
+
+    // Legacy: drinkMood scoring (for backward compatibility)
+    if (preferences.drinkMood && !preferences.drinkFeel) {
       const moodTagMap: Record<string, string[]> = {
         'drink_refreshing': ['format_crisp', 'format_refreshing', 'flavor_tangy', 'temp_chilled'],
         'drink_warming': ['format_warming', 'temp_hot', 'flavor_smoky', 'mood_comfort'],
@@ -400,27 +476,36 @@ export async function getDrinkRecommendations(
       const targetTags = moodTagMap[preferences.drinkMood] || []
       targetTags.forEach(tag => {
         if (drink.tags.includes(tag as MenuTag)) {
-          // Higher boost for temp_hot when user wants warming drinks
           const boost = (preferences.drinkMood === 'drink_warming' && tag === 'temp_hot') ? 15 : 3
           score += boost
           matchedTags.push(tag as MenuTag)
         }
       })
 
-      // Strong category boost for Hot Drinks when warming is requested
       if (preferences.drinkMood === 'drink_warming') {
-        const isHotDrinksCategory = drink.category?.toLowerCase() === 'hot drinks'
+        const isHotDrinksCategory = category === 'hot drinks'
         if (isHotDrinksCategory) {
-          score += 20 // Very strong boost - these are exactly what user wants
+          score += 20
           matchedTags.push('temp_hot' as MenuTag)
-        } else if (drink.category?.toLowerCase().includes('hot') || drink.category?.toLowerCase().includes('coffee')) {
+        } else if (category.includes('hot') || category.includes('coffee')) {
           score += 10
         }
       }
     }
 
-    // Style match
-    if (preferences.drinkStyle) {
+    // NEW: drinkTaste scoring (flavor preferences) - multi-select
+    if (preferences.drinkTaste && preferences.drinkTaste.length > 0) {
+      preferences.drinkTaste.forEach(taste => {
+        if (drink.tags.includes(taste as MenuTag)) {
+          score += 10
+          matchedTags.push(taste as MenuTag)
+          console.log(`  +10 for taste match: ${taste}`)
+        }
+      })
+    }
+
+    // Legacy: drinkStyle scoring (for backward compatibility)
+    if (preferences.drinkStyle && (!preferences.drinkTaste || preferences.drinkTaste.length === 0)) {
       const styleTagMap: Record<string, string[]> = {
         'style_classic': ['format_classic'],
         'style_adventurous': ['format_signature', 'format_adventurous'],
@@ -443,6 +528,10 @@ export async function getDrinkRecommendations(
       'strength_light': 'abv_light',
       'strength_medium': 'abv_regular',
       'strength_strong': 'abv_strong',
+      'abv_zero': 'abv_zero',
+      'abv_light': 'abv_light',
+      'abv_regular': 'abv_regular',
+      'abv_strong': 'abv_strong',
     }
     if (preferences.drinkStrength) {
       const abvTag = strengthToAbv[preferences.drinkStrength]
@@ -450,6 +539,7 @@ export async function getDrinkRecommendations(
       if (abvTag && drinkTagStrings.includes(abvTag)) {
         score += 2
         matchedTags.push(abvTag as MenuTag)
+        console.log(`  +2 for ABV match: ${abvTag}`)
       }
     }
 
@@ -461,6 +551,8 @@ export async function getDrinkRecommendations(
       score += 2
     }
 
+    console.log(`  Final score: ${score}`)
+
     return {
       ...drink,
       score,
@@ -470,6 +562,11 @@ export async function getDrinkRecommendations(
 
   // 6. Sort by score and return top items
   const sorted = scored.sort((a, b) => b.score - a.score)
+
+  console.log('\n========== TOP RESULTS ==========')
+  sorted.slice(0, count).forEach((d, i) => {
+    console.log(`${i + 1}. ${d.name} - score: ${d.score}`)
+  })
 
   // Get recommendations with reasons
   return sorted.slice(0, count).map(item => ({
@@ -489,36 +586,73 @@ export async function getDrinkRecommendations(
 function generateDrinkReason(matchedTags: MenuTag[], preferences: DrinkPreferences): string {
   const parts: string[] = []
 
-  // Check mood
-  if (preferences.drinkMood === 'drink_refreshing' && matchedTags.some(t => t.includes('crisp') || t.includes('refreshing') || t.includes('chilled'))) {
-    parts.push('Refreshing')
-  } else if (preferences.drinkMood === 'drink_warming' && matchedTags.some(t => t.includes('warming') || t.includes('hot'))) {
+  // NEW: Check feel (temperature/format)
+  if (preferences.drinkFeel === 'temp_hot' && matchedTags.some(t => t.includes('hot'))) {
     parts.push('Warming')
-  } else if (preferences.drinkMood === 'drink_celebratory' && matchedTags.some(t => t.includes('sparkling'))) {
-    parts.push('Celebratory')
-  } else if (preferences.drinkMood === 'drink_relaxing') {
-    parts.push('Easy-going')
-  } else if (preferences.drinkMood === 'drink_energizing') {
-    parts.push('Energizing')
+  } else if (preferences.drinkFeel === 'format_crisp' && matchedTags.some(t => t.includes('crisp') || t.includes('chilled'))) {
+    parts.push('Refreshing')
+  } else if (preferences.drinkFeel === 'format_sparkling' && matchedTags.some(t => t.includes('sparkling'))) {
+    parts.push('Bubbly')
+  } else if (preferences.drinkFeel === 'format_creamy' && matchedTags.some(t => t.includes('creamy'))) {
+    parts.push('Smooth & creamy')
   }
 
-  // Check style
-  if (preferences.drinkStyle === 'style_sweet' && matchedTags.some(t => t.includes('sweet'))) {
-    parts.push('sweet notes')
-  } else if (preferences.drinkStyle === 'style_dry' && matchedTags.some(t => t.includes('dry') || t.includes('crisp'))) {
-    parts.push('dry & crisp')
-  } else if (preferences.drinkStyle === 'style_bitter' && matchedTags.some(t => t.includes('bitter'))) {
-    parts.push('bitter complexity')
-  } else if (preferences.drinkStyle === 'style_classic') {
-    parts.push('timeless classic')
-  } else if (preferences.drinkStyle === 'style_adventurous') {
-    parts.push('something different')
+  // Legacy: Check mood (for backward compatibility)
+  if (!preferences.drinkFeel && preferences.drinkMood) {
+    if (preferences.drinkMood === 'drink_refreshing' && matchedTags.some(t => t.includes('crisp') || t.includes('refreshing') || t.includes('chilled'))) {
+      parts.push('Refreshing')
+    } else if (preferences.drinkMood === 'drink_warming' && matchedTags.some(t => t.includes('warming') || t.includes('hot'))) {
+      parts.push('Warming')
+    } else if (preferences.drinkMood === 'drink_celebratory' && matchedTags.some(t => t.includes('sparkling'))) {
+      parts.push('Celebratory')
+    } else if (preferences.drinkMood === 'drink_relaxing') {
+      parts.push('Easy-going')
+    } else if (preferences.drinkMood === 'drink_energizing') {
+      parts.push('Energizing')
+    }
   }
 
-  // ABV
-  if (preferences.drinkStrength === 'strength_none') {
+  // NEW: Check taste preferences
+  if (preferences.drinkTaste && preferences.drinkTaste.length > 0) {
+    if (preferences.drinkTaste.includes('flavor_sweet') && matchedTags.some(t => t.includes('sweet'))) {
+      parts.push('sweet notes')
+    }
+    if (preferences.drinkTaste.includes('flavor_tangy') && matchedTags.some(t => t.includes('tangy'))) {
+      parts.push('citrus kick')
+    }
+    if (preferences.drinkTaste.includes('flavor_bitter') && matchedTags.some(t => t.includes('bitter'))) {
+      parts.push('bitter complexity')
+    }
+    if (preferences.drinkTaste.includes('flavor_spicy') && matchedTags.some(t => t.includes('spicy'))) {
+      parts.push('spicy warmth')
+    }
+    if (preferences.drinkTaste.includes('flavor_smoky') && matchedTags.some(t => t.includes('smoky'))) {
+      parts.push('smoky depth')
+    }
+  }
+
+  // Legacy: Check style (for backward compatibility)
+  if ((!preferences.drinkTaste || preferences.drinkTaste.length === 0) && preferences.drinkStyle) {
+    if (preferences.drinkStyle === 'style_sweet' && matchedTags.some(t => t.includes('sweet'))) {
+      parts.push('sweet notes')
+    } else if (preferences.drinkStyle === 'style_dry' && matchedTags.some(t => t.includes('dry') || t.includes('crisp'))) {
+      parts.push('dry & crisp')
+    } else if (preferences.drinkStyle === 'style_bitter' && matchedTags.some(t => t.includes('bitter'))) {
+      parts.push('bitter complexity')
+    } else if (preferences.drinkStyle === 'style_classic') {
+      parts.push('timeless classic')
+    } else if (preferences.drinkStyle === 'style_adventurous') {
+      parts.push('something different')
+    }
+  }
+
+  // ABV - support both old and new format
+  const isNonAlcoholic = preferences.drinkStrength === 'strength_none' || preferences.drinkStrength === 'abv_zero'
+  const isLight = preferences.drinkStrength === 'strength_light' || preferences.drinkStrength === 'abv_light'
+
+  if (isNonAlcoholic) {
     parts.push('alcohol-free')
-  } else if (preferences.drinkStrength === 'strength_light') {
+  } else if (isLight) {
     parts.push('light & easy')
   }
 

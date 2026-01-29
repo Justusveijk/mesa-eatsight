@@ -46,7 +46,36 @@ export const foodPriceOptions: { id: PriceTag; label: string; icon: string }[] =
   { id: 'price_3', label: '€€€ Treat yourself', icon: '✨' },
 ]
 
-// Drink questions (new)
+// NEW Drink question structure - simplified and reordered
+// Question 1: Alcohol strength (FIRST - most important filter)
+export type DrinkStrengthValue = 'abv_zero' | 'abv_light' | 'abv_regular' | 'abv_strong'
+export const drinkStrengthOptions: { id: DrinkStrengthValue; label: string; icon: string }[] = [
+  { id: 'abv_zero', label: 'No alcohol', icon: '🫧' },
+  { id: 'abv_light', label: 'Light', icon: '🍃' },
+  { id: 'abv_regular', label: 'Regular', icon: '🍸' },
+  { id: 'abv_strong', label: 'Strong', icon: '🔥' },
+]
+
+// Question 2: Temperature/Feel (SECOND - narrows down further)
+export type DrinkFeelValue = 'temp_hot' | 'format_crisp' | 'format_sparkling' | 'format_creamy'
+export const drinkFeelOptions: { id: DrinkFeelValue; label: string; icon: string }[] = [
+  { id: 'temp_hot', label: 'Warming', icon: '☕' },
+  { id: 'format_crisp', label: 'Refreshing / Cold', icon: '🧊' },
+  { id: 'format_sparkling', label: 'Bubbly / Sparkling', icon: '✨' },
+  { id: 'format_creamy', label: 'Smooth / Creamy', icon: '🥛' },
+]
+
+// Question 3: Taste (LAST - fine-tunes the selection)
+export type DrinkTasteValue = 'flavor_sweet' | 'flavor_tangy' | 'flavor_bitter' | 'flavor_spicy' | 'flavor_smoky'
+export const drinkTasteOptions: { id: DrinkTasteValue; label: string; icon: string }[] = [
+  { id: 'flavor_sweet', label: 'Sweet', icon: '🍯' },
+  { id: 'flavor_tangy', label: 'Tangy / Citrus', icon: '🍋' },
+  { id: 'flavor_bitter', label: 'Bitter', icon: '🫒' },
+  { id: 'flavor_spicy', label: 'Spicy', icon: '🌶️' },
+  { id: 'flavor_smoky', label: 'Smoky', icon: '🪵' },
+]
+
+// Legacy options (keep for backward compatibility during transition)
 export const drinkMoodOptions: { id: DrinkMood; label: string; icon: string }[] = [
   { id: 'drink_refreshing', label: 'Something refreshing', icon: '🧊' },
   { id: 'drink_warming', label: 'Something warming', icon: '☕' },
@@ -61,13 +90,6 @@ export const drinkStyleOptions: { id: DrinkStyle; label: string; icon: string }[
   { id: 'style_sweet', label: 'Sweet', icon: '🍬' },
   { id: 'style_dry', label: 'Dry / Crisp', icon: '🍸' },
   { id: 'style_bitter', label: 'Bitter / Complex', icon: '🍺' },
-]
-
-export const drinkStrengthOptions: { id: DrinkStrength; label: string; icon: string }[] = [
-  { id: 'strength_none', label: 'Non-alcoholic', icon: '🧃' },
-  { id: 'strength_light', label: 'Light (beer, wine)', icon: '🍺' },
-  { id: 'strength_medium', label: 'Medium (cocktails)', icon: '🍹' },
-  { id: 'strength_strong', label: 'Strong (spirits)', icon: '🥃' },
 ]
 
 // Question flow definitions
@@ -128,39 +150,49 @@ export const foodQuestions: FoodQuestion[] = [
   },
 ]
 
+// NEW: Reordered drink questions - alcohol first!
 export const drinkQuestions: DrinkQuestion[] = [
   {
-    id: 'drinkMood',
-    title: 'What kind of drink are you after?',
-    subtitle: 'Select one option',
+    id: 'drinkStrength', // FIRST: Alcohol strength (most important filter)
+    title: 'How strong do you want it?',
+    subtitle: 'Select one',
     required: true,
     multiSelect: false,
   },
   {
-    id: 'drinkStyle',
-    title: 'How do you like it?',
-    subtitle: 'Select one option',
+    id: 'drinkMood', // SECOND: Temperature/Feel (maps to feel)
+    title: 'What kind of drink?',
+    subtitle: 'Select one',
     required: true,
     multiSelect: false,
   },
   {
-    id: 'drinkStrength',
-    title: 'Alcohol preference?',
-    subtitle: 'Select one option',
-    required: true,
-    multiSelect: false,
+    id: 'drinkStyle', // THIRD: Taste (multi-select up to 2)
+    title: 'Pick your taste direction',
+    subtitle: 'Select up to 2',
+    required: false,
+    multiSelect: true,
+    maxSelections: 2,
   },
 ]
 
-// Preferences types
+// Preferences types - NEW structure with strength first
+// DrinkStrengthValue can be either new format (abv_*) or old format (strength_*)
+export type DrinkStrengthPref = DrinkStrengthValue | DrinkStrength | null
+
 export interface DrinkPreferences {
-  drinkMood: DrinkMood | null
-  drinkStyle: DrinkStyle | null
-  drinkStrength: DrinkStrength | null
+  drinkStrength: DrinkStrengthPref          // FIRST: alcohol level (supports both old and new format)
+  drinkFeel: DrinkFeelValue | null          // SECOND: temperature/format
+  drinkTaste: DrinkTasteValue[]             // THIRD: flavor tags (multi-select)
+  // Legacy fields for backward compatibility
+  drinkMood?: DrinkMood | null
+  drinkStyle?: DrinkStyle | null
 }
 
 export const defaultDrinkPreferences: DrinkPreferences = {
+  drinkStrength: null,
+  drinkFeel: null,
+  drinkTaste: [],
   drinkMood: null,
   drinkStyle: null,
-  drinkStrength: null,
 }

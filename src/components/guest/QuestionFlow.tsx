@@ -11,12 +11,13 @@ import {
   foodPortionOptions,
   foodDietOptions,
   foodPriceOptions,
-  drinkMoodOptions,
-  drinkStyleOptions,
+  // New drink options
   drinkStrengthOptions,
-  DrinkMood,
-  DrinkStyle,
-  DrinkStrength,
+  drinkFeelOptions,
+  drinkTasteOptions,
+  DrinkStrengthValue,
+  DrinkFeelValue,
+  DrinkTasteValue,
   DrinkPreferences,
   defaultDrinkPreferences,
 } from '@/lib/questions'
@@ -195,15 +196,16 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
 
       // Check for unmet drink preferences
       const mainDrinks = drinkRecs.filter(d => !d.isCrossSell)
-      if (drinkPreferences.drinkStrength === 'strength_none' && mainDrinks.length === 0) {
+      const isNonAlcoholic = drinkPreferences.drinkStrength === 'abv_zero' || drinkPreferences.drinkStrength === 'strength_none'
+      if (isNonAlcoholic && mainDrinks.length === 0) {
         unmetPreferences.push('non-alcoholic drinks')
       }
     } else if (intent === 'food') {
       // Fetch drink cross-sell items (use default preferences for a general selection)
-      const defaultDrinkPrefs = {
-        drinkMood: 'drink_mood_social' as DrinkMood,
-        drinkStyle: 'drink_style_classic' as DrinkStyle,
-        drinkStrength: 'strength_light' as DrinkStrength,
+      const defaultDrinkPrefs: DrinkPreferences = {
+        drinkStrength: 'abv_light',
+        drinkFeel: 'format_crisp',
+        drinkTaste: [],
       }
       const crossSellDrinks = await getDrinkRecommendations(venueId, defaultDrinkPrefs, 2)
       // Mark as cross-sell items
@@ -347,17 +349,23 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     setFoodPreferences((p) => ({ ...p, price }))
   }
 
-  // Drink selections
-  const selectDrinkMood = (mood: DrinkMood) => {
-    setDrinkPreferences((p) => ({ ...p, drinkMood: mood }))
-  }
-
-  const selectDrinkStyle = (style: DrinkStyle) => {
-    setDrinkPreferences((p) => ({ ...p, drinkStyle: style }))
-  }
-
-  const selectDrinkStrength = (strength: DrinkStrength) => {
+  // Drink selections - NEW order: strength, feel, taste
+  const selectDrinkStrength = (strength: DrinkStrengthValue) => {
     setDrinkPreferences((p) => ({ ...p, drinkStrength: strength }))
+  }
+
+  const selectDrinkFeel = (feel: DrinkFeelValue) => {
+    setDrinkPreferences((p) => ({ ...p, drinkFeel: feel }))
+  }
+
+  const toggleDrinkTaste = (taste: DrinkTasteValue) => {
+    setDrinkPreferences((p) => {
+      if (p.drinkTaste.includes(taste)) {
+        return { ...p, drinkTaste: p.drinkTaste.filter((t) => t !== taste) }
+      }
+      if (p.drinkTaste.length >= 2) return p // Max 2 selections
+      return { ...p, drinkTaste: [...p.drinkTaste, taste] }
+    })
   }
 
   // Can continue checks
@@ -374,9 +382,9 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
 
   const canContinueDrink = () => {
     switch (drinkStep) {
-      case 1: return drinkPreferences.drinkMood !== null
-      case 2: return drinkPreferences.drinkStyle !== null
-      case 3: return drinkPreferences.drinkStrength !== null
+      case 1: return drinkPreferences.drinkStrength !== null  // Step 1: Alcohol strength (required)
+      case 2: return drinkPreferences.drinkFeel !== null      // Step 2: Temperature/feel (required)
+      case 3: return true                                      // Step 3: Taste (optional)
       default: return false
     }
   }
@@ -821,6 +829,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         {/* Questions - centered vertically */}
         <div className="flex-1 flex items-center justify-center px-6">
           <AnimatePresence mode="wait" custom={direction}>
+            {/* STEP 1: Alcohol Strength (FIRST - most important filter) */}
             {step === 1 && (
               <motion.div
                 key="drink-step1"
@@ -838,7 +847,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
                   animate="visible"
                   className="text-2xl font-bold text-[#1a1a1a] mb-2"
                 >
-                  What kind of drink are you after?
+                  How strong do you want it?
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -846,97 +855,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
                   transition={{ delay: 0.1 }}
                   className="text-[#1a1a1a]/60 mb-8"
                 >
-                  Select one option
-                </motion.p>
-                <motion.div
-                  className="flex flex-wrap gap-3 justify-center"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  {drinkMoodOptions.map((option) =>
-                    renderChip(
-                      drinkPreferences.drinkMood === option.id,
-                      option.label,
-                      option.icon,
-                      () => selectDrinkMood(option.id)
-                    )
-                  )}
-                </motion.div>
-              </motion.div>
-            )}
-
-            {step === 2 && (
-              <motion.div
-                key="drink-step2"
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-                className="w-full max-w-sm text-center"
-              >
-                <motion.h1
-                  variants={titleVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
-                >
-                  How do you like it?
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-[#1a1a1a]/60 mb-8"
-                >
-                  Select one option
-                </motion.p>
-                <motion.div
-                  className="flex flex-wrap gap-3 justify-center"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  {drinkStyleOptions.map((option) =>
-                    renderChip(
-                      drinkPreferences.drinkStyle === option.id,
-                      option.label,
-                      option.icon,
-                      () => selectDrinkStyle(option.id)
-                    )
-                  )}
-                </motion.div>
-              </motion.div>
-            )}
-
-            {step === 3 && (
-              <motion.div
-                key="drink-step3"
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-                className="w-full max-w-sm text-center"
-              >
-                <motion.h1
-                  variants={titleVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
-                >
-                  Alcohol preference?
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-[#1a1a1a]/60 mb-8"
-                >
-                  Select one option
+                  Select one
                 </motion.p>
                 <motion.div
                   className="flex flex-wrap gap-3 justify-center"
@@ -955,6 +874,108 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
                 </motion.div>
               </motion.div>
             )}
+
+            {/* STEP 2: Temperature/Feel (SECOND - narrows down further) */}
+            {step === 2 && (
+              <motion.div
+                key="drink-step2"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="w-full max-w-sm text-center"
+              >
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
+                >
+                  What kind of drink?
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-[#1a1a1a]/60 mb-8"
+                >
+                  Select one
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3 justify-center"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {drinkFeelOptions.map((option) =>
+                    renderChip(
+                      drinkPreferences.drinkFeel === option.id,
+                      option.label,
+                      option.icon,
+                      () => selectDrinkFeel(option.id)
+                    )
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* STEP 3: Taste (LAST - fine-tunes the selection) */}
+            {step === 3 && (
+              <motion.div
+                key="drink-step3"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+                className="w-full max-w-sm text-center"
+              >
+                <motion.h1
+                  variants={titleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-2xl font-bold text-[#1a1a1a] mb-2"
+                >
+                  Pick your taste direction
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-[#1a1a1a]/60 mb-8"
+                >
+                  Select up to 2
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap gap-3 justify-center"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {drinkTasteOptions.map((option) =>
+                    renderChip(
+                      drinkPreferences.drinkTaste.includes(option.id),
+                      option.label,
+                      option.icon,
+                      () => toggleDrinkTaste(option.id)
+                    )
+                  )}
+                </motion.div>
+                {drinkPreferences.drinkTaste.length > 0 && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    onClick={() => setDrinkPreferences((p) => ({ ...p, drinkTaste: [] }))}
+                    className="mt-4 text-sm text-[#1a1a1a]/70 hover:text-[#1a1a1a]"
+                  >
+                    Clear selection
+                  </motion.button>
+                )}
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
@@ -970,6 +991,15 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
             >
               {step === 3 ? 'Show recommendations' : 'Continue'}
             </Button>
+            {step === 3 && (
+              <button
+                onClick={goNext}
+                disabled={isLoading}
+                className="w-full py-3 text-[#B2472A] text-sm font-medium mt-2"
+              >
+                Skip
+              </button>
+            )}
           </div>
         </div>
       </div>
