@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
 
@@ -20,51 +20,61 @@ const operatorFeatures = [
 const monthlyFeatures = ['Unlimited scans', 'Real-time analytics', 'Menu management', 'Cancel anytime']
 const annualFeatures = ['Everything in Monthly', '1 month free', 'Priority support', 'Price locked forever']
 
+// Luxury animation variants
+const fadeInUp = {
+  hidden: { opacity: 0, y: 60 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.8,
+      ease: [0.25, 0.4, 0.25, 1] as const
+    }
+  }
+}
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+      delayChildren: 0.1
+    }
+  }
+}
+
+const fadeInItem = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.25, 0.4, 0.25, 1] as const
+    }
+  }
+}
+
 export default function LandingPage() {
   const containerRef = useRef(null)
-  const heroRef = useRef<HTMLElement>(null)
-  const [isInHero, setIsInHero] = useState(false)
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
   })
 
-  // Mouse tracking for reveal effect - only in hero
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (heroRef.current) {
-        const rect = heroRef.current.getBoundingClientRect()
-        const isInside = (
-          e.clientY >= rect.top &&
-          e.clientY <= rect.bottom &&
-          e.clientX >= rect.left &&
-          e.clientX <= rect.right
-        )
-        setIsInHero(isInside)
-
-        if (isInside) {
-          setMousePos({
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-          })
-        }
-      }
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [])
-
   // Parallax transforms
-  const solutionBlobY = useTransform(scrollYProgress, [0.2, 0.5], [100, -100])
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0])
+  const heroY = useTransform(scrollYProgress, [0, 0.15], [0, -100])
+  const menuCardsY = useTransform(scrollYProgress, [0, 0.2], [0, 50])
+  const solutionGlowScale = useTransform(scrollYProgress, [0.2, 0.4], [0.8, 1.2])
+  const solutionGlowOpacity = useTransform(scrollYProgress, [0.2, 0.35, 0.5], [0, 0.5, 0])
 
   return (
     <div ref={containerRef} className="bg-[#FDFBF7]">
-      {/* Navigation - Fixed, minimal */}
+      {/* Fixed Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-8 py-5 flex justify-between items-center bg-[#FDFBF7]/90 backdrop-blur-sm border-b border-[#1a1a1a]/5">
-        <div className="font-serif text-2xl text-[#1a1a1a]">Eatsight</div>
+        <Link href="/" className="font-serif text-2xl text-[#1a1a1a]">Eatsight</Link>
         <div className="flex gap-4 md:gap-8 items-center">
           <a href="#how-it-works" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">How it works</a>
           <a href="#pricing" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">Pricing</a>
@@ -75,95 +85,96 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Section 1: Hero - Full viewport with mouse reveal effect */}
-      <section
-        ref={heroRef}
-        className="h-screen flex items-center justify-center relative overflow-hidden pt-16 bg-[#FDFBF7]"
+      {/* Hero with parallax */}
+      <motion.section
+        style={{ opacity: heroOpacity, y: heroY }}
+        className="h-screen flex items-center justify-center relative overflow-hidden pt-16"
       >
-        {/* Background menu items - always visible but faded */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[15%] left-[8%] rotate-[-12deg] bg-white p-4 rounded-lg shadow-lg w-48 text-xs text-gray-400 font-mono opacity-30">
+        {/* Background menu cards with parallax */}
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{ y: menuCardsY }}
+        >
+          <motion.div
+            initial={{ opacity: 0, rotate: -15, x: -50 }}
+            animate={{ opacity: 0.25, rotate: -12, x: 0 }}
+            transition={{ duration: 1, delay: 0.5 }}
+            className="absolute top-[15%] left-[8%] bg-white p-4 rounded-lg shadow-lg w-48 text-xs text-gray-400 font-mono"
+          >
             <div className="font-bold mb-2 text-[#722F37]/50">Today&apos;s Specials</div>
             <div>Grilled Salmon............€24</div>
             <div>Pasta Carbonara..........€18</div>
-            <div>Chef&apos;s Burger.............€16</div>
-          </div>
-          <div className="absolute top-[20%] right-[10%] rotate-[8deg] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-400 font-mono opacity-30">
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, rotate: 12, x: 50 }}
+            animate={{ opacity: 0.25, rotate: 8, x: 0 }}
+            transition={{ duration: 1, delay: 0.7 }}
+            className="absolute top-[20%] right-[10%] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-400 font-mono"
+          >
             <div className="font-bold mb-2 text-[#722F37]/50">DRINKS</div>
             <div>House Red.................€7</div>
             <div>Craft Beer................€6</div>
             <div>Espresso Martini.........€12</div>
-          </div>
-          <div className="absolute bottom-[25%] left-[12%] rotate-[5deg] bg-white p-4 rounded-lg shadow-lg w-44 text-xs text-gray-400 font-mono opacity-30">
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, rotate: 8, y: 50 }}
+            animate={{ opacity: 0.25, rotate: 5, y: 0 }}
+            transition={{ duration: 1, delay: 0.9 }}
+            className="absolute bottom-[25%] left-[12%] bg-white p-4 rounded-lg shadow-lg w-44 text-xs text-gray-400 font-mono"
+          >
             <div className="font-bold mb-2 text-[#722F37]/50">MAINS</div>
             <div>Ribeye Steak.............€32</div>
             <div>Fish & Chips.............€19</div>
-          </div>
-          <div className="absolute bottom-[20%] right-[15%] rotate-[-8deg] bg-white p-4 rounded-lg shadow-lg w-40 text-xs text-gray-400 font-mono opacity-30">
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, rotate: -12, y: 50 }}
+            animate={{ opacity: 0.25, rotate: -8, y: 0 }}
+            transition={{ duration: 1, delay: 1.1 }}
+            className="absolute bottom-[20%] right-[15%] bg-white p-4 rounded-lg shadow-lg w-40 text-xs text-gray-400 font-mono"
+          >
             <div className="font-bold mb-2 text-[#722F37]/50">DESSERTS</div>
             <div>Tiramisu..................€8</div>
             <div>Chocolate Lava...........€9</div>
-          </div>
-          <div className="absolute top-[45%] left-[30%] rotate-[3deg] bg-white p-4 rounded-lg shadow-lg w-44 text-xs text-gray-400 font-mono opacity-20 hidden md:block">
-            <div className="font-bold mb-2 text-[#722F37]/50">APPETIZERS</div>
-            <div>Bruschetta................€9</div>
-            <div>Calamari.................€12</div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        {/* Mouse reveal spotlight - only shows in hero */}
-        {isInHero && (
-          <div
-            className="absolute pointer-events-none z-10 transition-opacity duration-200 hidden md:block"
-            style={{
-              left: mousePos.x,
-              top: mousePos.y,
-              transform: 'translate(-50%, -50%)',
-              width: '400px',
-              height: '400px',
-              background: 'radial-gradient(circle, transparent 0%, transparent 30%, rgba(253,251,247,0.95) 60%, rgba(253,251,247,1) 100%)',
-              borderRadius: '50%',
-            }}
-          />
-        )}
-
-        {/* Main hero content - always on top */}
+        {/* Hero content */}
         <div className="text-center px-6 md:px-8 max-w-4xl relative z-20">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.4, 0.25, 1] }}
             className="text-[#722F37] uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-6"
           >
             Menu Intelligence
           </motion.p>
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.25, 0.4, 0.25, 1] }}
             className="font-serif text-5xl md:text-7xl lg:text-8xl text-[#1a1a1a] leading-[0.95] mb-8"
           >
             Know what<br />your guests<br />
             <span className="italic text-[#722F37]">crave</span>
           </motion.h1>
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.4, 0.25, 1] }}
             className="text-lg md:text-xl text-[#1a1a1a]/60 max-w-xl mx-auto mb-10"
           >
             Help guests find their perfect dish in seconds. See exactly what they want in real-time.
           </motion.p>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.4, 0.25, 1] }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
             <Link href="/signup" className="inline-block bg-[#1a1a1a] text-white px-8 py-4 rounded-full text-lg hover:bg-[#333] transition">
               Start your free trial
             </Link>
-            <Link href="/v/bella-taverna" className="inline-block border-2 border-[#1a1a1a] text-[#1a1a1a] px-8 py-4 rounded-full text-lg hover:bg-[#1a1a1a] hover:text-white transition">
+            <Link href="/demo" className="inline-block border-2 border-[#1a1a1a] text-[#1a1a1a] px-8 py-4 rounded-full text-lg hover:bg-[#1a1a1a] hover:text-white transition">
               Try the demo →
             </Link>
           </motion.div>
@@ -179,16 +190,16 @@ export default function LandingPage() {
             <div className="w-1.5 h-3 bg-[#1a1a1a]/40 rounded-full" />
           </div>
         </motion.div>
-      </section>
+      </motion.section>
 
-      {/* Section 2: The Problem - Editorial style */}
+      {/* Problem Section - Animates in on scroll */}
       <section className="min-h-screen flex items-center py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
           <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fadeInUp}
           >
             <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">The Challenge</p>
             <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] leading-tight mb-6">
@@ -202,100 +213,96 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fadeInUp}
           >
             <div className="bg-white rounded-3xl p-8 shadow-xl shadow-[#1a1a1a]/5 border border-[#1a1a1a]/5">
-              <div className="space-y-4 text-[#1a1a1a]/50 font-mono text-sm">
-                <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
-                  <span>Menu items</span>
-                  <span className="text-[#1a1a1a]/70">47</span>
-                </div>
-                <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
-                  <span>Average decision time</span>
-                  <span className="text-[#1a1a1a]/70">4+ min</span>
-                </div>
-                <div className="flex justify-between border-b border-dashed border-[#1a1a1a]/10 pb-2">
-                  <span>Guests who ask server</span>
-                  <span className="text-[#1a1a1a]/70">68%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Orders that match preference</span>
-                  <span className="text-[#722F37] font-medium">~40%</span>
-                </div>
-              </div>
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="space-y-4 text-[#1a1a1a]/50 font-mono text-sm"
+              >
+                {[
+                  { label: 'Menu items', value: '47' },
+                  { label: 'Average decision time', value: '4+ min' },
+                  { label: 'Guests who ask server', value: '68%' },
+                  { label: 'Orders that match preference', value: '~40%', highlight: true },
+                ].map((item, i) => (
+                  <motion.div
+                    key={i}
+                    variants={fadeInItem}
+                    className={`flex justify-between pb-2 ${i < 3 ? 'border-b border-dashed border-[#1a1a1a]/10' : ''}`}
+                  >
+                    <span>{item.label}</span>
+                    <span className={item.highlight ? 'text-[#722F37] font-medium' : 'text-[#1a1a1a]/70'}>{item.value}</span>
+                  </motion.div>
+                ))}
+              </motion.div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Section 3: The Solution - Big statement */}
+      {/* Solution Section */}
       <section className="min-h-screen flex items-center justify-center bg-[#1a1a1a] text-white py-20 md:py-32 px-6 md:px-8 relative overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#722F37]/20 rounded-full blur-3xl" />
         <motion.div
-          className="absolute top-0 right-0 w-[400px] md:w-[600px] h-[400px] md:h-[600px] rounded-full bg-[#722F37]/10 blur-3xl"
-          style={{ y: solutionBlobY }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#722F37]/20 rounded-full blur-3xl"
+          style={{
+            scale: solutionGlowScale,
+            opacity: solutionGlowOpacity
+          }}
         />
 
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <motion.p
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-[#C9A227] uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8"
-          >
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          className="max-w-4xl mx-auto text-center relative z-10"
+        >
+          <motion.p variants={fadeInUp} className="text-[#C9A227] uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8">
             The Solution
           </motion.p>
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="font-serif text-4xl md:text-6xl lg:text-7xl leading-tight mb-8 text-white"
-          >
+          <motion.h2 variants={fadeInUp} className="font-serif text-4xl md:text-6xl lg:text-7xl leading-tight mb-8 text-white">
             Three questions.<br />
             <span className="italic text-[#C9A227]">Perfect match.</span>
           </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto"
-          >
+          <motion.p variants={fadeInUp} className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
             Guest scans the QR code. Answers three simple questions about mood, flavor, and hunger.
             Gets three perfect recommendations in under 15 seconds.
           </motion.p>
-        </div>
+        </motion.div>
       </section>
 
-      {/* Section 4: How it works - Menu style cards */}
+      {/* How It Works - Staggered animation */}
       <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-6xl mx-auto">
           <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial="hidden"
+            whileInView="visible"
             viewport={{ once: true }}
+            variants={fadeInUp}
             className="text-center mb-16 md:mb-20"
           >
             <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">How It Works</p>
             <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">The Experience</h2>
           </motion.div>
 
-          {/* Step cards - styled like menu items */}
-          <div className="space-y-6 md:space-y-8">
-            {steps.map((step, i) => (
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="space-y-6 md:space-y-8"
+          >
+            {steps.map((step) => (
               <motion.div
                 key={step.num}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: i * 0.1 }}
-                className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 p-6 md:p-8 border-b border-[#1a1a1a]/10 group hover:bg-[#1a1a1a]/[0.02] transition-colors"
+                variants={fadeInItem}
+                className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8 p-6 md:p-8 border-b border-[#1a1a1a]/10 group hover:bg-[#1a1a1a]/[0.02] transition-colors rounded-xl"
               >
                 <span className="text-[#1a1a1a]/20 font-serif text-4xl md:text-6xl md:w-24">{step.num}</span>
                 <span className="text-3xl md:text-4xl md:w-16">{step.icon}</span>
@@ -308,48 +315,53 @@ export default function LandingPage() {
                 </div>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Section 5: For Operators - Split */}
+      {/* For Operators */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF]">
         <div className="max-w-6xl mx-auto">
           <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial="hidden"
+            whileInView="visible"
             viewport={{ once: true }}
+            variants={fadeInUp}
             className="text-center mb-16 md:mb-20"
           >
             <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">For Operators</p>
             <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">Finally, real answers</h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-            {operatorFeatures.map((item, i) => (
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="grid md:grid-cols-2 gap-6 md:gap-8"
+          >
+            {operatorFeatures.map((item) => (
               <motion.div
                 key={item.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: i * 0.1 }}
+                variants={fadeInItem}
                 className="bg-white p-6 md:p-8 rounded-2xl"
               >
                 <h3 className="font-serif text-xl md:text-2xl text-[#1a1a1a] mb-3">{item.title}</h3>
                 <p className="text-[#1a1a1a]/70">{item.desc}</p>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Section 6: Pricing - Clean, minimal */}
+      {/* Pricing */}
       <section id="pricing" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-4xl mx-auto">
           <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial="hidden"
+            whileInView="visible"
             viewport={{ once: true }}
+            variants={fadeInUp}
             className="text-center mb-16"
           >
             <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">Pricing</p>
@@ -357,12 +369,16 @@ export default function LandingPage() {
             <p className="text-[#1a1a1a]/60">Start free. No credit card required.</p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto"
+          >
             {/* Monthly Card */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              variants={fadeInItem}
               className="border-2 border-[#1a1a1a]/10 rounded-2xl p-8 bg-white hover:border-[#1a1a1a]/20 transition-colors"
             >
               <p className="text-[#1a1a1a]/50 uppercase tracking-wider text-sm mb-4">Monthly</p>
@@ -382,12 +398,9 @@ export default function LandingPage() {
               </Link>
             </motion.div>
 
-            {/* Annual Card - HIGHLIGHTED */}
+            {/* Annual Card */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
+              variants={fadeInItem}
               className="bg-[#1a1a1a] text-white rounded-2xl p-8 relative"
             >
               <div className="absolute -top-3 right-8 bg-[#C9A227] text-[#1a1a1a] text-xs font-bold px-3 py-1 rounded-full">
@@ -409,17 +422,18 @@ export default function LandingPage() {
                 Start free trial
               </Link>
             </motion.div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Section 7: About - Short */}
+      {/* About */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF]">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial="hidden"
+            whileInView="visible"
             viewport={{ once: true }}
+            variants={fadeInUp}
           >
             <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">Our Story</p>
             <h2 className="font-serif text-3xl md:text-4xl text-[#1a1a1a] mb-6">Built by hospitality people</h2>
@@ -435,13 +449,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Section 8: Final CTA - Full bleed */}
+      {/* Final CTA */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#722F37] text-white">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            initial="hidden"
+            whileInView="visible"
             viewport={{ once: true }}
+            variants={fadeInUp}
           >
             <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6">
               Ready to understand<br />your guests?

@@ -80,16 +80,14 @@ const containerVariants = {
 }
 
 const chipVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.9 },
+  hidden: { opacity: 0, y: 15 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    scale: 1,
     transition: {
-      delay: i * 0.05,
-      type: 'spring' as const,
-      stiffness: 300,
-      damping: 20,
+      delay: i * 0.04,
+      duration: 0.35,
+      ease: [0.25, 0.4, 0.25, 1] as const,
     },
   }),
 }
@@ -259,15 +257,13 @@ export function QuestionFlow({ venueId, tableRef, onComplete, onBack }: Question
       key={label}
       custom={index}
       variants={chipVariants}
-      initial="hidden"
-      animate="visible"
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={`
-        flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium transition-all
+        flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium transition-all duration-200
         ${
           selected
-            ? 'bg-white border-2 border-mesa-500 text-mesa-500 shadow-md shadow-mesa-500/20 scale-[1.02]'
+            ? 'bg-white border-2 border-mesa-500 text-mesa-500 shadow-md shadow-mesa-500/20'
             : 'bg-white text-mesa-ink border-2 border-gray-200 hover:border-gray-300 hover:shadow-sm'
         }
       `}
