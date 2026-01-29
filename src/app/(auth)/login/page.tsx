@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff } from 'lucide-react'
-import { signIn, getUserVenue } from '@/lib/supabase/auth'
+import { signIn } from '@/lib/supabase/auth'
+import { createClient } from '@/lib/supabase/client'
 
 function LoginForm() {
   const router = useRouter()
@@ -22,6 +23,8 @@ function LoginForm() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+
+    const supabase = createClient()
 
     console.log('[Login] Attempting sign in for:', email)
 
@@ -41,22 +44,52 @@ function LoginForm() {
       return
     }
 
-    console.log('[Login] Signed in user:', user.id)
+    console.log('[Login] User ID:', user.id)
+    console.log('[Login] User email:', user.email)
 
-    // Check if user has a venue linked
-    const operatorUser = await getUserVenue(user.id)
+    // First check operator_users table by auth_user_id
+    const { data: operator, error: operatorError } = await supabase
+      .from('operator_users')
+      .select('id, venue_id, email, auth_user_id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
 
-    console.log('[Login] Operator user data:', operatorUser)
+    console.log('[Login] Operator by auth_user_id:', operator, 'Error:', operatorError)
 
-    if (operatorUser?.venue_id) {
-      // User has a venue - go to dashboard
-      console.log('[Login] User has venue, redirecting to:', redirect || '/dashboard')
+    if (operator?.venue_id) {
+      // Found venue by auth_user_id - go to dashboard
+      console.log('[Login] User has venue via auth_user_id, redirecting to dashboard')
       router.push(redirect || '/dashboard')
-    } else {
-      // No venue - go to onboarding
-      console.log('[Login] User has no venue, redirecting to onboarding')
-      router.push('/onboarding/venue')
+      return
     }
+
+    // If no operator found by auth_user_id, check by email
+    // This handles cases where operator was created before auth link was established
+    const { data: operatorByEmail } = await supabase
+      .from('operator_users')
+      .select('id, venue_id, email, auth_user_id')
+      .eq('email', user.email)
+      .maybeSingle()
+
+    console.log('[Login] Operator by email:', operatorByEmail)
+
+    if (operatorByEmail?.venue_id) {
+      // Found by email - update the auth_user_id link if missing
+      if (!operatorByEmail.auth_user_id) {
+        console.log('[Login] Linking auth_user_id to existing operator')
+        await supabase
+          .from('operator_users')
+          .update({ auth_user_id: user.id })
+          .eq('id', operatorByEmail.id)
+      }
+      console.log('[Login] User has venue via email lookup, redirecting to dashboard')
+      router.push(redirect || '/dashboard')
+      return
+    }
+
+    // No venue found - go to onboarding
+    console.log('[Login] No venue found, going to onboarding')
+    router.push('/onboarding/venue')
   }
 
   return (

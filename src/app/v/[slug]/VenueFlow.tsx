@@ -104,7 +104,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
           href="/demo"
           className="text-sm text-[#722F37] hover:text-[#5a252c] transition"
         >
-          Dashboard
+          Demo
         </Link>
       </header>
 
