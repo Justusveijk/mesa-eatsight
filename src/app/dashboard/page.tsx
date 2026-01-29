@@ -255,10 +255,10 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-semibold text-[#1a1a1a] mb-1">Dashboard</h1>
-          <p className="text-[#1a1a1a]/50">Overview of your menu performance</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1a1a1a] mb-1">Dashboard</h1>
+          <p className="text-[#1a1a1a]/50 text-sm sm:text-base">Overview of your menu performance</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -307,54 +307,54 @@ export default function DashboardPage() {
 
       {/* Metrics Grid */}
       <motion.div
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8"
         variants={stagger}
         initial="initial"
         animate="animate"
       >
-        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5">
+        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5">
           <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Scans Today</p>
           {loading ? (
-            <div className="h-10 w-16 bg-gray-100 animate-pulse rounded" />
+            <div className="h-8 sm:h-10 w-12 sm:w-16 bg-gray-100 animate-pulse rounded" />
           ) : (
-            <p className="text-4xl font-semibold text-[#1a1a1a]">{metrics.scansToday}</p>
+            <p className="text-2xl sm:text-4xl font-semibold text-[#1a1a1a]">{metrics.scansToday}</p>
           )}
         </motion.div>
-        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5">
+        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5">
           <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Scans ({dateRange}d)</p>
           {loading ? (
-            <div className="h-10 w-16 bg-gray-100 animate-pulse rounded" />
+            <div className="h-8 sm:h-10 w-12 sm:w-16 bg-gray-100 animate-pulse rounded" />
           ) : (
-            <p className="text-4xl font-semibold text-[#1a1a1a]">{metrics.scansWeek}</p>
+            <p className="text-2xl sm:text-4xl font-semibold text-[#1a1a1a]">{metrics.scansWeek}</p>
           )}
         </motion.div>
-        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5">
+        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5">
           <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Clicks Today</p>
           {loading ? (
-            <div className="h-10 w-16 bg-gray-100 animate-pulse rounded" />
+            <div className="h-8 sm:h-10 w-12 sm:w-16 bg-gray-100 animate-pulse rounded" />
           ) : (
-            <p className="text-4xl font-semibold text-[#1a1a1a]">{metrics.clicksToday}</p>
+            <p className="text-2xl sm:text-4xl font-semibold text-[#1a1a1a]">{metrics.clicksToday}</p>
           )}
         </motion.div>
-        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5">
+        <motion.div variants={fadeIn} className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5">
           <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">CTR</p>
           {loading ? (
-            <div className="h-10 w-16 bg-gray-100 animate-pulse rounded" />
+            <div className="h-8 sm:h-10 w-12 sm:w-16 bg-gray-100 animate-pulse rounded" />
           ) : (
-            <p className="text-4xl font-semibold text-[#1a1a1a]">{metrics.ctr}%</p>
+            <p className="text-2xl sm:text-4xl font-semibold text-[#1a1a1a]">{metrics.ctr}%</p>
           )}
         </motion.div>
       </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Top Moods */}
         <motion.div
           variants={fadeIn}
           initial="initial"
           animate="animate"
-          className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+          className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5"
         >
-          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-6">Top Cravings</h3>
+          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 sm:mb-6">Top Cravings</h3>
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
@@ -388,9 +388,9 @@ export default function DashboardPage() {
           variants={fadeIn}
           initial="initial"
           animate="animate"
-          className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+          className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5"
         >
-          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-6">Most Clicked Items</h3>
+          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 sm:mb-6">Most Clicked Items</h3>
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
@@ -419,9 +419,9 @@ export default function DashboardPage() {
           variants={fadeIn}
           initial="initial"
           animate="animate"
-          className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5"
+          className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5"
         >
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-4 sm:mb-6">
             <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40">Live Activity</h3>
             <span className="flex items-center gap-1.5 text-xs text-green-600">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />

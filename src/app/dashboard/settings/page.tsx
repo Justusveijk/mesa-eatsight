@@ -178,15 +178,15 @@ export default function SettingsPage() {
       )}
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-serif text-2xl font-bold text-[#1a1a1a]">Settings</h1>
-        <p className="text-[#1a1a1a]/50">Manage your venue and generate QR codes</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#1a1a1a]">Settings</h1>
+        <p className="text-[#1a1a1a]/50 text-sm sm:text-base">Manage your venue and generate QR codes</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {/* Venue Info */}
-        <div className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5 shadow-sm">
-          <h3 className="font-semibold text-[#1a1a1a] mb-6">Venue Information</h3>
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5 shadow-sm">
+          <h3 className="font-semibold text-[#1a1a1a] mb-4 sm:mb-6">Venue Information</h3>
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-[#1a1a1a]/60 mb-2">
@@ -246,8 +246,8 @@ export default function SettingsPage() {
         </div>
 
         {/* QR Code Generator */}
-        <div className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5 shadow-sm">
-          <h3 className="font-semibold text-[#1a1a1a] mb-6">QR Code Generator</h3>
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5 shadow-sm">
+          <h3 className="font-semibold text-[#1a1a1a] mb-4 sm:mb-6">QR Code Generator</h3>
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-[#1a1a1a]/60 mb-2">

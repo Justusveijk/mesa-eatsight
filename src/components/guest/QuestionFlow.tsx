@@ -27,7 +27,12 @@ interface QuestionFlowProps {
   venueId: string
   tableRef: string | null
   intent: Intent
-  onComplete: (recommendations: RecommendedItem[], showFallbackMessage?: boolean) => void
+  onComplete: (
+    recommendations: RecommendedItem[],
+    showFallbackMessage?: boolean,
+    unmetPreferences?: string[],
+    feedbackMessage?: string | null
+  ) => void
   onBack: () => void
 }
 
@@ -146,6 +151,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     const fetchStart = Date.now()
     let allRecommendations: RecommendedItem[] = []
     let showFallbackMessage = false
+    const unmetPreferences: string[] = []
 
     // Main food recommendations (or cross-sell if drinks only)
     if (intent === 'food' || intent === 'both') {
@@ -156,6 +162,16 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
       // Track unmet demand if we had to show fallback items
       if (result.showFallbackMessage && sessionId) {
         await trackUnmetDemand(venueId, sessionId, foodPreferences)
+        // Track what specifically wasn't met
+        if (foodPreferences.dietary.includes('diet_vegan')) {
+          unmetPreferences.push('vegan options')
+        }
+        if (foodPreferences.dietary.includes('diet_vegetarian')) {
+          unmetPreferences.push('vegetarian options')
+        }
+        if (foodPreferences.dietary.includes('diet_gluten_free')) {
+          unmetPreferences.push('gluten-free options')
+        }
       }
     } else if (intent === 'drinks') {
       // Fetch food cross-sell items (use default preferences for a general selection)
@@ -176,6 +192,12 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     if (intent === 'drinks' || intent === 'both') {
       const drinkRecs = await getDrinkRecommendations(venueId, drinkPreferences, intent === 'both' ? 2 : 3)
       allRecommendations = [...allRecommendations, ...drinkRecs]
+
+      // Check for unmet drink preferences
+      const mainDrinks = drinkRecs.filter(d => !d.isCrossSell)
+      if (drinkPreferences.drinkStrength === 'strength_none' && mainDrinks.length === 0) {
+        unmetPreferences.push('non-alcoholic drinks')
+      }
     } else if (intent === 'food') {
       // Fetch drink cross-sell items (use default preferences for a general selection)
       const defaultDrinkPrefs = {
@@ -187,6 +209,17 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
       // Mark as cross-sell items
       const crossSellItems = crossSellDrinks.map(item => ({ ...item, isCrossSell: true }))
       allRecommendations = [...allRecommendations, ...crossSellItems]
+    }
+
+    // Generate feedback message if we have unmet preferences
+    let feedbackMessage: string | null = null
+    if (unmetPreferences.length > 0) {
+      feedbackMessage = `We'll share your interest in ${unmetPreferences.join(' and ')} with the restaurant.`
+
+      // Log unmet demand to analytics
+      if (sessionId) {
+        trackEvent(venueId, sessionId, 'unmet_demand', { preferences: unmetPreferences })
+      }
     }
 
     // Ensure loading screen shows for at least 2 seconds for effect
@@ -207,11 +240,12 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
         count: allRecommendations.length,
         items: allRecommendations.map(r => r.id),
         hasFallback: showFallbackMessage,
+        unmetPreferences,
       })
     }
 
     setIsLoading(false)
-    onComplete(allRecommendations, showFallbackMessage)
+    onComplete(allRecommendations, showFallbackMessage, unmetPreferences, feedbackMessage)
   }, [venueId, foodPreferences, drinkPreferences, sessionId, onComplete, intent])
 
   // Food flow navigation

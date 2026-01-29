@@ -57,6 +57,7 @@ export default async function DashboardLayout({
     <DashboardShell
       venueName={typedOperatorUser.venues?.name || 'Your Venue'}
       userEmail={typedOperatorUser.email || user.email || ''}
+      venueSlug={typedOperatorUser.venues?.slug}
     >
       {children}
     </DashboardShell>

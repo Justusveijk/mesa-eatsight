@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, UtensilsCrossed, BarChart3, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, UtensilsCrossed, BarChart3, Settings, LogOut, Menu, X, ExternalLink } from 'lucide-react'
 import { signOut } from '@/lib/supabase/auth'
 
 const navItems = [
@@ -17,12 +17,19 @@ interface DashboardShellProps {
   children: React.ReactNode
   venueName: string
   userEmail: string
+  venueSlug?: string
 }
 
-export function DashboardShell({ children, venueName, userEmail }: DashboardShellProps) {
+export function DashboardShell({ children, venueName, userEmail, venueSlug }: DashboardShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Close sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [pathname])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -31,9 +38,44 @@ export function DashboardShell({ children, venueName, userEmail }: DashboardShel
   }
 
   return (
-    <div className="flex min-h-screen bg-[#FDFBF7]">
+    <div className="min-h-screen bg-[#FDFBF7]">
+      {/* Mobile header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-[#1a1a1a]/10 px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 -ml-2 text-[#1a1a1a]/60 hover:text-[#1a1a1a]"
+        >
+          <Menu size={24} />
+        </button>
+        <span className="font-semibold text-[#1e3a5f]">Eatsight</span>
+        <div className="w-10" />
+      </header>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 flex flex-col bg-white border-r border-gray-200">
+      <aside className={`
+        fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-50
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0
+      `}>
+        {/* Mobile close button */}
+        <div className="lg:hidden absolute top-4 right-4">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-2 text-[#1a1a1a]/60 hover:text-[#1a1a1a]"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
         {/* Logo */}
         <div className="p-6 border-b border-gray-200">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -71,6 +113,18 @@ export function DashboardShell({ children, venueName, userEmail }: DashboardShel
               )
             })}
           </ul>
+
+          {venueSlug && (
+            <a
+              href={`/v/${venueSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#1a1a1a]/60 hover:bg-[#1a1a1a]/5 hover:text-[#1a1a1a] transition-all mt-4 text-sm font-medium"
+            >
+              <ExternalLink size={20} />
+              Preview Guest View
+            </a>
+          )}
         </nav>
 
         {/* Bottom section */}
@@ -95,8 +149,8 @@ export function DashboardShell({ children, venueName, userEmail }: DashboardShel
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-8 overflow-auto">
-        <div className="relative">
+      <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
+        <div className="p-4 sm:p-6 lg:p-8 relative">
           {/* Background blobs */}
           <div className="absolute -top-32 right-0 w-[400px] h-[400px] rounded-full bg-[#1e3a5f]/5 blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] rounded-full bg-[#722F37]/5 blur-3xl pointer-events-none" />

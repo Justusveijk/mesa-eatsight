@@ -73,13 +73,13 @@ export default function LandingPage() {
   return (
     <div ref={containerRef} className="bg-[#FDFBF7]">
       {/* Fixed Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-8 py-5 flex justify-between items-center bg-[#FDFBF7]/90 backdrop-blur-sm border-b border-[#1a1a1a]/5">
-        <Link href="/" className="font-serif text-2xl text-[#1a1a1a]">Eatsight</Link>
-        <div className="flex gap-4 md:gap-8 items-center">
+      <nav className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 md:px-8 py-4 sm:py-5 flex justify-between items-center bg-[#FDFBF7]/90 backdrop-blur-sm border-b border-[#1a1a1a]/5">
+        <Link href="/" className="font-serif text-xl sm:text-2xl text-[#1a1a1a]">Eatsight</Link>
+        <div className="flex gap-3 sm:gap-4 md:gap-8 items-center">
           <a href="#how-it-works" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">How it works</a>
           <a href="#pricing" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">Pricing</a>
-          <Link href="/login" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition">Log in</Link>
-          <Link href="/signup" className="bg-[#722F37] text-white px-5 py-2 rounded-full hover:bg-[#5a252c] transition text-sm md:text-base">
+          <Link href="/login" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition text-sm sm:text-base">Log in</Link>
+          <Link href="/signup" className="bg-[#722F37] text-white px-4 sm:px-5 py-2 rounded-full hover:bg-[#5a252c] transition text-sm">
             Start free
           </Link>
         </div>
@@ -139,12 +139,12 @@ export default function LandingPage() {
         </motion.div>
 
         {/* Hero content */}
-        <div className="text-center px-6 md:px-8 max-w-4xl relative z-20">
+        <div className="text-center px-4 sm:px-6 md:px-8 max-w-4xl relative z-20">
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.25, 0.4, 0.25, 1] }}
-            className="text-[#722F37] uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-6"
+            className="text-[#722F37] uppercase tracking-[0.15em] sm:tracking-[0.2em] md:tracking-[0.3em] text-xs sm:text-sm mb-4 sm:mb-6"
           >
             Menu Intelligence
           </motion.p>
@@ -152,7 +152,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: [0.25, 0.4, 0.25, 1] }}
-            className="font-serif text-5xl md:text-7xl lg:text-8xl text-[#1a1a1a] leading-[0.95] mb-8"
+            className="font-serif text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-[#1a1a1a] leading-[0.95] mb-6 sm:mb-8"
           >
             Know what<br />your guests<br />
             <span className="italic text-[#722F37]">crave</span>
@@ -161,7 +161,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.4, 0.25, 1] }}
-            className="text-lg md:text-xl text-[#1a1a1a]/60 max-w-xl mx-auto mb-10"
+            className="text-base sm:text-lg md:text-xl text-[#1a1a1a]/60 max-w-xl mx-auto mb-8 sm:mb-10 px-4"
           >
             Help guests find their perfect dish in seconds. See exactly what they want in real-time.
           </motion.p>
@@ -169,12 +169,12 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.4, 0.25, 1] }}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4"
           >
-            <Link href="/signup" className="inline-block bg-[#1a1a1a] text-white px-8 py-4 rounded-full text-lg hover:bg-[#333] transition">
+            <Link href="/signup" className="inline-block bg-[#1a1a1a] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg hover:bg-[#333] transition">
               Start your free trial
             </Link>
-            <Link href="/demo" className="inline-block border-2 border-[#1a1a1a] text-[#1a1a1a] px-8 py-4 rounded-full text-lg hover:bg-[#1a1a1a] hover:text-white transition">
+            <Link href="/demo" className="inline-block border-2 border-[#1a1a1a] text-[#1a1a1a] px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg hover:bg-[#1a1a1a] hover:text-white transition">
               Try the demo →
             </Link>
           </motion.div>

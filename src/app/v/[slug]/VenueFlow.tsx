@@ -26,6 +26,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [intent, setIntent] = useState<Intent>('both')
   const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
   const [showFallbackMessage, setShowFallbackMessage] = useState(false)
+  const [unmetPreferences, setUnmetPreferences] = useState<string[]>([])
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
 
   const handleStartQuestions = () => {
     setScreen('intent')
@@ -36,9 +38,16 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     setScreen('questions')
   }
 
-  const handleQuestionsComplete = (recs: RecommendedItem[], hasFallback?: boolean) => {
+  const handleQuestionsComplete = (
+    recs: RecommendedItem[],
+    hasFallback?: boolean,
+    unmet?: string[],
+    feedback?: string | null
+  ) => {
     setRecommendations(recs)
     setShowFallbackMessage(hasFallback || false)
+    setUnmetPreferences(unmet || [])
+    setFeedbackMessage(feedback || null)
     setScreen('recommendations')
   }
 
@@ -46,6 +55,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     setScreen('landing')
     setRecommendations([])
     setShowFallbackMessage(false)
+    setUnmetPreferences([])
+    setFeedbackMessage(null)
     setIntent('both')
   }
 
@@ -236,6 +247,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
             intent={intent}
             venueName={venue.name}
             showFallbackMessage={showFallbackMessage}
+            unmetPreferences={unmetPreferences}
+            feedbackMessage={feedbackMessage}
             onStartOver={handleStartOver}
           />
         )}
@@ -253,6 +266,8 @@ interface RecommendationResultsProps {
   intent: Intent
   venueName: string
   showFallbackMessage: boolean
+  unmetPreferences: string[]
+  feedbackMessage: string | null
   onStartOver: () => void
 }
 
@@ -264,6 +279,8 @@ function RecommendationResults({
   intent,
   venueName,
   showFallbackMessage,
+  unmetPreferences,
+  feedbackMessage,
   onStartOver
 }: RecommendationResultsProps) {
   // Generate pairing message only when we have both food and drinks
@@ -295,15 +312,34 @@ function RecommendationResults({
         </p>
       </motion.div>
 
-      {/* Fallback message */}
-      {showFallbackMessage && (
+      {/* Unmet preferences feedback banner */}
+      {feedbackMessage && unmetPreferences.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl"
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-lg">💬</span>
+            <div>
+              <p className="text-sm text-amber-800">{feedbackMessage}</p>
+              <p className="text-xs text-amber-600 mt-1">
+                Here are some alternatives you might enjoy:
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Fallback message (general) */}
+      {showFallbackMessage && !feedbackMessage && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center mb-8"
         >
           <p className="text-amber-800 font-medium mb-1">
-            Limited options match your dietary needs
+            Limited options match your preferences
           </p>
           <p className="text-amber-700 text-sm">
             We&apos;ve let {venueName} know so they can improve!

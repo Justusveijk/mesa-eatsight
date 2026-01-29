@@ -563,10 +563,10 @@ export default function MenuPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1a1a]">Menu Management</h1>
-          <p className="text-[#1a1a1a]/50">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]">Menu Management</h1>
+          <p className="text-[#1a1a1a]/50 text-sm sm:text-base">
             {items.length} items
             {menu?.status === 'published' && (
               <span className="ml-2 text-green-600">
@@ -580,16 +580,16 @@ export default function MenuPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex gap-3">
           <Button
             variant="outline"
             onClick={handlePublish}
             disabled={publishing || items.length === 0}
-            className="border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5"
+            className="flex-1 sm:flex-none border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5"
           >
             {publishing ? 'Publishing...' : 'Publish Menu'}
           </Button>
-          <Button onClick={() => setShowAddModal(true)} className="bg-[#1e3a5f] hover:bg-[#0f2440] text-white">
+          <Button onClick={() => setShowAddModal(true)} className="flex-1 sm:flex-none bg-[#1e3a5f] hover:bg-[#0f2440] text-white">
             <Plus className="w-4 h-4 mr-2" />
             Add Item
           </Button>
@@ -867,7 +867,8 @@ export default function MenuPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="min-w-[700px] sm:min-w-0 px-4 sm:px-0">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
@@ -986,6 +987,7 @@ export default function MenuPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

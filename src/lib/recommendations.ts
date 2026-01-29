@@ -17,6 +17,11 @@ export interface RecommendedItem {
   isCrossSell?: boolean
 }
 
+export interface UnmetPreferences {
+  items: string[]
+  feedbackMessage: string | null
+}
+
 export interface RecommendationsResult {
   recommendations: RecommendedItem[]
   fallbackItems: RecommendedItem[]
