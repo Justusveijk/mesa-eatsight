@@ -7,6 +7,7 @@ interface ImportItem {
   description: string | null
   price: number
   category: string
+  type?: 'food' | 'drink'
   tags?: MenuTag[]
 }
 
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
             description: item.description || null,
             price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price)) || 0,
             category: item.category || 'Uncategorized',
+            type: item.type || 'food',
             popularity_score: 0,
             is_push: false,
             is_out_of_stock: false,

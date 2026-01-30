@@ -14,6 +14,7 @@ interface MenuItem {
   description: string | null
   price: number
   category: string
+  type: 'food' | 'drink'
   popularity_score: number
   is_push: boolean
   is_out_of_stock: boolean
@@ -29,6 +30,7 @@ interface MenuData {
 // Extended parsed item with editable tags
 interface PreviewItem extends ParsedItem {
   editedTags: MenuTag[]
+  editedType?: 'food' | 'drink'
 }
 
 // New item form data
@@ -37,6 +39,7 @@ interface NewItemForm {
   description: string
   price: string
   category: string
+  type: 'food' | 'drink'
 }
 
 const defaultNewItem: NewItemForm = {
@@ -44,6 +47,7 @@ const defaultNewItem: NewItemForm = {
   description: '',
   price: '',
   category: '',
+  type: 'food',
 }
 
 export default function MenuPage() {
@@ -126,6 +130,7 @@ export default function MenuPage() {
         description,
         price,
         category,
+        type,
         popularity_score,
         is_push,
         is_out_of_stock,
@@ -142,6 +147,7 @@ export default function MenuPage() {
         description: item.description,
         price: item.price,
         category: item.category,
+        type: (item.type as 'food' | 'drink') || 'food',
         popularity_score: item.popularity_score || 0,
         is_push: item.is_push || false,
         is_out_of_stock: item.is_out_of_stock || false,
@@ -229,6 +235,7 @@ export default function MenuPage() {
             description: newItem.description.trim() || null,
             price: parseFloat(newItem.price) || 0,
             category: newItem.category.trim() || 'Uncategorized',
+            type: newItem.type,
             tags: newItemTags,
           }],
         }),
@@ -453,10 +460,11 @@ export default function MenuPage() {
   const handleFileSelect = async (file: File) => {
     const result = await parseCSV(file)
     setParseResult(result)
-    // Initialize preview items with auto-generated tags
+    // Initialize preview items with auto-generated tags and type
     setPreviewItems(result.items.map(item => ({
       ...item,
       editedTags: item.autoTags,
+      editedType: item.type,
     })))
   }
 
@@ -484,6 +492,7 @@ export default function MenuPage() {
             description: item.description,
             price: item.price,
             category: item.category,
+            type: item.type,
             tags: item.editedTags,
           })),
         }),
@@ -915,6 +924,7 @@ export default function MenuPage() {
                     />
                   </th>
                   <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Name</th>
+                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Type</th>
                   <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Price</th>
                   <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Category</th>
                   <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Tags</th>
@@ -942,6 +952,15 @@ export default function MenuPage() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        item.type === 'drink'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {item.type === 'drink' ? '🍸 Drink' : '🍽️ Food'}
+                      </span>
                     </td>
                     <td className="py-4 px-4 text-[#1a1a1a]/70">€{item.price.toFixed(2)}</td>
                     <td className="py-4 px-4 text-[#1a1a1a]/70">{item.category}</td>
@@ -1069,6 +1088,36 @@ export default function MenuPage() {
                   rows={2}
                   className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f] resize-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
+                  Type *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setNewItem({ ...newItem, type: 'food' })}
+                    className={`py-2.5 px-4 rounded-lg border-2 transition flex items-center justify-center gap-2 text-sm ${
+                      newItem.type === 'food'
+                        ? 'border-[#722F37] bg-[#722F37]/5 text-[#722F37]'
+                        : 'border-gray-200 text-[#1a1a1a]/60 hover:border-gray-300'
+                    }`}
+                  >
+                    <span>🍽️</span> Food
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewItem({ ...newItem, type: 'drink' })}
+                    className={`py-2.5 px-4 rounded-lg border-2 transition flex items-center justify-center gap-2 text-sm ${
+                      newItem.type === 'drink'
+                        ? 'border-[#722F37] bg-[#722F37]/5 text-[#722F37]'
+                        : 'border-gray-200 text-[#1a1a1a]/60 hover:border-gray-300'
+                    }`}
+                  >
+                    <span>🍸</span> Drink
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
