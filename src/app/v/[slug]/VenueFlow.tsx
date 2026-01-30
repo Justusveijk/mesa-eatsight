@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { QuestionFlow, Intent, RecommendationResults } from '@/components/guest/QuestionFlow'
 import { RecommendationCard } from '@/components/guest/RecommendationCard'
 import { createClient } from '@/lib/supabase/client'
+import { trackEvent, createSession, EVENTS } from '@/lib/analytics'
 
 interface Venue {
   id: string
@@ -25,6 +26,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [screen, setScreen] = useState<Screen>('loading')
   const [intent, setIntent] = useState<Intent>('both')
   const [results, setResults] = useState<RecommendationResults | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const sessionCreated = useRef(false)
 
   // Check if venue has menu items on load
   useEffect(() => {
@@ -62,22 +65,60 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     checkMenu()
   }, [venue.id])
 
-  const handleStartQuestions = () => {
+  const handleStartQuestions = async () => {
+    // Create session if not already created
+    if (!sessionCreated.current) {
+      const newSessionId = await createSession(venue.id, navigator.userAgent, tableRef || undefined)
+      if (newSessionId) {
+        setSessionId(newSessionId)
+        sessionCreated.current = true
+      }
+    }
+
+    await trackEvent(venue.id, sessionId, EVENTS.FLOW_STARTED, {
+      table_ref: tableRef,
+    })
+
     setScreen('intent')
   }
 
-  const handleIntentSelect = (selectedIntent: Intent) => {
+  const handleIntentSelect = async (selectedIntent: Intent) => {
+    await trackEvent(venue.id, sessionId, EVENTS.QUESTION_ANSWERED, {
+      question: 'intent',
+      answer: selectedIntent,
+    })
+
     setIntent(selectedIntent)
     setScreen('questions')
   }
 
-  const handleQuestionsComplete = (newResults: RecommendationResults) => {
+  const handleQuestionsComplete = async (newResults: RecommendationResults) => {
     console.log('🎯 VenueFlow handleQuestionsComplete received:')
     console.log('  Intent:', newResults.intent)
     console.log('  Primary Food:', newResults.primaryFood.map(f => f.name))
     console.log('  Primary Drinks:', newResults.primaryDrinks.map(d => d.name))
     console.log('  Pairing Food:', newResults.pairingFood.map(f => f.name))
     console.log('  Pairing Drinks:', newResults.pairingDrinks.map(d => d.name))
+
+    // Track recommendations shown
+    const allItems = [
+      ...newResults.primaryFood,
+      ...newResults.primaryDrinks,
+      ...newResults.pairingFood,
+      ...newResults.pairingDrinks,
+    ]
+
+    await trackEvent(venue.id, sessionId, EVENTS.RECOMMENDATIONS_SHOWN, {
+      item_count: allItems.length,
+      item_ids: allItems.map(i => i.id),
+      item_names: allItems.map(i => i.name),
+      intent: newResults.intent,
+    })
+
+    await trackEvent(venue.id, sessionId, EVENTS.FLOW_COMPLETED, {
+      intent: newResults.intent,
+      recommendation_count: allItems.length,
+    })
 
     setResults(newResults)
     setScreen('recommendations')
@@ -296,6 +337,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
           <RecommendationResultsView
             results={results}
             venueName={venue.name}
+            venueId={venue.id}
+            sessionId={sessionId}
             onStartOver={handleStartOver}
           />
         )}
@@ -308,14 +351,27 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
 interface RecommendationResultsViewProps {
   results: RecommendationResults
   venueName: string
+  venueId: string
+  sessionId: string | null
   onStartOver: () => void
 }
 
 function RecommendationResultsView({
   results,
   venueName,
+  venueId,
+  sessionId,
   onStartOver
 }: RecommendationResultsViewProps) {
+  // Track item click
+  const handleItemClick = async (item: { id: string; name: string; category: string; price: number }) => {
+    await trackEvent(venueId, sessionId, EVENTS.ITEM_CLICKED, {
+      item_id: item.id,
+      item_name: item.name,
+      item_category: item.category,
+      item_price: item.price,
+    })
+  }
   const {
     primaryFood,
     primaryDrinks,

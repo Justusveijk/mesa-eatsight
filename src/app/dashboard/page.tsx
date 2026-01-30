@@ -264,11 +264,14 @@ export default function DashboardPage() {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
+            aria-label="Refresh data"
             className="p-2 rounded-lg bg-[#1a1a1a] text-white hover:bg-[#333] transition disabled:opacity-50"
           >
-            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
           </button>
+          <label htmlFor="date-range" className="sr-only">Select date range</label>
           <select
+            id="date-range"
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as typeof dateRange)}
             className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-white border-0 text-sm"
