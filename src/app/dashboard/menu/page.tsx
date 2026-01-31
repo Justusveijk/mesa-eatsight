@@ -608,7 +608,7 @@ export default function MenuPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]">Menu Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-serif text-[#1a1a1a]">Menu Management</h1>
           <p className="text-[#1a1a1a]/50 text-sm sm:text-base">
             {items.length} items
             {menu?.status === 'published' && (

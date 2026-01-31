@@ -257,7 +257,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1a1a1a] mb-1">Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-serif text-[#1a1a1a] mb-1">Dashboard</h1>
           <p className="text-[#1a1a1a]/50 text-sm sm:text-base">Overview of your menu performance</p>
         </div>
         <div className="flex items-center gap-3">

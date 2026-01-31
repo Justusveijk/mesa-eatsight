@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-semibold text-[#1a1a1a] mb-1">Analytics</h1>
+          <h1 className="text-2xl sm:text-3xl font-serif text-[#1a1a1a] mb-1">Analytics</h1>
           <p className="text-[#1a1a1a]/50">Deep dive into guest behavior and preferences</p>
         </div>
         <select

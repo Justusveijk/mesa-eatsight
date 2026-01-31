@@ -179,7 +179,7 @@ export default function SettingsPage() {
 
       {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#1a1a1a]">Settings</h1>
+        <h1 className="text-2xl sm:text-3xl font-serif text-[#1a1a1a]">Settings</h1>
         <p className="text-[#1a1a1a]/50 text-sm sm:text-base">Manage your venue and generate QR codes</p>
       </div>
 

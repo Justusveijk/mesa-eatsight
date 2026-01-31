@@ -47,7 +47,7 @@ export function DashboardShell({ children, venueName, userEmail, venueSlug }: Da
         >
           <Menu size={24} />
         </button>
-        <span className="font-semibold text-[#1e3a5f]">Eatsight</span>
+        <span className="font-serif text-lg text-[#1e3a5f]">Eatsight</span>
         <div className="w-10" />
       </header>
 
@@ -82,7 +82,7 @@ export function DashboardShell({ children, venueName, userEmail, venueSlug }: Da
             <div className="w-8 h-8 rounded-lg bg-[#1e3a5f] flex items-center justify-center">
               <span className="text-white font-bold text-sm">E</span>
             </div>
-            <span className="font-semibold text-lg text-[#1a1a1a]">Eatsight</span>
+            <span className="font-serif text-xl text-[#1a1a1a]">Eatsight</span>
           </Link>
         </div>
 
