@@ -45,9 +45,9 @@ export default function AboutPage() {
       </header>
 
       <main className="px-6 py-16 max-w-3xl mx-auto">
-        <h1 className="text-4xl font-serif text-[#1a1a1a] mb-8">About Mesa & Eatsight</h1>
+        <h1 className="text-4xl font-serif text-[#1a1a1a] mb-8 animate-fadeInUp">About Mesa & Eatsight</h1>
 
-        <div className="prose prose-lg text-[#1a1a1a]/70 space-y-6">
+        <div className="prose prose-lg text-[#1a1a1a]/70 space-y-6 animate-fadeInUp delay-100">
           <p>
             Mesa was born from a simple observation: restaurant menus haven&apos;t evolved with technology.
             While everything else has become personalized, menus remain static pages that treat every guest the same.
@@ -72,13 +72,13 @@ export default function AboutPage() {
 
         {/* Team Section */}
         <section className="mt-16">
-          <h2 className="text-2xl font-serif text-[#1a1a1a] mb-8 text-center">
+          <h2 className="text-2xl font-serif text-[#1a1a1a] mb-8 text-center animate-fadeInUp delay-200">
             Meet the Team
           </h2>
 
           <div className="flex justify-center">
             {team.map((member) => (
-              <div key={member.name} className="text-center max-w-xs">
+              <div key={member.name} className="text-center max-w-xs animate-scaleIn delay-300">
                 <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] overflow-hidden">
                   <TeamMemberImage member={member} />
                 </div>

@@ -22,7 +22,7 @@ export default function NotFound() {
       <main className="flex-1 flex items-center justify-center px-6 py-16">
         <div className="text-center max-w-md">
           {/* Menu-themed 404 illustration */}
-          <div className="mb-8">
+          <div className="mb-8 animate-scaleIn">
             <div className="w-32 h-40 mx-auto bg-white rounded-lg shadow-lg border border-[#1a1a1a]/10 p-4 relative transform -rotate-3">
               {/* Menu header */}
               <div className="border-b border-[#1a1a1a]/10 pb-2 mb-3">
@@ -42,16 +42,16 @@ export default function NotFound() {
             </div>
           </div>
 
-          <h1 className="text-6xl font-serif text-[#722F37] mb-4">404</h1>
-          <h2 className="text-2xl font-semibold text-[#1a1a1a] mb-4">
+          <h1 className="text-6xl font-serif text-[#722F37] mb-4 animate-fadeInUp delay-100">404</h1>
+          <h2 className="text-2xl font-semibold text-[#1a1a1a] mb-4 animate-fadeInUp delay-200">
             This page isn&apos;t on the menu
           </h2>
-          <p className="text-[#1a1a1a]/60 mb-8">
+          <p className="text-[#1a1a1a]/60 mb-8 animate-fadeInUp delay-300">
             Looks like this dish got 86&apos;d. The page you&apos;re looking for
             doesn&apos;t exist or has been moved.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center animate-fadeInUp delay-400">
             <Link
               href="/"
               className="inline-block px-6 py-3 bg-[#722F37] text-white rounded-xl hover:bg-[#5a252c] transition font-medium"

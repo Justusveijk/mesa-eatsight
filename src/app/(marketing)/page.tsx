@@ -60,9 +60,9 @@ export default function LandingPage() {
           className="absolute inset-0 pointer-events-none"
           style={{ transform: `translateY(${scrollY * 0.4}px)` }}
         >
-          <div className="absolute top-20 right-10 w-64 h-64 bg-[#722F37]/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-40 left-10 w-48 h-48 bg-[#722F37]/5 rounded-full blur-2xl" />
-          <div className="absolute top-1/2 left-1/3 w-96 h-96 bg-[#722F37]/3 rounded-full blur-3xl" />
+          <div className="absolute top-20 right-10 w-64 h-64 bg-[#722F37]/5 rounded-full blur-3xl animate-fadeIn" />
+          <div className="absolute bottom-40 left-10 w-48 h-48 bg-[#722F37]/5 rounded-full blur-2xl animate-fadeIn delay-200" />
+          <div className="absolute top-1/2 left-1/3 w-96 h-96 bg-[#722F37]/3 rounded-full blur-3xl animate-fadeIn delay-400" />
         </div>
 
         {/* Background menu cards with parallax */}
@@ -110,17 +110,17 @@ export default function LandingPage() {
             opacity: heroOpacity
           }}
         >
-          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#1a1a1a] leading-tight mb-6">
+          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#1a1a1a] leading-tight mb-6 animate-fadeInUp">
             Your menu,<br />
             <span className="italic">personally served</span>
           </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-[#1a1a1a]/70 max-w-3xl mx-auto font-light">
+          <p className="text-lg sm:text-xl md:text-2xl text-[#1a1a1a]/70 max-w-3xl mx-auto font-light animate-fadeInUp delay-100">
             Menus are bigger than ever. Attention is lower than ever.
           </p>
-          <p className="mt-2 text-base sm:text-lg text-[#1a1a1a]/60 max-w-2xl mx-auto mb-8 sm:mb-10">
+          <p className="mt-2 text-base sm:text-lg text-[#1a1a1a]/60 max-w-2xl mx-auto mb-8 sm:mb-10 animate-fadeInUp delay-200">
             Eatsight turns menus into decisions, and decisions into revenue.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 animate-fadeInUp delay-300">
             <Link href="/v/bella-taverna" className="inline-block bg-[#B2472A] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-medium hover:bg-[#8a341f] transition-colors">
               Try the demo
             </Link>
@@ -251,14 +251,14 @@ export default function LandingPage() {
           className="max-w-4xl mx-auto text-center relative z-10"
           style={{ transform: `translateY(${Math.max(0, (scrollY - 800) * 0.1)}px)` }}
         >
-          <p className="text-white/60 uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8">
+          <p className="text-white/60 uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8 animate-fadeInUp">
             The Solution
           </p>
-          <h2 className="font-serif text-4xl md:text-6xl lg:text-7xl leading-tight mb-8 text-white">
+          <h2 className="font-serif text-4xl md:text-6xl lg:text-7xl leading-tight mb-8 text-white animate-fadeInUp delay-100">
             Three questions.<br />
             <span className="italic text-[#F5F3EF]">Perfect match.</span>
           </h2>
-          <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto animate-fadeInUp delay-200">
             Guest scans the QR code. Answers three simple questions about mood, flavor, and hunger.
             Gets three perfect recommendations in under 15 seconds.
           </p>
@@ -292,8 +292,8 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7] overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 md:mb-20">
-            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">How It Works</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">The Experience</h2>
+            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4 animate-fadeInUp">How It Works</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] animate-fadeInUp delay-100">The Experience</h2>
           </div>
 
           <div className="space-y-6 md:space-y-8">
@@ -327,8 +327,8 @@ export default function LandingPage() {
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF] overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 md:mb-20">
-            <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">For Operators</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">Finally, real answers</h2>
+            <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4 animate-fadeInUp">For Operators</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] animate-fadeInUp delay-100">Finally, real answers</h2>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 md:gap-8">
@@ -352,14 +352,14 @@ export default function LandingPage() {
       <section id="pricing" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">Pricing</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4">Simple & fair</h2>
-            <p className="text-[#1a1a1a]/60">Annual plan includes 14-day free trial.</p>
+            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4 animate-fadeInUp">Pricing</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4 animate-fadeInUp delay-100">Simple & fair</h2>
+            <p className="text-[#1a1a1a]/60 animate-fadeInUp delay-200">Annual plan includes 14-day free trial.</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto overflow-visible">
             {/* Monthly Card */}
-            <div className="border-2 border-[#1a1a1a]/10 rounded-2xl p-8 bg-white hover:border-[#1a1a1a]/20 transition-colors">
+            <div className="border-2 border-[#1a1a1a]/10 rounded-2xl p-8 bg-white hover:border-[#1a1a1a]/20 transition-colors animate-fadeInLeft delay-300">
               <p className="text-[#1a1a1a]/50 uppercase tracking-wider text-sm mb-4">Monthly</p>
               <div className="flex items-baseline gap-2 mb-6">
                 <span className="font-serif text-5xl text-[#1a1a1a]">€295</span>
@@ -378,7 +378,7 @@ export default function LandingPage() {
             </div>
 
             {/* Annual Card */}
-            <div className="bg-[#722F37] text-white rounded-2xl p-8 relative overflow-visible">
+            <div className="bg-[#722F37] text-white rounded-2xl p-8 relative overflow-visible animate-fadeInRight delay-400">
               <div className="absolute -top-4 right-6 bg-white text-[#722F37] text-sm font-semibold px-4 py-1.5 rounded-full shadow-md z-10">
                 Save €552/year
               </div>
@@ -474,16 +474,16 @@ export default function LandingPage() {
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#722F37] text-white">
         <div className="max-w-3xl mx-auto text-center">
           <div>
-            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6">
+            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6 animate-fadeInUp">
               Ready to understand<br />your guests?
             </h2>
-            <p className="text-white/80 text-base md:text-lg mb-10">
+            <p className="text-white/80 text-base md:text-lg mb-10 animate-fadeInUp delay-100">
               Set up in 15 minutes. See insights from day one.
             </p>
-            <Link href="/signup" className="inline-block bg-white text-[#722F37] px-10 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition-colors">
+            <Link href="/signup" className="inline-block bg-white text-[#722F37] px-10 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition-colors animate-fadeInUp delay-200">
               Start your free trial
             </Link>
-            <p className="text-white/60 text-sm mt-6">14 days free • No credit card</p>
+            <p className="text-white/60 text-sm mt-6 animate-fadeInUp delay-300">14 days free • No credit card</p>
           </div>
         </div>
       </section>

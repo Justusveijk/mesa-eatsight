@@ -59,13 +59,13 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center px-6">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 animate-fadeInUp">
           <Link href="/" className="inline-block">
             <span className="font-serif text-3xl text-[#1e3a5f]">Eatsight</span>
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#1a1a1a]/5">
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#1a1a1a]/5 animate-fadeInUp delay-100">
           <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-2 text-center">
             Start your free trial
           </h1>

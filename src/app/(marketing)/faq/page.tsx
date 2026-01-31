@@ -123,16 +123,16 @@ export default function FAQPage() {
       </header>
 
       <main id="main-content" className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-3xl sm:text-4xl font-serif text-[#1a1a1a] mb-4 text-center">
+        <h1 className="text-3xl sm:text-4xl font-serif text-[#1a1a1a] mb-4 text-center animate-fadeInUp">
           Frequently Asked Questions
         </h1>
-        <p className="text-[#1a1a1a]/60 text-center mb-12">
+        <p className="text-[#1a1a1a]/60 text-center mb-12 animate-fadeInUp delay-100">
           Everything you need to know about Eatsight and Mesa
         </p>
 
         <div className="space-y-12">
-          {faqs.map((category) => (
-            <section key={category.category}>
+          {faqs.map((category, categoryIndex) => (
+            <section key={category.category} className={`animate-fadeInUp delay-${Math.min((categoryIndex + 2) * 100, 800)}`}>
               <h2 className="text-xl font-semibold text-[#1a1a1a] mb-6 pb-2 border-b border-[#1a1a1a]/10">
                 {category.category}
               </h2>
@@ -162,7 +162,7 @@ export default function FAQPage() {
         </div>
 
         {/* Still have questions */}
-        <div className="mt-16 text-center bg-white rounded-2xl border border-[#1a1a1a]/5 p-8">
+        <div className="mt-16 text-center bg-white rounded-2xl border border-[#1a1a1a]/5 p-8 animate-scaleIn delay-600">
           <h2 className="text-xl font-semibold text-[#1a1a1a] mb-2">
             Still have questions?
           </h2>

@@ -27,10 +27,10 @@ export function Testimonials() {
     <section className="py-20 bg-[#F5F3EF]">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
-          <p className="text-sm uppercase tracking-widest text-[#722F37] mb-4">
+          <p className="text-sm uppercase tracking-widest text-[#722F37] mb-4 animate-fadeInUp">
             Testimonials
           </p>
-          <h2 className="text-3xl sm:text-4xl font-serif text-[#1a1a1a]">
+          <h2 className="text-3xl sm:text-4xl font-serif text-[#1a1a1a] animate-fadeInUp delay-100">
             Loved by restaurants
           </h2>
         </div>
@@ -39,7 +39,7 @@ export function Testimonials() {
           {testimonials.map((testimonial, i) => (
             <div
               key={i}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-[#1a1a1a]/5"
+              className={`bg-white rounded-2xl p-6 shadow-sm border border-[#1a1a1a]/5 animate-scaleIn delay-${(i + 2) * 100}`}
             >
               {/* Quote */}
               <p className="text-[#1a1a1a]/80 mb-6 leading-relaxed">
@@ -62,7 +62,7 @@ export function Testimonials() {
         </div>
 
         {/* Trust badge */}
-        <div className="mt-12 text-center">
+        <div className="mt-12 text-center animate-fadeIn delay-500">
           <p className="text-sm text-[#1a1a1a]/40">
             Trusted by 50+ restaurants across the Netherlands
           </p>
