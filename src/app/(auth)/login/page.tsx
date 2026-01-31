@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -19,49 +19,64 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
+    try {
+      const supabase = createClient()
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
 
-    if (signInError) {
-      setError(signInError.message)
+      if (signInError) {
+        console.error('Auth error:', signInError)
+        setError(signInError.message)
+        setLoading(false)
+        return
+      }
+
+      if (!data.user) {
+        setError('Login failed. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      // Check if user has a venue linked
+      const { data: operator, error: operatorError } = await supabase
+        .from('operator_users')
+        .select('venue_id')
+        .eq('auth_user_id', data.user.id)
+        .maybeSingle()
+
+      if (operatorError) {
+        console.error('Operator lookup error:', operatorError)
+        // Still allow login, just go to onboarding
+      }
+
+      // Redirect based on whether they have a venue
+      if (operator?.venue_id) {
+        router.push('/dashboard')
+      } else {
+        router.push('/onboarding/venue')
+      }
+      router.refresh()
+
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
-      return
-    }
-
-    if (!data.user) {
-      setError('Login failed')
-      setLoading(false)
-      return
-    }
-
-    // Check if user has a venue
-    const { data: operator } = await supabase
-      .from('operator_users')
-      .select('venue_id')
-      .eq('auth_user_id', data.user.id)
-      .maybeSingle()
-
-    if (operator?.venue_id) {
-      router.push('/dashboard')
-    } else {
-      router.push('/onboarding/venue')
     }
   }
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center px-6">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8 animate-fadeInUp">
+        <div className="text-center mb-8">
           <Link href="/" className="inline-block">
-            <span className="font-serif text-3xl text-[#1e3a5f]">Eatsight</span>
+            <span className="font-serif text-3xl text-[#1a1a1a]">Eatsight</span>
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#1a1a1a]/5 animate-fadeInUp delay-100">
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#1a1a1a]/5">
           <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-2 text-center">
             Welcome back
           </h1>
@@ -77,7 +92,9 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm text-[#1a1a1a]/60 mb-2">Email</label>
+              <label htmlFor="email" className="block text-sm text-[#1a1a1a]/60 mb-2">
+                Email
+              </label>
               <input
                 id="email"
                 type="email"
@@ -85,15 +102,17 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@restaurant.com"
                 required
-                aria-required="true"
+                disabled={loading}
                 autoComplete="email"
-                className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/40 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
+                className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/40 focus:outline-none focus:ring-2 focus:ring-[#722F37]/20 focus:border-[#722F37] transition disabled:opacity-50 disabled:bg-gray-50"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label htmlFor="password" className="text-sm text-[#1a1a1a]/60">Password</label>
+                <label htmlFor="password" className="text-sm text-[#1a1a1a]/60">
+                  Password
+                </label>
                 <Link href="/forgot-password" className="text-sm text-[#722F37] hover:text-[#5a252c]">
                   Forgot password?
                 </Link>
@@ -106,17 +125,17 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
-                  aria-required="true"
+                  disabled={loading}
                   autoComplete="current-password"
-                  className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/40 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition pr-12"
+                  className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/40 focus:outline-none focus:ring-2 focus:ring-[#722F37]/20 focus:border-[#722F37] transition pr-12 disabled:opacity-50 disabled:bg-gray-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1a1a1a]/40 hover:text-[#1a1a1a]/60"
+                  disabled={loading}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1a1a1a]/40 hover:text-[#1a1a1a]/60 disabled:opacity-50"
                 >
-                  {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
@@ -124,9 +143,16 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-[#722F37] text-white rounded-xl hover:bg-[#5a252c] transition disabled:opacity-50 font-medium"
+              className="w-full py-3 bg-[#722F37] text-white rounded-xl hover:bg-[#5a252c] transition disabled:opacity-50 font-medium flex items-center justify-center gap-2"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
             </button>
           </form>
 
