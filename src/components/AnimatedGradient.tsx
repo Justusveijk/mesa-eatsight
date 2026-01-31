@@ -2,83 +2,65 @@
 
 export function AnimatedGradient() {
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* Embedded keyframes for reliable animation */}
+    <>
       <style>{`
-        @keyframes blob1 {
-          0%, 100% {
-            transform: translate(0, 0) scale(1);
-          }
-          33% {
-            transform: translate(30px, 50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.95);
-          }
+        @keyframes blobMove1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(100px, 50px) scale(1.1); }
+          66% { transform: translate(50px, 100px) scale(0.9); }
         }
-        @keyframes blob2 {
-          0%, 100% {
-            transform: translate(0, 0) scale(1);
-          }
-          33% {
-            transform: translate(-40px, -30px) scale(1.05);
-          }
-          66% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
+        @keyframes blobMove2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(-80px, -60px) scale(1.15); }
+          66% { transform: translate(-40px, -100px) scale(0.95); }
         }
-        @keyframes blob3 {
-          0%, 100% {
-            transform: translateX(-50%) scale(1);
-          }
-          50% {
-            transform: translateX(-50%) scale(1.2);
-          }
+        @keyframes blobMove3 {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); }
+          50% { transform: translate(-50%, -50%) scale(1.3); }
         }
       `}</style>
-
-      {/* Blob 1 - top left, burgundy */}
-      <div
-        className="absolute rounded-full"
-        style={{
-          width: '600px',
-          height: '600px',
-          background: 'rgba(114, 47, 55, 0.4)',
-          filter: 'blur(100px)',
-          top: '-10%',
-          left: '-5%',
-          animation: 'blob1 20s ease-in-out infinite',
-        }}
-      />
-
-      {/* Blob 2 - bottom right, burgundy lighter */}
-      <div
-        className="absolute rounded-full"
-        style={{
-          width: '500px',
-          height: '500px',
-          background: 'rgba(114, 47, 55, 0.3)',
-          filter: 'blur(120px)',
-          bottom: '-15%',
-          right: '-10%',
-          animation: 'blob2 25s ease-in-out infinite',
-        }}
-      />
-
-      {/* Blob 3 - center, subtle warm */}
-      <div
-        className="absolute rounded-full"
-        style={{
-          width: '400px',
-          height: '400px',
-          background: 'rgba(180, 100, 100, 0.25)',
-          filter: 'blur(80px)',
-          top: '40%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          animation: 'blob3 18s ease-in-out infinite',
-        }}
-      />
-    </div>
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            position: 'absolute',
+            width: '500px',
+            height: '500px',
+            borderRadius: '50%',
+            background: 'rgba(114, 47, 55, 0.5)',
+            filter: 'blur(80px)',
+            top: '-100px',
+            left: '-100px',
+            animation: 'blobMove1 20s ease-in-out infinite',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            width: '400px',
+            height: '400px',
+            borderRadius: '50%',
+            background: 'rgba(114, 47, 55, 0.4)',
+            filter: 'blur(80px)',
+            bottom: '-100px',
+            right: '-100px',
+            animation: 'blobMove2 25s ease-in-out infinite',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            width: '300px',
+            height: '300px',
+            borderRadius: '50%',
+            background: 'rgba(180, 100, 100, 0.3)',
+            filter: 'blur(80px)',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            animation: 'blobMove3 18s ease-in-out infinite',
+          }}
+        />
+      </div>
+    </>
   )
 }
