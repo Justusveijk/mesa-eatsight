@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { AnimatedGradient } from '@/components/AnimatedGradient'
 import { VideoPlayer } from '@/components/VideoPlayer'
+import { Testimonials } from '@/components/Testimonials'
 
 const steps = [
   { num: '01', title: 'Scan', desc: 'Guest scans QR code at the table. No app download needed.', icon: '📱' },
@@ -264,6 +265,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Testimonials */}
+      <Testimonials />
+
       {/* For Operators */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF]">
         <div className="max-w-6xl mx-auto">
@@ -465,6 +469,7 @@ export default function LandingPage() {
               <ul className="space-y-2 text-white/60 text-sm">
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link href="/cookies" className="hover:text-white transition-colors">Cookie Policy</Link></li>
               </ul>
             </div>
           </div>

@@ -4,6 +4,7 @@ import "./globals.css";
 import { SkipLink } from "@/components/SkipLink";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { CookieConsent } from "@/components/CookieConsent";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -17,8 +18,15 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Eatsight - Menu Intelligence for Restaurants",
-  description: "Help guests find their perfect dish in seconds. See what they crave in real-time.",
+  title: {
+    default: "Eatsight - Menu Intelligence Platform",
+    template: "%s | Eatsight",
+  },
+  description: "Help your guests find dishes they'll love. Three questions, perfect recommendations, happier customers.",
+  keywords: ["restaurant", "menu", "recommendations", "QR code", "hospitality", "analytics"],
+  authors: [{ name: "Eatsight" }],
+  creator: "Eatsight",
+  metadataBase: new URL("https://eatsight.io"),
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -28,14 +36,22 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  icons: {
-    icon: [
-      { url: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
-      { url: "/icons/icon-512.svg", sizes: "512x512", type: "image/svg+xml" },
-    ],
-    apple: [
-      { url: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
-    ],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://eatsight.io",
+    siteName: "Eatsight",
+    title: "Eatsight - Menu Intelligence Platform",
+    description: "Help your guests find dishes they'll love. Three questions, perfect recommendations, happier customers.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Eatsight - Menu Intelligence Platform",
+    description: "Help your guests find dishes they'll love. Three questions, perfect recommendations, happier customers.",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
@@ -66,6 +82,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <InstallPrompt />
         {children}
+        <CookieConsent />
       </body>
     </html>
   );
