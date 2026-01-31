@@ -300,34 +300,39 @@ body {
 
 /* Animation classes */
 .animate-fadeIn {
+  opacity: 0;
   animation: fadeIn 0.6s ease-out forwards;
 }
 
 .animate-fadeInUp {
+  opacity: 0;
   animation: fadeInUp 0.7s ease-out forwards;
 }
 
 .animate-fadeInLeft {
+  opacity: 0;
   animation: fadeInLeft 0.7s ease-out forwards;
 }
 
 .animate-fadeInRight {
+  opacity: 0;
   animation: fadeInRight 0.7s ease-out forwards;
 }
 
 .animate-scaleIn {
+  opacity: 0;
   animation: scaleIn 0.6s ease-out forwards;
 }
 
 /* Delay classes for staggering */
-.delay-100 { animation-delay: 0.1s; opacity: 0; }
-.delay-200 { animation-delay: 0.2s; opacity: 0; }
-.delay-300 { animation-delay: 0.3s; opacity: 0; }
-.delay-400 { animation-delay: 0.4s; opacity: 0; }
-.delay-500 { animation-delay: 0.5s; opacity: 0; }
-.delay-600 { animation-delay: 0.6s; opacity: 0; }
-.delay-700 { animation-delay: 0.7s; opacity: 0; }
-.delay-800 { animation-delay: 0.8s; opacity: 0; }
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+.delay-700 { animation-delay: 0.7s; }
+.delay-800 { animation-delay: 0.8s; }
 
 /* ========================================
    Accessibility - Screen Reader Only
