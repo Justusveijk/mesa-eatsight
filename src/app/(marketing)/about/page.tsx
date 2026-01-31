@@ -9,7 +9,7 @@ const team = [
     role: 'Founder & CEO',
     bio: 'Artificial intelligence student with an ambition for finding smart solutions.',
     image: '/team/justus.jpg',
-    linkedin: 'https://linkedin.com/in/justus-van-eijk',
+    linkedin: 'https://www.linkedin.com/in/justus-van-eijk-0615241a9/',
   },
 ]
 

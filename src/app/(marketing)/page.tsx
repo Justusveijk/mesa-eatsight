@@ -343,12 +343,12 @@ export default function LandingPage() {
           viewport={{ once: true, margin: "-100px" }}
           className="max-w-4xl mx-auto text-center relative z-10"
         >
-          <motion.p variants={fadeInUp} className="text-[#C9A227] uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8">
+          <motion.p variants={fadeInUp} className="text-white/60 uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8">
             The Solution
           </motion.p>
           <motion.h2 variants={fadeInUp} className="font-serif text-4xl md:text-6xl lg:text-7xl leading-tight mb-8 text-white">
             Three questions.<br />
-            <span className="italic text-[#C9A227]">Perfect match.</span>
+            <span className="italic text-[#F5F3EF]">Perfect match.</span>
           </motion.h2>
           <motion.p variants={fadeInUp} className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
             Guest scans the QR code. Answers three simple questions about mood, flavor, and hunger.
@@ -481,24 +481,24 @@ export default function LandingPage() {
             {/* Annual Card */}
             <motion.div
               variants={fadeInItem}
-              className="bg-[#1a1a1a] text-white rounded-2xl p-8 relative"
+              className="bg-[#722F37] text-white rounded-2xl p-8 relative"
             >
-              <div className="absolute -top-3 right-8 bg-[#C9A227] text-[#1a1a1a] text-xs font-bold px-3 py-1 rounded-full">
+              <div className="absolute -top-3 right-8 bg-white text-[#722F37] text-xs font-bold px-3 py-1 rounded-full shadow-sm">
                 Save €552
               </div>
-              <p className="text-white/50 uppercase tracking-wider text-sm mb-4">Annual</p>
+              <p className="text-white/70 uppercase tracking-wider text-sm mb-4">Annual</p>
               <div className="flex items-baseline gap-2 mb-6">
                 <span className="font-serif text-5xl text-white">€249</span>
-                <span className="text-white/40">/month</span>
+                <span className="text-white/60">/month</span>
               </div>
-              <ul className="space-y-3 mb-8 text-white/70">
+              <ul className="space-y-3 mb-8 text-white/90">
                 {annualFeatures.map((feature) => (
                   <li key={feature} className="flex gap-3">
-                    <span className="text-[#C9A227]">✓</span> {feature}
+                    <span className="text-white">✓</span> {feature}
                   </li>
                 ))}
               </ul>
-              <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#1a1a1a] rounded-full hover:bg-white/90 transition font-medium">
+              <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#722F37] rounded-full hover:bg-white/90 transition font-medium">
                 Start free trial
               </Link>
             </motion.div>

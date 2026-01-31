@@ -23,7 +23,7 @@ const faqs = [
       },
       {
         q: 'What does it cost?',
-        a: 'Eatsight costs €29/month or €288/year (save 17%). Every plan includes a 14-day free trial with no credit card required.'
+        a: 'Eatsight costs €295/month or €249/month when billed annually (€2,988/year). Every plan includes a 14-day free trial with no credit card required.'
       },
       {
         q: 'Can I try it before committing?',
