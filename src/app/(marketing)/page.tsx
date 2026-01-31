@@ -1,3 +1,6 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AnimatedGradient } from '@/components/AnimatedGradient'
 import { VideoPlayer } from '@/components/VideoPlayer'
@@ -20,6 +23,20 @@ const monthlyFeatures = ['Unlimited scans', 'Real-time analytics', 'Menu managem
 const annualFeatures = ['Everything in Monthly', '14-day free trial', 'Priority support', 'Price locked forever']
 
 export default function LandingPage() {
+  const [scrollY, setScrollY] = useState(0)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Parallax calculations
+  const heroParallax = scrollY * 0.3
+  const heroOpacity = Math.max(0, 1 - scrollY / 600)
+
   return (
     <div className="bg-[#FDFBF7]">
       {/* Fixed Navigation */}
@@ -38,33 +55,51 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-16">
-        {/* Background menu cards */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[15%] left-[8%] bg-white p-4 rounded-lg shadow-lg w-48 text-xs text-gray-400 font-mono opacity-25 -rotate-12">
+        {/* Background menu cards with parallax */}
+        <div className="absolute inset-0 pointer-events-none" style={{ opacity: heroOpacity }}>
+          <div
+            className="absolute top-[15%] left-[8%] bg-white p-4 rounded-lg shadow-lg w-48 text-xs text-gray-400 font-mono opacity-25 -rotate-12"
+            style={{ transform: `translateY(${scrollY * 0.15}px)` }}
+          >
             <div className="font-bold mb-2 text-[#722F37]/50">Today&apos;s Specials</div>
             <div>Grilled Salmon............€24</div>
             <div>Pasta Carbonara..........€18</div>
           </div>
-          <div className="absolute top-[20%] right-[10%] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-400 font-mono opacity-25 rotate-8">
+          <div
+            className="absolute top-[20%] right-[10%] bg-white p-4 rounded-lg shadow-lg w-52 text-xs text-gray-400 font-mono opacity-25 rotate-8"
+            style={{ transform: `translateY(${scrollY * 0.25}px)` }}
+          >
             <div className="font-bold mb-2 text-[#722F37]/50">DRINKS</div>
             <div>House Red.................€7</div>
             <div>Craft Beer................€6</div>
             <div>Espresso Martini.........€12</div>
           </div>
-          <div className="absolute bottom-[25%] left-[12%] bg-white p-4 rounded-lg shadow-lg w-44 text-xs text-gray-400 font-mono opacity-25 rotate-5">
+          <div
+            className="absolute bottom-[25%] left-[12%] bg-white p-4 rounded-lg shadow-lg w-44 text-xs text-gray-400 font-mono opacity-25 rotate-5"
+            style={{ transform: `translateY(${scrollY * 0.1}px)` }}
+          >
             <div className="font-bold mb-2 text-[#722F37]/50">MAINS</div>
             <div>Ribeye Steak.............€32</div>
             <div>Fish & Chips.............€19</div>
           </div>
-          <div className="absolute bottom-[20%] right-[15%] bg-white p-4 rounded-lg shadow-lg w-40 text-xs text-gray-400 font-mono opacity-25 -rotate-8">
+          <div
+            className="absolute bottom-[20%] right-[15%] bg-white p-4 rounded-lg shadow-lg w-40 text-xs text-gray-400 font-mono opacity-25 -rotate-8"
+            style={{ transform: `translateY(${scrollY * 0.2}px)` }}
+          >
             <div className="font-bold mb-2 text-[#722F37]/50">DESSERTS</div>
             <div>Tiramisu..................€8</div>
             <div>Chocolate Lava...........€9</div>
           </div>
         </div>
 
-        {/* Hero content */}
-        <div className="text-center px-4 sm:px-6 md:px-8 max-w-4xl relative z-20">
+        {/* Hero content with parallax fade */}
+        <div
+          className="text-center px-4 sm:px-6 md:px-8 max-w-4xl relative z-20"
+          style={{
+            transform: `translateY(${scrollY * 0.1}px)`,
+            opacity: heroOpacity
+          }}
+        >
           <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#1a1a1a] leading-tight mb-6">
             Your menu,<br />
             <span className="italic">personally served</span>
@@ -86,7 +121,10 @@ export default function LandingPage() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
+        <div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20"
+          style={{ opacity: Math.max(0, 1 - scrollY / 200) }}
+        >
           <div className="w-6 h-10 border-2 border-[#1a1a1a]/30 rounded-full flex justify-center pt-2">
             <div className="w-1.5 h-3 bg-[#1a1a1a]/40 rounded-full" />
           </div>
