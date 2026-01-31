@@ -18,16 +18,16 @@ const operatorFeatures = [
 ]
 
 const monthlyFeatures = ['Unlimited scans', 'Real-time analytics', 'Menu management', 'Cancel anytime']
-const annualFeatures = ['Everything in Monthly', '1 month free', 'Priority support', 'Price locked forever']
+const annualFeatures = ['Everything in Monthly', '14-day free trial', 'Priority support', 'Price locked forever']
 
-// Luxury animation variants
+// Smooth animation variants (subtle, no jarring movements)
 const fadeInUp = {
-  hidden: { opacity: 0, y: 60 },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.8,
+      duration: 0.5,
       ease: [0.25, 0.4, 0.25, 1] as const
     }
   }
@@ -38,19 +38,19 @@ const staggerContainer = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.1
+      staggerChildren: 0.08,
+      delayChildren: 0.05
     }
   }
 }
 
 const fadeInItem = {
-  hidden: { opacity: 0, y: 40 },
+  hidden: { opacity: 0, y: 15 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.6,
+      duration: 0.4,
       ease: [0.25, 0.4, 0.25, 1] as const
     }
   }
@@ -446,7 +446,7 @@ export default function LandingPage() {
           >
             <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">Pricing</p>
             <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4">Simple & fair</h2>
-            <p className="text-[#1a1a1a]/60">Start free. No credit card required.</p>
+            <p className="text-[#1a1a1a]/60">Annual plan includes 14-day free trial.</p>
           </motion.div>
 
           <motion.div
@@ -454,7 +454,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
-            className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto"
+            className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto overflow-visible"
           >
             {/* Monthly Card */}
             <motion.div
@@ -469,28 +469,29 @@ export default function LandingPage() {
               <ul className="space-y-3 mb-8 text-[#1a1a1a]/70">
                 {monthlyFeatures.map((feature) => (
                   <li key={feature} className="flex gap-3">
-                    <span className="text-[#7D8471]">✓</span> {feature}
+                    <span className="text-[#722F37]">✓</span> {feature}
                   </li>
                 ))}
               </ul>
-              <Link href="/signup?plan=monthly" className="block text-center py-3 border-2 border-[#1a1a1a] rounded-full text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition font-medium">
-                Start free trial
+              <Link href="/signup?plan=monthly" className="block text-center py-3 border-2 border-[#722F37] text-[#722F37] rounded-full hover:bg-[#722F37]/5 transition font-medium">
+                Get started
               </Link>
             </motion.div>
 
             {/* Annual Card */}
             <motion.div
               variants={fadeInItem}
-              className="bg-[#722F37] text-white rounded-2xl p-8 relative"
+              className="bg-[#722F37] text-white rounded-2xl p-8 relative overflow-visible"
             >
-              <div className="absolute -top-3 right-8 bg-white text-[#722F37] text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                Save €552
+              <div className="absolute -top-4 right-6 bg-white text-[#722F37] text-sm font-semibold px-4 py-1.5 rounded-full shadow-md z-10">
+                Save €552/year
               </div>
-              <p className="text-white/70 uppercase tracking-wider text-sm mb-4">Annual</p>
-              <div className="flex items-baseline gap-2 mb-6">
+              <p className="text-white/70 uppercase tracking-wider text-sm mb-4 mt-2">Annual</p>
+              <div className="flex items-baseline gap-2 mb-2">
                 <span className="font-serif text-5xl text-white">€249</span>
                 <span className="text-white/60">/month</span>
               </div>
+              <p className="text-sm text-white/50 mb-6">€2,988 billed annually</p>
               <ul className="space-y-3 mb-8 text-white/90">
                 {annualFeatures.map((feature) => (
                   <li key={feature} className="flex gap-3">
@@ -499,7 +500,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#722F37] rounded-full hover:bg-white/90 transition font-medium">
-                Start free trial
+                Start 14-day free trial
               </Link>
             </motion.div>
           </motion.div>

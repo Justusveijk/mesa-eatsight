@@ -89,12 +89,12 @@ export function RecommendationCards({ recommendations, onStartOver, showFallback
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl"
+              className="mb-6 p-4 bg-[#722F37]/5 border border-[#722F37]/20 rounded-xl"
             >
-              <p className="text-amber-800 font-medium text-sm">
+              <p className="text-[#1a1a1a] font-medium text-sm">
                 We couldn&apos;t find a perfect match for everything you wanted.
               </p>
-              <p className="text-amber-700 text-xs mt-1">
+              <p className="text-[#722F37] text-xs mt-1">
                 We&apos;ve let the restaurant know — they&apos;re always looking to improve their menu!
               </p>
             </motion.div>

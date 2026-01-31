@@ -490,13 +490,13 @@ function RecommendationResultsView({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl"
+          className="mb-6 p-4 bg-[#722F37]/5 border border-[#722F37]/20 rounded-xl"
         >
           <div className="flex items-start gap-3">
             <span className="text-lg">💬</span>
             <div>
-              <p className="text-sm text-amber-800">{feedbackMessage}</p>
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="text-sm text-[#1a1a1a]/80">{feedbackMessage}</p>
+              <p className="text-xs text-[#722F37] mt-1">
                 Here are some alternatives you might enjoy:
               </p>
             </div>
@@ -509,12 +509,12 @@ function RecommendationResultsView({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center mb-8"
+          className="bg-[#722F37]/5 border border-[#722F37]/20 rounded-2xl p-5 text-center mb-8"
         >
-          <p className="text-amber-800 font-medium mb-1">
+          <p className="text-[#1a1a1a] font-medium mb-1">
             Limited options match your preferences
           </p>
-          <p className="text-amber-700 text-sm">
+          <p className="text-[#722F37] text-sm">
             We&apos;ve let {venueName} know so they can improve!
           </p>
         </motion.div>

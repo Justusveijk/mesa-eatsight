@@ -187,9 +187,9 @@ export default function DemoPage() {
               <p className="text-xs text-[#1a1a1a]/40 mb-6">What guests wanted but couldn&apos;t find</p>
               <div className="space-y-4">
                 {demoMetrics.unmetDemand.map((item) => (
-                  <div key={item.need} className="flex justify-between items-center p-3 bg-amber-50 rounded-xl">
-                    <span className="text-amber-800">{item.need}</span>
-                    <span className="text-amber-600 font-medium">{item.requests} requests</span>
+                  <div key={item.need} className="flex justify-between items-center p-3 bg-[#722F37]/5 rounded-xl">
+                    <span className="text-[#1a1a1a]/80">{item.need}</span>
+                    <span className="text-[#722F37] font-medium">{item.requests} requests</span>
                   </div>
                 ))}
               </div>
