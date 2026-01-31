@@ -93,9 +93,9 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const handleIntentSelect = async (selectedIntent: Intent) => {
     console.log('[VenueFlow] Intent selected:', selectedIntent, 'sessionId:', sessionId)
 
-    await trackEvent(venue.id, sessionId, EVENTS.QUESTION_ANSWERED, {
-      question: 'intent',
-      answer: selectedIntent,
+    // Use INTENT_SELECTED (not QUESTION_ANSWERED) to avoid polluting preference analytics
+    await trackEvent(venue.id, sessionId, EVENTS.INTENT_SELECTED, {
+      intent: selectedIntent,
     })
 
     setIntent(selectedIntent)

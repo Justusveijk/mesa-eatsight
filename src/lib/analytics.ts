@@ -133,6 +133,7 @@ export const EVENTS = {
   // Guest flow events
   SCAN: 'scan',
   FLOW_STARTED: 'flow_started',
+  INTENT_SELECTED: 'intent_selected', // Separate from question_answered to avoid pollution
   QUESTION_ANSWERED: 'question_answered',
   RECOMMENDATIONS_SHOWN: 'recommendations_shown',
   ITEM_CLICKED: 'rec_clicked', // Keep as rec_clicked for backwards compatibility

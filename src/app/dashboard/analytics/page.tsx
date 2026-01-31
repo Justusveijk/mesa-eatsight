@@ -35,48 +35,69 @@ const fadeIn = {
   }
 }
 
-// Tag label mappings
-const categoryMap: Record<string, string> = {
-  'diet_vegan': 'Dietary',
-  'diet_vegetarian': 'Dietary',
-  'diet_gluten_free': 'Dietary',
-  'diet_dairy_free': 'Dietary',
-  'diet_nut_free': 'Dietary',
-  'mood_comfort': 'Mood',
-  'mood_light': 'Mood',
-  'mood_treat': 'Mood',
-  'mood_adventurous': 'Mood',
-  'flavor_spicy': 'Flavor',
-  'flavor_sweet': 'Flavor',
-  'flavor_savory': 'Flavor',
-  'abv_zero': 'Alcohol',
-  'abv_light': 'Alcohol',
+// Helper to get category from tag prefix
+const getCategory = (tag: string): string => {
+  if (tag.startsWith('diet_')) return 'Dietary'
+  if (tag.startsWith('mood_')) return 'Mood'
+  if (tag.startsWith('flavor_')) return 'Flavor'
+  if (tag.startsWith('portion_')) return 'Portion'
+  if (tag.startsWith('price_')) return 'Price'
+  if (tag.startsWith('abv_') || tag.startsWith('strength_')) return 'Alcohol'
+  if (tag.startsWith('temp_')) return 'Temperature'
+  if (tag.startsWith('format_')) return 'Drink Style'
+  if (tag.startsWith('taste_')) return 'Taste'
+  return 'Other'
 }
 
 const labelMap: Record<string, string> = {
+  // Dietary
   'diet_vegan': 'Vegan',
   'diet_vegetarian': 'Vegetarian',
   'diet_gluten_free': 'Gluten-free',
   'diet_dairy_free': 'Dairy-free',
   'diet_nut_free': 'Nut-free',
+  'diet_halal': 'Halal',
+  'diet_kosher': 'Kosher',
+  // Mood
   'mood_comfort': 'Comfort Food',
   'mood_light': 'Light & Healthy',
   'mood_treat': 'Treat Yourself',
   'mood_adventurous': 'Adventurous',
+  'mood_quick': 'Quick Bite',
+  // Flavor
   'flavor_spicy': 'Spicy',
   'flavor_sweet': 'Sweet',
   'flavor_savory': 'Savory',
-  'flavor_umami': 'Umami',
-  'flavor_fresh': 'Fresh',
-  'flavor_tangy': 'Tangy',
+  'flavor_umami': 'Umami / Rich',
+  'flavor_fresh': 'Fresh / Light',
+  'flavor_tangy': 'Tangy / Sour',
+  // Portion
+  'portion_light': 'Light Portion',
+  'portion_standard': 'Standard Portion',
+  'portion_hearty': 'Hearty Portion',
+  // Alcohol
   'abv_zero': 'Non-Alcoholic',
   'abv_light': 'Light Alcohol',
   'abv_regular': 'Regular Alcohol',
-  'temp_hot': 'Hot Drinks',
-  'temp_chilled': 'Cold Drinks',
+  'abv_strong': 'Strong Alcohol',
+  'strength_none': 'Non-Alcoholic',
+  'strength_light': 'Light Alcohol',
+  'strength_regular': 'Regular Alcohol',
+  'strength_strong': 'Strong Alcohol',
+  // Temperature
+  'temp_hot': 'Hot',
+  'temp_chilled': 'Cold / Chilled',
+  'temp_frozen': 'Frozen',
+  // Drink Style
   'format_crisp': 'Crisp & Refreshing',
   'format_smooth': 'Smooth & Easy',
   'format_bold': 'Bold & Complex',
+  // Taste
+  'taste_bitter': 'Bitter',
+  'taste_sweet': 'Sweet',
+  'taste_sour': 'Sour',
+  'taste_herbal': 'Herbal',
+  'taste_fruity': 'Fruity',
 }
 
 export default function AnalyticsPage() {
@@ -184,6 +205,25 @@ export default function AnalyticsPage() {
     // Calculate unmet demand - compare requested preferences to menu item tags
     const unmetDemand: UnmetDemandItem[] = []
 
+    // Intent values to filter out (these are NOT preferences)
+    const intentValues = ['food', 'drinks', 'both', 'intent']
+
+    // Helper to check if a value is a valid preference tag
+    const isPreferenceTag = (tag: string): boolean => {
+      return (
+        tag.startsWith('mood_') ||
+        tag.startsWith('flavor_') ||
+        tag.startsWith('diet_') ||
+        tag.startsWith('portion_') ||
+        tag.startsWith('price_') ||
+        tag.startsWith('abv_') ||
+        tag.startsWith('temp_') ||
+        tag.startsWith('format_') ||
+        tag.startsWith('strength_') ||
+        tag.startsWith('taste_')
+      ) && !intentValues.includes(tag)
+    }
+
     // Get question_answered events to see what guests requested
     const { data: answerEvents } = await supabase
       .from('events')
@@ -192,20 +232,23 @@ export default function AnalyticsPage() {
       .eq('name', 'question_answered')
       .gte('ts', startDate.toISOString())
 
-    // Count preference requests from answers
+    // Count preference requests from answers (filter out intent values!)
     const preferenceCounts: Record<string, number> = {}
     answerEvents?.forEach(event => {
-      const props = event.props as { answer?: string } | null
-      if (props?.answer) {
-        preferenceCounts[props.answer] = (preferenceCounts[props.answer] || 0) + 1
+      const props = event.props as { answer?: string; question?: string } | null
+      const answer = props?.answer
+      // Only count actual preference tags, NOT intent selections
+      if (answer && isPreferenceTag(answer)) {
+        preferenceCounts[answer] = (preferenceCounts[answer] || 0) + 1
       }
     })
 
-    // Also count from session intent_chips
+    // Also count from session intent_chips (primary source of preference data)
     sessions?.forEach(session => {
       const chips = session.intent_chips as string[] | null
       chips?.forEach((chip: string) => {
-        if (chip.startsWith('diet_')) {
+        // Count all valid preference tags, not just dietary
+        if (isPreferenceTag(chip)) {
           preferenceCounts[chip] = (preferenceCounts[chip] || 0) + 1
         }
       })
@@ -235,7 +278,7 @@ export default function AnalyticsPage() {
       if (requests >= 2 && matchedItems <= 2) {
         unmetDemand.push({
           preference: labelMap[pref] || pref.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase()),
-          category: categoryMap[pref] || 'Other',
+          category: getCategory(pref),
           requests,
           matchedItems,
           gap: matchedItems === 0 ? 'critical' : matchedItems === 1 ? 'moderate' : 'minor',

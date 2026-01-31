@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag, PriceTag } from '@/lib/types/taxonomy'
 import { Button } from '@/components/ui/button'
 import { createRecSession, trackEvent, getRecommendationsWithFallback, getDrinkRecommendations, saveRecResults, RecommendedItem, trackUnmetDemand } from '@/lib/recommendations'
+import { updateSessionIntents } from '@/lib/analytics'
 import {
   foodMoodOptions,
   foodFlavorOptions,
@@ -166,6 +167,26 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
     console.log('  Intent:', intent)
     console.log('  Food Preferences:', foodPreferences)
     console.log('  Drink Preferences:', drinkPreferences)
+
+    // Collect all preference tags for analytics
+    const intentChips: string[] = []
+
+    // Food preferences
+    if (foodPreferences.mood) intentChips.push(foodPreferences.mood)
+    foodPreferences.flavors.forEach(f => intentChips.push(f))
+    if (foodPreferences.portion) intentChips.push(foodPreferences.portion)
+    foodPreferences.dietary.forEach(d => intentChips.push(d))
+    if (foodPreferences.price) intentChips.push(foodPreferences.price)
+
+    // Drink preferences
+    if (drinkPreferences.drinkStrength) intentChips.push(drinkPreferences.drinkStrength)
+    if (drinkPreferences.drinkFeel) intentChips.push(drinkPreferences.drinkFeel)
+    drinkPreferences.drinkTaste.forEach(t => intentChips.push(t))
+
+    // Save intent chips to session for analytics
+    if (sessionId && intentChips.length > 0) {
+      await updateSessionIntents(sessionId, intentChips)
+    }
 
     if (sessionId) {
       trackEvent(venueId, sessionId, 'flow_completed', { foodPreferences, drinkPreferences, intent })
