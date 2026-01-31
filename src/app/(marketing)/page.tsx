@@ -24,12 +24,6 @@ const monthlyFeatures = ['Unlimited scans', 'Real-time analytics', 'Menu managem
 const annualFeatures = ['Everything in Monthly', '14-day free trial', 'Priority support', 'Price locked forever']
 
 // Animation variants
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, ease: 'easeOut' }
-}
-
 const staggerContainer = {
   animate: {
     transition: {

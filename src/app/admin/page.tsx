@@ -39,7 +39,7 @@ export default function AdminPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [authorized, setAuthorized] = useState(false)
   const [venues, setVenues] = useState<VenueWithStats[]>([])
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<{ id: string; email: string; created_at: string; role?: string; venues?: { name: string } }[]>([])
   const [stats, setStats] = useState({
     totalVenues: 0,
     totalUsers: 0,
