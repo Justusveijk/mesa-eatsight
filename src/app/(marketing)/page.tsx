@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { AnimatedGradient } from '@/components/AnimatedGradient'
 import { VideoPlayer } from '@/components/VideoPlayer'
@@ -22,6 +23,21 @@ const operatorFeatures = [
 const monthlyFeatures = ['Unlimited scans', 'Real-time analytics', 'Menu management', 'Cancel anytime']
 const annualFeatures = ['Everything in Monthly', '14-day free trial', 'Priority support', 'Price locked forever']
 
+// Animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6, ease: 'easeOut' }
+}
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
 
@@ -34,7 +50,6 @@ export default function LandingPage() {
   }, [])
 
   // Parallax calculations
-  const heroParallax = scrollY * 0.3
   const heroOpacity = Math.max(0, 1 - scrollY / 600)
 
   return (
@@ -60,9 +75,9 @@ export default function LandingPage() {
           className="absolute inset-0 pointer-events-none"
           style={{ transform: `translateY(${scrollY * 0.4}px)` }}
         >
-          <div className="absolute top-20 right-10 w-64 h-64 bg-[#722F37]/5 rounded-full blur-3xl animate-fadeIn" />
-          <div className="absolute bottom-40 left-10 w-48 h-48 bg-[#722F37]/5 rounded-full blur-2xl animate-fadeIn delay-200" />
-          <div className="absolute top-1/2 left-1/3 w-96 h-96 bg-[#722F37]/3 rounded-full blur-3xl animate-fadeIn delay-400" />
+          <div className="absolute top-20 right-10 w-64 h-64 bg-[#722F37]/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-40 left-10 w-48 h-48 bg-[#722F37]/5 rounded-full blur-2xl" />
+          <div className="absolute top-1/2 left-1/3 w-96 h-96 bg-[#722F37]/3 rounded-full blur-3xl" />
         </div>
 
         {/* Background menu cards with parallax */}
@@ -102,43 +117,69 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Hero content with parallax fade */}
-        <div
+        {/* Hero content with framer-motion */}
+        <motion.div
           className="text-center px-4 sm:px-6 md:px-8 max-w-4xl relative z-20"
           style={{
             transform: `translateY(${scrollY * 0.1}px)`,
             opacity: heroOpacity
           }}
+          initial="initial"
+          animate="animate"
+          variants={staggerContainer}
         >
-          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#1a1a1a] leading-tight mb-6 animate-fadeInUp">
+          <motion.h1
+            className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#1a1a1a] leading-tight mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
             Your menu,<br />
             <span className="italic">personally served</span>
-          </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-[#1a1a1a]/70 max-w-3xl mx-auto font-light animate-fadeInUp delay-100">
+          </motion.h1>
+          <motion.p
+            className="text-lg sm:text-xl md:text-2xl text-[#1a1a1a]/70 max-w-3xl mx-auto font-light"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
             Menus are bigger than ever. Attention is lower than ever.
-          </p>
-          <p className="mt-2 text-base sm:text-lg text-[#1a1a1a]/60 max-w-2xl mx-auto mb-8 sm:mb-10 animate-fadeInUp delay-200">
+          </motion.p>
+          <motion.p
+            className="mt-2 text-base sm:text-lg text-[#1a1a1a]/60 max-w-2xl mx-auto mb-8 sm:mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             Eatsight turns menus into decisions, and decisions into revenue.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 animate-fadeInUp delay-300">
+          </motion.p>
+          <motion.div
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
             <Link href="/v/bella-taverna" className="inline-block bg-[#B2472A] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-medium hover:bg-[#8a341f] transition-colors">
               Try the demo
             </Link>
             <Link href="#pricing" className="inline-block border-2 border-[#1a1a1a]/20 text-[#1a1a1a] px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg hover:border-[#1a1a1a]/40 transition-colors">
               View pricing
             </Link>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Scroll indicator */}
-        <div
+        <motion.div
           className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20"
           style={{ opacity: Math.max(0, 1 - scrollY / 200) }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
         >
           <div className="w-6 h-10 border-2 border-[#1a1a1a]/30 rounded-full flex justify-center pt-2">
             <div className="w-1.5 h-3 bg-[#1a1a1a]/40 rounded-full" />
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Value Proposition Section */}
@@ -146,7 +187,13 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             {/* Left side - for guests */}
-            <div className="text-center md:text-left">
+            <motion.div
+              className="text-center md:text-left"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
               <div className="inline-block px-3 py-1 bg-[#B2472A]/10 text-[#B2472A] rounded-full text-sm font-medium mb-4">
                 Mesa · For Guests
               </div>
@@ -156,10 +203,16 @@ export default function LandingPage() {
               <p className="text-[#1a1a1a]/60">
                 Answer a few quick questions and discover dishes perfectly matched to your mood, cravings, and dietary needs. No more menu paralysis.
               </p>
-            </div>
+            </motion.div>
 
             {/* Right side - for operators */}
-            <div className="text-center md:text-left">
+            <motion.div
+              className="text-center md:text-left"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
               <div className="inline-block px-3 py-1 bg-[#1e3a5f]/10 text-[#1e3a5f] rounded-full text-sm font-medium mb-4">
                 Eatsight · For Operators
               </div>
@@ -169,7 +222,7 @@ export default function LandingPage() {
               <p className="text-[#1a1a1a]/60">
                 Turn guest preferences into actionable insights. Know what&apos;s trending, what&apos;s missing, and what drives revenue — all in real time.
               </p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -177,16 +230,27 @@ export default function LandingPage() {
       {/* Stats/Social Proof Section */}
       <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[#1a1a1a] text-white">
         <div className="max-w-4xl mx-auto text-center">
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             <blockquote className="text-xl sm:text-2xl md:text-3xl font-serif italic mb-6">
               &ldquo;Eatsight helps venues turn indecision into higher conversion by guiding guests to the right choices.&rdquo;
             </blockquote>
             <p className="text-white/60">
               — The Mesa Team
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-3 gap-8 mt-12 pt-12 border-t border-white/10">
+          <motion.div
+            className="grid grid-cols-3 gap-8 mt-12 pt-12 border-t border-white/10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             <div>
               <div className="text-3xl sm:text-4xl font-serif">3</div>
               <div className="text-white/60 text-sm mt-1">Questions</div>
@@ -199,14 +263,19 @@ export default function LandingPage() {
               <div className="text-3xl sm:text-4xl font-serif">∞</div>
               <div className="text-white/60 text-sm mt-1">Happy guests</div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Problem Section */}
       <section className="min-h-screen flex items-center py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-          <div>
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">The Challenge</p>
             <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] leading-tight mb-6">
               Menus are overwhelming.<br />
@@ -216,9 +285,14 @@ export default function LandingPage() {
               Your guests stare at the menu for minutes. They ask the server what&apos;s good.
               They order safe choices instead of your best dishes.
             </p>
-          </div>
+          </motion.div>
 
-          <div>
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
             <div className="bg-white rounded-3xl p-8 shadow-xl shadow-[#1a1a1a]/5 border border-[#1a1a1a]/5">
               <div className="space-y-4 text-[#1a1a1a]/50 font-mono text-sm">
                 {[
@@ -237,7 +311,7 @@ export default function LandingPage() {
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -246,29 +320,50 @@ export default function LandingPage() {
         {/* Animated gradient background */}
         <AnimatedGradient />
 
-        {/* Content with subtle parallax */}
-        <div
-          className="max-w-4xl mx-auto text-center relative z-10"
-          style={{ transform: `translateY(${Math.max(0, (scrollY - 800) * 0.1)}px)` }}
-        >
-          <p className="text-white/60 uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8 animate-fadeInUp">
+        {/* Content with framer-motion */}
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <motion.p
+            className="text-white/60 uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             The Solution
-          </p>
-          <h2 className="font-serif text-4xl md:text-6xl lg:text-7xl leading-tight mb-8 text-white animate-fadeInUp delay-100">
+          </motion.p>
+          <motion.h2
+            className="font-serif text-4xl md:text-6xl lg:text-7xl leading-tight mb-8 text-white"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
             Three questions.<br />
             <span className="italic text-[#F5F3EF]">Perfect match.</span>
-          </h2>
-          <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto animate-fadeInUp delay-200">
+          </motion.h2>
+          <motion.p
+            className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             Guest scans the QR code. Answers three simple questions about mood, flavor, and hunger.
             Gets three perfect recommendations in under 15 seconds.
-          </p>
+          </motion.p>
         </div>
       </section>
 
       {/* Video Section */}
       <section className="py-20 md:py-28 bg-[#FDFBF7]">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-12">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             <p className="text-sm uppercase tracking-widest text-[#722F37] mb-4">
               See It In Action
             </p>
@@ -278,9 +373,16 @@ export default function LandingPage() {
             <p className="text-[#1a1a1a]/60 max-w-2xl mx-auto">
               Watch how Mesa transforms the dining experience for your guests
             </p>
-          </div>
+          </motion.div>
 
-          <VideoPlayer placeholder={true} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            <VideoPlayer placeholder={true} />
+          </motion.div>
 
           <p className="mt-8 text-center text-sm text-[#1a1a1a]/50">
             Full demo video coming soon
@@ -291,19 +393,26 @@ export default function LandingPage() {
       {/* How It Works */}
       <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7] overflow-hidden">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 md:mb-20">
-            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4 animate-fadeInUp">How It Works</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] animate-fadeInUp delay-100">The Experience</h2>
-          </div>
+          <motion.div
+            className="text-center mb-16 md:mb-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">How It Works</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">The Experience</h2>
+          </motion.div>
 
           <div className="space-y-6 md:space-y-8">
             {steps.map((step, index) => (
-              <div
+              <motion.div
                 key={step.num}
                 className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8 p-6 md:p-8 border-b border-[#1a1a1a]/10 group hover:bg-[#1a1a1a]/[0.02] transition-colors rounded-xl"
-                style={{
-                  transform: `translateY(${Math.max(0, (scrollY - 1800 - index * 100) * -0.05)}px)`,
-                }}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 <span className="text-[#1a1a1a]/20 font-serif text-4xl md:text-6xl md:w-24">{step.num}</span>
                 <span className="text-3xl md:text-4xl md:w-16">{step.icon}</span>
@@ -314,7 +423,7 @@ export default function LandingPage() {
                 <div className="text-[#722F37] opacity-0 group-hover:opacity-100 transition-opacity hidden md:block text-2xl">
                   →
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -326,23 +435,30 @@ export default function LandingPage() {
       {/* For Operators */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF] overflow-hidden">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 md:mb-20">
-            <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4 animate-fadeInUp">For Operators</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] animate-fadeInUp delay-100">Finally, real answers</h2>
-          </div>
+          <motion.div
+            className="text-center mb-16 md:mb-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">For Operators</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">Finally, real answers</h2>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 gap-6 md:gap-8">
             {operatorFeatures.map((item, index) => (
-              <div
+              <motion.div
                 key={item.title}
                 className="bg-white p-6 md:p-8 rounded-2xl"
-                style={{
-                  transform: `translateY(${Math.max(0, (scrollY - 2800 - index * 50) * -0.03)}px)`,
-                }}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 <h3 className="font-serif text-xl md:text-2xl text-[#1a1a1a] mb-3">{item.title}</h3>
                 <p className="text-[#1a1a1a]/70">{item.desc}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -351,15 +467,27 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4 animate-fadeInUp">Pricing</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4 animate-fadeInUp delay-100">Simple & fair</h2>
-            <p className="text-[#1a1a1a]/60 animate-fadeInUp delay-200">Annual plan includes 14-day free trial.</p>
-          </div>
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">Pricing</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4">Simple & fair</h2>
+            <p className="text-[#1a1a1a]/60">Annual plan includes 14-day free trial.</p>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto overflow-visible">
             {/* Monthly Card */}
-            <div className="border-2 border-[#1a1a1a]/10 rounded-2xl p-8 bg-white hover:border-[#1a1a1a]/20 transition-colors animate-fadeInLeft delay-300">
+            <motion.div
+              className="border-2 border-[#1a1a1a]/10 rounded-2xl p-8 bg-white hover:border-[#1a1a1a]/20 transition-colors"
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
               <p className="text-[#1a1a1a]/50 uppercase tracking-wider text-sm mb-4">Monthly</p>
               <div className="flex items-baseline gap-2 mb-6">
                 <span className="font-serif text-5xl text-[#1a1a1a]">€295</span>
@@ -375,10 +503,16 @@ export default function LandingPage() {
               <Link href="/signup?plan=monthly" className="block text-center py-3 border-2 border-[#722F37] text-[#722F37] rounded-full hover:bg-[#722F37]/5 transition-colors font-medium">
                 Get started
               </Link>
-            </div>
+            </motion.div>
 
             {/* Annual Card */}
-            <div className="bg-[#722F37] text-white rounded-2xl p-8 relative overflow-visible animate-fadeInRight delay-400">
+            <motion.div
+              className="bg-[#722F37] text-white rounded-2xl p-8 relative overflow-visible"
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
               <div className="absolute -top-4 right-6 bg-white text-[#722F37] text-sm font-semibold px-4 py-1.5 rounded-full shadow-md z-10">
                 Save €552/year
               </div>
@@ -398,42 +532,58 @@ export default function LandingPage() {
               <Link href="/signup?plan=annual" className="block text-center py-3 bg-white text-[#722F37] rounded-full hover:bg-white/90 transition-colors font-medium">
                 Start 14-day free trial
               </Link>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* About */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF]">
-        <div className="max-w-3xl mx-auto text-center">
-          <div>
-            <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">Our Story</p>
-            <h2 className="font-serif text-3xl md:text-4xl text-[#1a1a1a] mb-6">Built by hospitality people</h2>
-            <p className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed mb-4">
-              We&apos;ve worked the floor. We&apos;ve seen guests paralyzed by choice, servers repeating the same recommendations,
-              and kitchens guessing what to prep.
-            </p>
-            <p className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed">
-              Mesa + Eatsight bridges the gap between what guests want and what you serve.
-            </p>
-            <p className="text-[#1a1a1a]/40 mt-8">Amsterdam 🇳🇱</p>
-          </div>
-        </div>
+        <motion.div
+          className="max-w-3xl mx-auto text-center"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">Our Story</p>
+          <h2 className="font-serif text-3xl md:text-4xl text-[#1a1a1a] mb-6">Built by hospitality people</h2>
+          <p className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed mb-4">
+            We&apos;ve worked the floor. We&apos;ve seen guests paralyzed by choice, servers repeating the same recommendations,
+            and kitchens guessing what to prep.
+          </p>
+          <p className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed">
+            Mesa + Eatsight bridges the gap between what guests want and what you serve.
+          </p>
+          <p className="text-[#1a1a1a]/40 mt-8">Amsterdam 🇳🇱</p>
+        </motion.div>
       </section>
 
       {/* Team Section */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-[#1a1a1a] mb-4">
               The faces behind Mesa
             </h2>
             <p className="text-[#1a1a1a]/60 max-w-2xl mx-auto">
               We&apos;re a small team passionate about helping restaurants connect with their guests in a more personal way.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="flex justify-center">
+          <motion.div
+            className="flex justify-center"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
             {/* Founder */}
             <div className="text-center max-w-xs">
               <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] overflow-hidden flex items-center justify-center text-4xl">
@@ -456,7 +606,7 @@ export default function LandingPage() {
                 </svg>
               </a>
             </div>
-          </div>
+          </motion.div>
 
           <div className="text-center mt-12">
             <p className="text-[#1a1a1a]/40 text-sm mb-4">Want to get in touch?</p>
@@ -472,20 +622,24 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#722F37] text-white">
-        <div className="max-w-3xl mx-auto text-center">
-          <div>
-            <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6 animate-fadeInUp">
-              Ready to understand<br />your guests?
-            </h2>
-            <p className="text-white/80 text-base md:text-lg mb-10 animate-fadeInUp delay-100">
-              Set up in 15 minutes. See insights from day one.
-            </p>
-            <Link href="/signup" className="inline-block bg-white text-[#722F37] px-10 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition-colors animate-fadeInUp delay-200">
-              Start your free trial
-            </Link>
-            <p className="text-white/60 text-sm mt-6 animate-fadeInUp delay-300">14 days free • No credit card</p>
-          </div>
-        </div>
+        <motion.div
+          className="max-w-3xl mx-auto text-center"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6">
+            Ready to understand<br />your guests?
+          </h2>
+          <p className="text-white/80 text-base md:text-lg mb-10">
+            Set up in 15 minutes. See insights from day one.
+          </p>
+          <Link href="/signup" className="inline-block bg-white text-[#722F37] px-10 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition-colors">
+            Start your free trial
+          </Link>
+          <p className="text-white/60 text-sm mt-6">14 days free • No credit card</p>
+        </motion.div>
       </section>
 
       {/* Footer */}
