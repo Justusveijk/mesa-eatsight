@@ -30,28 +30,34 @@ export function Testimonials() {
   return (
     <section className="py-20 bg-[#F5F3EF]">
       <div className="max-w-6xl mx-auto px-6">
-        <motion.div
-          className="text-center mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
-          <p className="text-sm uppercase tracking-widest text-[#722F37] mb-4">
+        <div className="text-center mb-12">
+          <motion.p
+            className="text-sm uppercase tracking-widest text-[#722F37] mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             Testimonials
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-serif text-[#1a1a1a]">
+          </motion.p>
+          <motion.h2
+            className="text-3xl sm:text-4xl font-serif text-[#1a1a1a]"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
             Loved by restaurants
-          </h2>
-        </motion.div>
+          </motion.h2>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {testimonials.map((testimonial, i) => (
             <motion.div
               key={i}
               className="bg-white rounded-2xl p-6 shadow-sm border border-[#1a1a1a]/5"
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
             >

@@ -270,22 +270,37 @@ export default function LandingPage() {
       {/* Problem Section */}
       <section className="min-h-screen flex items-center py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">The Challenge</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] leading-tight mb-6">
+          <div>
+            <motion.p
+              className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4"
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              The Challenge
+            </motion.p>
+            <motion.h2
+              className="font-serif text-4xl md:text-5xl text-[#1a1a1a] leading-tight mb-6"
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
               Menus are overwhelming.<br />
               <span className="text-[#1a1a1a]/40">Decisions are hard.</span>
-            </h2>
-            <p className="text-lg text-[#1a1a1a]/70 leading-relaxed">
+            </motion.h2>
+            <motion.p
+              className="text-lg text-[#1a1a1a]/70 leading-relaxed"
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
               Your guests stare at the menu for minutes. They ask the server what&apos;s good.
               They order safe choices instead of your best dishes.
-            </p>
-          </motion.div>
+            </motion.p>
+          </div>
 
           <motion.div
             initial={{ opacity: 0, x: 30 }}
@@ -357,52 +372,80 @@ export default function LandingPage() {
       {/* Video Section */}
       <section className="py-20 md:py-28 bg-[#FDFBF7]">
         <div className="max-w-5xl mx-auto px-6">
-          <motion.div
-            className="text-center mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="text-sm uppercase tracking-widest text-[#722F37] mb-4">
+          <div className="text-center mb-12">
+            <motion.p
+              className="text-sm uppercase tracking-widest text-[#722F37] mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
               See It In Action
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-serif text-[#1a1a1a] mb-4">
+            </motion.p>
+            <motion.h2
+              className="text-3xl sm:text-4xl font-serif text-[#1a1a1a] mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
               From scan to smile in seconds
-            </h2>
-            <p className="text-[#1a1a1a]/60 max-w-2xl mx-auto">
+            </motion.h2>
+            <motion.p
+              className="text-[#1a1a1a]/60 max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
               Watch how Mesa transforms the dining experience for your guests
-            </p>
-          </motion.div>
+            </motion.p>
+          </div>
 
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
           >
             <VideoPlayer placeholder={true} />
           </motion.div>
 
-          <p className="mt-8 text-center text-sm text-[#1a1a1a]/50">
+          <motion.p
+            className="mt-8 text-center text-sm text-[#1a1a1a]/50"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
             Full demo video coming soon
-          </p>
+          </motion.p>
         </div>
       </section>
 
       {/* How It Works */}
       <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7] overflow-hidden">
         <div className="max-w-6xl mx-auto">
-          <motion.div
-            className="text-center mb-16 md:mb-20"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">How It Works</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">The Experience</h2>
-          </motion.div>
+          <div className="text-center mb-16 md:mb-20">
+            <motion.p
+              className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              How It Works
+            </motion.p>
+            <motion.h2
+              className="font-serif text-4xl md:text-5xl text-[#1a1a1a]"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              The Experience
+            </motion.h2>
+          </div>
 
           <div className="space-y-6 md:space-y-8">
             {steps.map((step, index) => (
@@ -435,16 +478,26 @@ export default function LandingPage() {
       {/* For Operators */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF] overflow-hidden">
         <div className="max-w-6xl mx-auto">
-          <motion.div
-            className="text-center mb-16 md:mb-20"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">For Operators</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a]">Finally, real answers</h2>
-          </motion.div>
+          <div className="text-center mb-16 md:mb-20">
+            <motion.p
+              className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              For Operators
+            </motion.p>
+            <motion.h2
+              className="font-serif text-4xl md:text-5xl text-[#1a1a1a]"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              Finally, real answers
+            </motion.h2>
+          </div>
 
           <div className="grid md:grid-cols-2 gap-6 md:gap-8">
             {operatorFeatures.map((item, index) => (
@@ -467,17 +520,35 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
         <div className="max-w-4xl mx-auto">
-          <motion.div
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">Pricing</p>
-            <h2 className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4">Simple & fair</h2>
-            <p className="text-[#1a1a1a]/60">Annual plan includes 14-day free trial.</p>
-          </motion.div>
+          <div className="text-center mb-16">
+            <motion.p
+              className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              Pricing
+            </motion.p>
+            <motion.h2
+              className="font-serif text-4xl md:text-5xl text-[#1a1a1a] mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              Simple & fair
+            </motion.h2>
+            <motion.p
+              className="text-[#1a1a1a]/60"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              Annual plan includes 14-day free trial.
+            </motion.p>
+          </div>
 
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto overflow-visible">
             {/* Monthly Card */}
@@ -539,43 +610,79 @@ export default function LandingPage() {
 
       {/* About */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF]">
-        <motion.div
-          className="max-w-3xl mx-auto text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
-          <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">Our Story</p>
-          <h2 className="font-serif text-3xl md:text-4xl text-[#1a1a1a] mb-6">Built by hospitality people</h2>
-          <p className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed mb-4">
-            We&apos;ve worked the floor. We&apos;ve seen guests paralyzed by choice, servers repeating the same recommendations,
-            and kitchens guessing what to prep.
-          </p>
-          <p className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed">
-            Mesa + Eatsight bridges the gap between what guests want and what you serve.
-          </p>
-          <p className="text-[#1a1a1a]/40 mt-8">Amsterdam 🇳🇱</p>
-        </motion.div>
-      </section>
-
-      {/* Team Section */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            className="text-center mb-12"
+        <div className="max-w-3xl mx-auto text-center">
+          <motion.p
+            className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-[#1a1a1a] mb-4">
+            Our Story
+          </motion.p>
+          <motion.h2
+            className="font-serif text-3xl md:text-4xl text-[#1a1a1a] mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            Built by hospitality people
+          </motion.h2>
+          <motion.p
+            className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            We&apos;ve worked the floor. We&apos;ve seen guests paralyzed by choice, servers repeating the same recommendations,
+            and kitchens guessing what to prep.
+          </motion.p>
+          <motion.p
+            className="text-base md:text-lg text-[#1a1a1a]/70 leading-relaxed"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            Mesa + Eatsight bridges the gap between what guests want and what you serve.
+          </motion.p>
+          <motion.p
+            className="text-[#1a1a1a]/40 mt-8"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            Amsterdam 🇳🇱
+          </motion.p>
+        </div>
+      </section>
+
+      {/* Team Section */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <motion.h2
+              className="text-2xl sm:text-3xl md:text-4xl font-serif text-[#1a1a1a] mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
               The faces behind Mesa
-            </h2>
-            <p className="text-[#1a1a1a]/60 max-w-2xl mx-auto">
+            </motion.h2>
+            <motion.p
+              className="text-[#1a1a1a]/60 max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
               We&apos;re a small team passionate about helping restaurants connect with their guests in a more personal way.
-            </p>
-          </motion.div>
+            </motion.p>
+          </div>
 
           <motion.div
             className="flex justify-center"
@@ -608,7 +715,13 @@ export default function LandingPage() {
             </div>
           </motion.div>
 
-          <div className="text-center mt-12">
+          <motion.div
+            className="text-center mt-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             <p className="text-[#1a1a1a]/40 text-sm mb-4">Want to get in touch?</p>
             <a
               href="mailto:hello@eatsight.com"
@@ -616,30 +729,51 @@ export default function LandingPage() {
             >
               hello@eatsight.com
             </a>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Final CTA */}
       <section className="py-20 md:py-32 px-6 md:px-8 bg-[#722F37] text-white">
-        <motion.div
-          className="max-w-3xl mx-auto text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <motion.h2
+            className="font-serif text-4xl md:text-5xl lg:text-6xl mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             Ready to understand<br />your guests?
-          </h2>
-          <p className="text-white/80 text-base md:text-lg mb-10">
+          </motion.h2>
+          <motion.p
+            className="text-white/80 text-base md:text-lg mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
             Set up in 15 minutes. See insights from day one.
-          </p>
-          <Link href="/signup" className="inline-block bg-white text-[#722F37] px-10 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition-colors">
-            Start your free trial
-          </Link>
-          <p className="text-white/60 text-sm mt-6">14 days free • No credit card</p>
-        </motion.div>
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <Link href="/signup" className="inline-block bg-white text-[#722F37] px-10 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition-colors">
+              Start your free trial
+            </Link>
+          </motion.div>
+          <motion.p
+            className="text-white/60 text-sm mt-6"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            14 days free • No credit card
+          </motion.p>
+        </div>
       </section>
 
       {/* Footer */}
