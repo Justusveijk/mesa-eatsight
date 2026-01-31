@@ -53,12 +53,12 @@ export default function LoginPage() {
       }
 
       // Redirect based on whether they have a venue
+      // Use hard navigation to ensure cookies are properly sent
       if (operator?.venue_id) {
-        router.push('/dashboard')
+        window.location.href = '/dashboard'
       } else {
-        router.push('/onboarding/venue')
+        window.location.href = '/onboarding/venue'
       }
-      router.refresh()
 
     } catch (err) {
       console.error('Login error:', err)
