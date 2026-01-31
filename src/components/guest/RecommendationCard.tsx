@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Heart } from 'lucide-react'
 
 interface RecommendationCardProps {
   item: {
@@ -10,6 +10,8 @@ interface RecommendationCardProps {
     name: string
     description?: string | null
     price: number
+    category?: string
+    type?: string
     tags?: string[]
     reason?: string
   }
@@ -17,27 +19,59 @@ interface RecommendationCardProps {
     name: string
     price: number
   }
+  onSelect?: (item: RecommendationCardProps['item']) => void
+  onExpand?: (item: RecommendationCardProps['item']) => void
+  isSelected?: boolean
 }
 
-export function RecommendationCard({ item, pairing }: RecommendationCardProps) {
+export function RecommendationCard({
+  item,
+  pairing,
+  onSelect,
+  onExpand,
+  isSelected = false
+}: RecommendationCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [localSelected, setLocalSelected] = useState(isSelected)
 
   // Format tags for display
   const displayTags = item.tags?.slice(0, 3).map(tag =>
     tag.replace('mood_', '').replace('flavor_', '').replace('portion_', '').replace('_', ' ')
   ) || []
 
+  const handleExpand = () => {
+    const newExpanded = !expanded
+    setExpanded(newExpanded)
+    if (newExpanded && onExpand) {
+      onExpand(item)
+    }
+  }
+
+  const handleSelect = (e: React.MouseEvent) => {
+    e.stopPropagation() // Don't trigger expand
+    const newSelected = !localSelected
+    setLocalSelected(newSelected)
+    if (onSelect) {
+      onSelect(item)
+    }
+  }
+
   return (
     <motion.div
       layout
-      className="bg-white rounded-2xl border border-[#1a1a1a]/5 overflow-hidden shadow-sm"
+      className={`bg-white rounded-2xl border-2 overflow-hidden shadow-sm transition-colors ${
+        localSelected
+          ? 'border-[#722F37]'
+          : 'border-[#1a1a1a]/5 hover:border-[#1a1a1a]/10'
+      }`}
     >
-      {/* Main card - clickable */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full p-5 text-left flex items-start justify-between gap-4"
-      >
-        <div className="flex-1">
+      {/* Main card - clickable for expand */}
+      <div className="p-5 flex items-start justify-between gap-4">
+        {/* Item info - clickable to expand */}
+        <button
+          onClick={handleExpand}
+          className="flex-1 text-left"
+        >
           <h3 className="font-medium text-[#1a1a1a] text-lg">{item.name}</h3>
           {item.reason && (
             <p className="text-sm text-[#1a1a1a]/50 mt-1">{item.reason}</p>
@@ -54,17 +88,53 @@ export function RecommendationCard({ item, pairing }: RecommendationCardProps) {
               ))}
             </div>
           )}
-        </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
+        </button>
+
+        {/* Right side - price, heart, expand */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-[#722F37] font-semibold text-lg">€{item.price}</span>
-          <motion.div
-            animate={{ rotate: expanded ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
+
+          {/* Heart/Select button */}
+          <button
+            onClick={handleSelect}
+            aria-label={localSelected ? "Remove from picks" : "Add to picks"}
+            className={`p-2 rounded-full transition-all ${
+              localSelected
+                ? 'bg-[#722F37] text-white scale-110'
+                : 'bg-[#F5F3EF] text-[#1a1a1a]/40 hover:text-[#722F37] hover:bg-[#722F37]/10'
+            }`}
           >
-            <ChevronDown size={20} className="text-[#1a1a1a]/30" />
-          </motion.div>
+            <Heart
+              size={20}
+              fill={localSelected ? 'currentColor' : 'none'}
+              className="transition-transform"
+            />
+          </button>
+
+          {/* Expand button */}
+          <button
+            onClick={handleExpand}
+            aria-label={expanded ? "Show less" : "Show more"}
+            className="p-2 rounded-full bg-[#F5F3EF] text-[#1a1a1a]/30 hover:text-[#1a1a1a]/50 transition"
+          >
+            <motion.div
+              animate={{ rotate: expanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown size={20} />
+            </motion.div>
+          </button>
         </div>
-      </button>
+      </div>
+
+      {/* Selected indicator */}
+      {localSelected && (
+        <div className="px-5 pb-3 -mt-2">
+          <span className="text-xs text-[#722F37] font-medium">
+            ✓ Added to your picks
+          </span>
+        </div>
+      )}
 
       {/* Expanded content */}
       <AnimatePresence>

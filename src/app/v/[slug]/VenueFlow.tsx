@@ -397,14 +397,32 @@ function RecommendationResultsView({
   const [showAppSignup, setShowAppSignup] = useState(false)
   const [appEmail, setAppEmail] = useState('')
   const [emailSubmitted, setEmailSubmitted] = useState(false)
+  const [selectedItems, setSelectedItems] = useState<string[]>([])
 
-  // Track item click
-  const handleItemClick = async (item: { id: string; name: string; category: string; price: number }) => {
-    await trackEvent(venueId, sessionId, EVENTS.ITEM_CLICKED, {
+  // Track item selection (heart button)
+  const handleItemSelect = async (item: { id: string; name: string; category?: string; type?: string; price: number }) => {
+    const isSelected = selectedItems.includes(item.id)
+
+    if (isSelected) {
+      setSelectedItems(prev => prev.filter(id => id !== item.id))
+    } else {
+      setSelectedItems(prev => [...prev, item.id])
+      // Track the selection
+      await trackEvent(venueId, sessionId, 'item_selected', {
+        item_id: item.id,
+        item_name: item.name,
+        item_type: item.type,
+        item_category: item.category,
+        item_price: item.price,
+      })
+    }
+  }
+
+  // Track item expand
+  const handleItemExpand = async (item: { id: string; name: string }) => {
+    await trackEvent(venueId, sessionId, EVENTS.ITEM_EXPANDED, {
       item_id: item.id,
       item_name: item.name,
-      item_category: item.category,
-      item_price: item.price,
     })
   }
 
@@ -444,15 +462,28 @@ function RecommendationResultsView({
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
+        className="text-center mb-6"
       >
         <h2 className="text-2xl font-medium text-[#1a1a1a] mb-2">
           Our picks for you
         </h2>
         <p className="text-[#1a1a1a]/50">
-          Based on your preferences
+          Tap ❤️ to save your favorites
         </p>
       </motion.div>
+
+      {/* Selected items counter */}
+      {selectedItems.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#722F37]/10 rounded-xl p-4 text-center mb-6"
+        >
+          <span className="text-[#722F37] font-medium">
+            ❤️ {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} picked
+          </span>
+        </motion.div>
+      )}
 
       {/* Unmet preferences feedback banner */}
       {feedbackMessage && unmetPreferences.length > 0 && (
@@ -505,7 +536,12 @@ function RecommendationResultsView({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                   >
-                    <RecommendationCard item={item} />
+                    <RecommendationCard
+                      item={item}
+                      onSelect={handleItemSelect}
+                      onExpand={handleItemExpand}
+                      isSelected={selectedItems.includes(item.id)}
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -553,7 +589,12 @@ function RecommendationResultsView({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                   >
-                    <RecommendationCard item={item} />
+                    <RecommendationCard
+                      item={item}
+                      onSelect={handleItemSelect}
+                      onExpand={handleItemExpand}
+                      isSelected={selectedItems.includes(item.id)}
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -602,7 +643,12 @@ function RecommendationResultsView({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                   >
-                    <RecommendationCard item={item} />
+                    <RecommendationCard
+                      item={item}
+                      onSelect={handleItemSelect}
+                      onExpand={handleItemExpand}
+                      isSelected={selectedItems.includes(item.id)}
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -623,7 +669,12 @@ function RecommendationResultsView({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 + i * 0.1 }}
                   >
-                    <RecommendationCard item={item} />
+                    <RecommendationCard
+                      item={item}
+                      onSelect={handleItemSelect}
+                      onExpand={handleItemExpand}
+                      isSelected={selectedItems.includes(item.id)}
+                    />
                   </motion.div>
                 ))}
               </div>

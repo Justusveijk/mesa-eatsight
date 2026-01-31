@@ -10,11 +10,11 @@ import { TAG_LABELS } from '@/lib/types/taxonomy'
 interface Metrics {
   scansToday: number
   scansWeek: number
-  clicksToday: number
-  clicksWeek: number
-  ctr: number
+  picksToday: number
+  picksWeek: number
+  pickRate: number
   topMoods: { name: string; percent: number }[]
-  topItems: { name: string; clicks: number }[]
+  topPicks: { name: string; picks: number }[]
   recentActivity: { ts: string; name: string; message: string }[]
 }
 
@@ -39,11 +39,11 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metrics>({
     scansToday: 0,
     scansWeek: 0,
-    clicksToday: 0,
-    clicksWeek: 0,
-    ctr: 0,
+    picksToday: 0,
+    picksWeek: 0,
+    pickRate: 0,
     topMoods: [],
-    topItems: [],
+    topPicks: [],
     recentActivity: [],
   })
 
@@ -91,20 +91,20 @@ export default function DashboardPage() {
         .eq('venue_id', venueId)
         .gte('started_at', periodStart.toISOString())
 
-      // Clicks today
-      const { count: clicksToday } = await supabase
+      // Picks today (heart button selections)
+      const { count: picksToday } = await supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
         .eq('venue_id', venueId)
-        .eq('name', 'rec_clicked')
+        .eq('name', 'item_selected')
         .gte('ts', todayStart.toISOString())
 
-      // Clicks this period
-      const { count: clicksWeek } = await supabase
+      // Picks this period
+      const { count: picksWeek } = await supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
         .eq('venue_id', venueId)
-        .eq('name', 'rec_clicked')
+        .eq('name', 'item_selected')
         .gte('ts', periodStart.toISOString())
 
       // Get sessions with intent chips for mood analysis
@@ -128,41 +128,28 @@ export default function DashboardPage() {
         })
       })
 
-      // Get top clicked items
-      const { data: clickEvents } = await supabase
+      // Get top picked items (heart selections)
+      const { data: pickEvents } = await supabase
         .from('events')
         .select('props')
         .eq('venue_id', venueId)
-        .eq('name', 'rec_clicked')
+        .eq('name', 'item_selected')
         .gte('ts', periodStart.toISOString())
 
-      const itemClicks: Record<string, number> = {}
-      clickEvents?.forEach(event => {
+      const itemPicks: Record<string, number> = {}
+      pickEvents?.forEach(event => {
         const props = event.props as Record<string, unknown> | null
-        const itemId = props?.item_id as string | undefined
-        if (itemId) {
-          itemClicks[itemId] = (itemClicks[itemId] || 0) + 1
+        const itemName = props?.item_name as string | undefined
+        if (itemName) {
+          itemPicks[itemName] = (itemPicks[itemName] || 0) + 1
         }
       })
 
-      // Get item names for top clicked
-      const topItemIds = Object.entries(itemClicks)
+      // Get top picks by name
+      const topPicks = Object.entries(itemPicks)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
-        .map(([id]) => id)
-
-      let topItems: { name: string; clicks: number }[] = []
-      if (topItemIds.length > 0) {
-        const { data: items } = await supabase
-          .from('menu_items')
-          .select('id, name')
-          .in('id', topItemIds)
-
-        topItems = topItemIds.map(id => ({
-          name: items?.find(i => i.id === id)?.name || 'Unknown',
-          clicks: itemClicks[id]
-        }))
-      }
+        .map(([name, picks]) => ({ name, picks }))
 
       // Get recent activity
       const { data: recentEvents } = await supabase
@@ -183,21 +170,21 @@ export default function DashboardPage() {
         return { ts: event.ts, name: event.name, message }
       })
 
-      // Calculate CTR
-      const ctr = scansWeek && scansWeek > 0 ? ((clicksWeek || 0) / scansWeek * 100) : 0
-
       // Format mood labels
       const formatTag = (tag: string) => {
         return TAG_LABELS[tag as keyof typeof TAG_LABELS] ||
           tag.replace('mood_', '').replace('_', ' ')
       }
 
+      // Calculate pick rate (picks / scans)
+      const pickRate = scansWeek && scansWeek > 0 ? ((picksWeek || 0) / scansWeek * 100) : 0
+
       setMetrics({
         scansToday: scansToday || 0,
         scansWeek: scansWeek || 0,
-        clicksToday: clicksToday || 0,
-        clicksWeek: clicksWeek || 0,
-        ctr: Math.round(ctr * 10) / 10,
+        picksToday: picksToday || 0,
+        picksWeek: picksWeek || 0,
+        pickRate: Math.round(pickRate * 10) / 10,
         topMoods: Object.entries(moodCounts)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 5)
@@ -205,7 +192,7 @@ export default function DashboardPage() {
             name: formatTag(tag),
             percent: totalMoods > 0 ? Math.round((count / totalMoods) * 100) : 0
           })),
-        topItems,
+        topPicks,
         recentActivity,
       })
     } catch (error) {
@@ -352,19 +339,19 @@ export default function DashboardPage() {
           )}
         </motion.div>
         <motion.div variants={fadeIn} className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5">
-          <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Clicks Today</p>
+          <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Picks ({dateRange}d)</p>
           {loading ? (
             <div className="h-8 sm:h-10 w-12 sm:w-16 bg-gray-100 animate-pulse rounded" />
           ) : (
-            <p className="text-2xl sm:text-4xl font-semibold text-[#1a1a1a]">{metrics.clicksToday}</p>
+            <p className="text-2xl sm:text-4xl font-semibold text-[#1a1a1a]">{metrics.picksWeek}</p>
           )}
         </motion.div>
         <motion.div variants={fadeIn} className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5">
-          <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">CTR</p>
+          <p className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-2">Picks Today</p>
           {loading ? (
             <div className="h-8 sm:h-10 w-12 sm:w-16 bg-gray-100 animate-pulse rounded" />
           ) : (
-            <p className="text-2xl sm:text-4xl font-semibold text-[#1a1a1a]">{metrics.ctr}%</p>
+            <p className="text-2xl sm:text-4xl font-semibold text-[#1a1a1a]">{metrics.picksToday}</p>
           )}
         </motion.div>
       </motion.div>
@@ -415,38 +402,38 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        {/* Most Clicked Items */}
+        {/* Guest Picks */}
         <motion.div
           variants={fadeIn}
           initial="initial"
           animate="animate"
           className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5"
         >
-          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 sm:mb-6">Most Clicked Items</h3>
+          <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 sm:mb-6">Guest Picks</h3>
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />
               ))}
             </div>
-          ) : metrics.topItems.length > 0 ? (
+          ) : metrics.topPicks.length > 0 ? (
             <div className="space-y-4">
-              {metrics.topItems.map((item, i) => (
+              {metrics.topPicks.map((item, i) => (
                 <div key={item.name} className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <span className="text-[#1a1a1a]/30 font-mono text-sm w-4">{i + 1}</span>
+                    <span className="text-lg">❤️</span>
                     <span className="text-[#1a1a1a]">{item.name}</span>
                   </div>
-                  <span className="text-[#722F37] font-medium">{item.clicks}</span>
+                  <span className="text-[#722F37] font-medium">{item.picks}</span>
                 </div>
               ))}
             </div>
           ) : (
             <div className="bg-[#F5F3EF] rounded-xl p-5 text-center">
-              <div className="text-2xl mb-2">👆</div>
-              <p className="font-medium text-[#1a1a1a] text-sm mb-1">No click data yet</p>
+              <div className="text-2xl mb-2">❤️</div>
+              <p className="font-medium text-[#1a1a1a] text-sm mb-1">No picks yet</p>
               <p className="text-xs text-[#1a1a1a]/50">
-                When guests tap on recommended items, you&apos;ll see which dishes are most popular.
+                When guests tap the heart on recommendations, you&apos;ll see their favorites here.
               </p>
             </div>
           )}
