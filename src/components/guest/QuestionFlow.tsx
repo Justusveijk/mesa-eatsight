@@ -545,36 +545,39 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
     const canContinue = canContinueFood
 
     return (
-      <div className="flex-1 flex flex-col">
-        {/* Progress indicator */}
-        <div className="px-6 pt-4 pb-2">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-[#1a1a1a]/60">
-              {intent === 'both' ? `Food: Step ${step} of ${totalFoodSteps}` : `Step ${step} of ${totalFoodSteps}`}
-            </span>
+      <div className="fixed inset-0 z-50 flex flex-col bg-[#FDFBF7]">
+        {/* Fixed header with back + progress */}
+        <header className="flex-shrink-0 bg-[#FDFBF7] border-b border-[#1a1a1a]/5">
+          {/* Top bar with back button */}
+          <div className="px-4 py-3 flex items-center">
+            <button
+              onClick={goBack}
+              className="text-[#1a1a1a]/50 hover:text-[#1a1a1a] text-sm"
+            >
+              ← Back
+            </button>
           </div>
-          <div className="h-1 bg-[#1a1a1a]/10 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-[#B2472A]"
-              initial={false}
-              animate={{ width: `${getProgress() * 100}%` }}
-              transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-            />
+
+          {/* Progress bar */}
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              {Array.from({ length: totalFoodSteps }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 flex-1 rounded-full transition-colors ${
+                    i < step ? 'bg-[#B2472A]' : 'bg-[#1a1a1a]/10'
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-[#1a1a1a]/40 text-center">
+              {intent === 'both' ? `Food: ` : ''}Step {step} of {totalFoodSteps}
+            </p>
           </div>
-        </div>
+        </header>
 
-        {/* Back button */}
-        <div className="px-6 pb-2">
-          <button
-            onClick={goBack}
-            className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] text-sm flex items-center gap-1"
-          >
-            <span>←</span> Back
-          </button>
-        </div>
-
-        {/* Questions - centered vertically */}
-        <div className="flex-1 flex items-center justify-center px-6">
+        {/* Scrollable questions area - centered */}
+        <main className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-6">
           <AnimatePresence mode="wait" custom={direction}>
             {step === 1 && (
               <motion.div
@@ -811,10 +814,10 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </main>
 
-        {/* Continue button - always visible at bottom */}
-        <div className="px-6 pb-6 pt-2">
+        {/* Fixed bottom button */}
+        <footer className="flex-shrink-0 px-6 pb-6 pt-4 bg-[#FDFBF7] border-t border-[#1a1a1a]/5">
           <div className="max-w-sm mx-auto">
             <Button
               variant="mesa"
@@ -835,7 +838,7 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
               </button>
             )}
           </div>
-        </div>
+        </footer>
       </div>
     )
   }
@@ -849,36 +852,39 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
     const canContinue = canContinueDrink
 
     return (
-      <div className="flex-1 flex flex-col">
-        {/* Progress indicator */}
-        <div className="px-6 pt-4 pb-2">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-[#1a1a1a]/60">
-              {intent === 'both' ? `Drinks: Step ${step} of ${totalDrinkSteps}` : `Step ${step} of ${totalDrinkSteps}`}
-            </span>
+      <div className="fixed inset-0 z-50 flex flex-col bg-[#FDFBF7]">
+        {/* Fixed header with back + progress */}
+        <header className="flex-shrink-0 bg-[#FDFBF7] border-b border-[#1a1a1a]/5">
+          {/* Top bar with back button */}
+          <div className="px-4 py-3 flex items-center">
+            <button
+              onClick={goBack}
+              className="text-[#1a1a1a]/50 hover:text-[#1a1a1a] text-sm"
+            >
+              ← Back
+            </button>
           </div>
-          <div className="h-1 bg-[#1a1a1a]/10 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-[#B2472A]"
-              initial={false}
-              animate={{ width: `${getProgress() * 100}%` }}
-              transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-            />
+
+          {/* Progress bar */}
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              {Array.from({ length: totalDrinkSteps }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 flex-1 rounded-full transition-colors ${
+                    i < step ? 'bg-[#B2472A]' : 'bg-[#1a1a1a]/10'
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-[#1a1a1a]/40 text-center">
+              {intent === 'both' ? `Drinks: ` : ''}Step {step} of {totalDrinkSteps}
+            </p>
           </div>
-        </div>
+        </header>
 
-        {/* Back button */}
-        <div className="px-6 pb-2">
-          <button
-            onClick={goBack}
-            className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] text-sm flex items-center gap-1"
-          >
-            <span>←</span> Back
-          </button>
-        </div>
-
-        {/* Questions - centered vertically */}
-        <div className="flex-1 flex items-center justify-center px-6">
+        {/* Scrollable questions area - centered */}
+        <main className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-6">
           <AnimatePresence mode="wait" custom={direction}>
             {/* STEP 1: Alcohol Strength (FIRST - most important filter) */}
             {step === 1 && (
@@ -1028,10 +1034,10 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </main>
 
-        {/* Continue button - always visible at bottom */}
-        <div className="px-6 pb-6 pt-2">
+        {/* Fixed bottom button */}
+        <footer className="flex-shrink-0 px-6 pb-6 pt-4 bg-[#FDFBF7] border-t border-[#1a1a1a]/5">
           <div className="max-w-sm mx-auto">
             <Button
               variant="mesa"
@@ -1052,23 +1058,17 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
               </button>
             )}
           </div>
-        </div>
+        </footer>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FDFBF7] relative overflow-hidden">
-      {/* Warm gradient blobs */}
-      <div className="absolute w-[300px] h-[300px] top-1/4 -right-32 bg-[#B2472A]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute w-[200px] h-[200px] bottom-1/4 -left-16 bg-[#B2472A]/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative z-10 flex-1 flex flex-col">
-        {/* Render appropriate flow */}
-        {intent === 'drinks' && renderDrinkFlow()}
-        {intent === 'food' && renderFoodFlow()}
-        {intent === 'both' && (currentFlow === 'food' ? renderFoodFlow() : renderDrinkFlow())}
-      </div>
-    </div>
+    <>
+      {/* Render appropriate flow */}
+      {intent === 'drinks' && renderDrinkFlow()}
+      {intent === 'food' && renderFoodFlow()}
+      {intent === 'both' && (currentFlow === 'food' ? renderFoodFlow() : renderDrinkFlow())}
+    </>
   )
 }

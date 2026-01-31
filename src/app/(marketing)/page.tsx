@@ -78,6 +78,7 @@ export default function LandingPage() {
         <div className="flex gap-3 sm:gap-4 md:gap-8 items-center">
           <a href="#how-it-works" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">How it works</a>
           <a href="#pricing" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">Pricing</a>
+          <Link href="/faq" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition hidden md:block">FAQ</Link>
           <Link href="/login" className="text-[#1a1a1a]/70 hover:text-[#1a1a1a] transition text-sm sm:text-base">Log in</Link>
           <Link href="/signup" className="bg-[#722F37] text-white px-4 sm:px-5 py-2 rounded-full hover:bg-[#5a252c] transition text-sm">
             Start free
@@ -551,42 +552,29 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+            className="flex justify-center"
           >
-            {/* Team member 1 */}
-            <motion.div variants={fadeInItem} className="text-center">
-              <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] flex items-center justify-center text-4xl">
+            {/* Founder */}
+            <motion.div variants={fadeInItem} className="text-center max-w-xs">
+              <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] overflow-hidden flex items-center justify-center text-4xl">
                 👨‍💼
               </div>
-              <h3 className="font-medium text-[#1a1a1a] text-lg">[Founder Name]</h3>
-              <p className="text-[#722F37] text-sm mb-2">Co-founder & CEO</p>
+              <h3 className="font-medium text-[#1a1a1a] text-lg">Justus van Eijk</h3>
+              <p className="text-[#722F37] text-sm mb-2">Founder & CEO</p>
               <p className="text-[#1a1a1a]/50 text-sm">
-                Former restaurant manager with a passion for hospitality tech.
+                Artificial intelligence student with an ambition for finding smart solutions.
               </p>
-            </motion.div>
-
-            {/* Team member 2 */}
-            <motion.div variants={fadeInItem} className="text-center">
-              <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] flex items-center justify-center text-4xl">
-                👩‍💻
-              </div>
-              <h3 className="font-medium text-[#1a1a1a] text-lg">[Founder Name]</h3>
-              <p className="text-[#722F37] text-sm mb-2">Co-founder & CTO</p>
-              <p className="text-[#1a1a1a]/50 text-sm">
-                Building technology that brings hospitality to life.
-              </p>
-            </motion.div>
-
-            {/* Team member 3 */}
-            <motion.div variants={fadeInItem} className="text-center sm:col-span-2 lg:col-span-1">
-              <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-[#F5F3EF] flex items-center justify-center text-4xl">
-                👨‍🍳
-              </div>
-              <h3 className="font-medium text-[#1a1a1a] text-lg">[Founder Name]</h3>
-              <p className="text-[#722F37] text-sm mb-2">Co-founder & Product</p>
-              <p className="text-[#1a1a1a]/50 text-sm">
-                Former chef who knows what guests really want.
-              </p>
+              <a
+                href="https://linkedin.com/in/justus-van-eijk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-3 text-[#1a1a1a]/40 hover:text-[#722F37] transition"
+                aria-label="Justus van Eijk on LinkedIn"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+              </a>
             </motion.div>
           </motion.div>
 
@@ -652,6 +640,7 @@ export default function LandingPage() {
               <h4 className="font-medium mb-4">Company</h4>
               <ul className="space-y-2 text-white/60 text-sm">
                 <li><Link href="/about" className="hover:text-white transition">About</Link></li>
+                <li><Link href="/faq" className="hover:text-white transition">FAQ</Link></li>
                 <li><Link href="/contact" className="hover:text-white transition">Contact</Link></li>
                 <li><a href="mailto:hello@eatsight.com" className="hover:text-white transition">hello@eatsight.com</a></li>
               </ul>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, UtensilsCrossed, BarChart3, Settings, LogOut, Menu, X, ExternalLink } from 'lucide-react'
 import { signOut } from '@/lib/supabase/auth'
+import { SubscriptionGate } from '@/components/SubscriptionGate'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -18,9 +19,10 @@ interface DashboardShellProps {
   venueName: string
   userEmail: string
   venueSlug?: string
+  venueId?: string
 }
 
-export function DashboardShell({ children, venueName, userEmail, venueSlug }: DashboardShellProps) {
+export function DashboardShell({ children, venueName, userEmail, venueSlug, venueId }: DashboardShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -149,18 +151,20 @@ export function DashboardShell({ children, venueName, userEmail, venueSlug }: Da
       </aside>
 
       {/* Main content */}
-      <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
-        <div className="p-4 sm:p-6 lg:p-8 relative">
-          {/* Background blobs */}
-          <div className="absolute -top-32 right-0 w-[400px] h-[400px] rounded-full bg-[#1e3a5f]/5 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] rounded-full bg-[#722F37]/5 blur-3xl pointer-events-none" />
+      <SubscriptionGate venueId={venueId || null}>
+        <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
+          <div className="p-4 sm:p-6 lg:p-8 relative">
+            {/* Background blobs */}
+            <div className="absolute -top-32 right-0 w-[400px] h-[400px] rounded-full bg-[#1e3a5f]/5 blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] rounded-full bg-[#722F37]/5 blur-3xl pointer-events-none" />
 
-          {/* Content */}
-          <div className="relative z-10">
-            {children}
+            {/* Content */}
+            <div className="relative z-10">
+              {children}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </SubscriptionGate>
     </div>
   )
 }
