@@ -40,6 +40,7 @@ interface QuestionFlowProps {
   venueId: string
   tableRef: string | null
   intent: Intent
+  existingSessionId?: string | null  // Session already created by VenueFlow
   onComplete: (results: RecommendationResults) => void
   onBack: () => void
 }
@@ -94,7 +95,7 @@ const titleVariants = {
   },
 }
 
-export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: QuestionFlowProps) {
+export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onComplete, onBack }: QuestionFlowProps) {
   // Food flow state
   const [foodStep, setFoodStep] = useState<FoodStep>(1)
   const [foodDirection, setFoodDirection] = useState(1)
@@ -114,7 +115,8 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
   // Which flow are we in (for 'both' intent)
   const [currentFlow, setCurrentFlow] = useState<'food' | 'drinks'>(intent === 'drinks' ? 'drinks' : 'food')
 
-  const [sessionId, setSessionId] = useState<string | null>(null)
+  // Use existing session from VenueFlow, or create a new one
+  const [sessionId, setSessionId] = useState<string | null>(existingSessionId || null)
   const [isLoading, setIsLoading] = useState(false)
 
   const totalFoodSteps = 5
@@ -136,9 +138,18 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
     }
   }
 
-  // Create session when flow starts
+  // Create session when flow starts (only if not passed from VenueFlow)
   useEffect(() => {
     async function initSession() {
+      // If we already have a session from VenueFlow, don't create a new one
+      if (existingSessionId) {
+        console.log('[QuestionFlow] Using existing session:', existingSessionId)
+        setSessionId(existingSessionId)
+        return
+      }
+
+      // Otherwise create a new session
+      console.log('[QuestionFlow] Creating new session...')
       const id = await createRecSession(venueId, tableRef)
       setSessionId(id)
       if (id) {
@@ -146,7 +157,7 @@ export function QuestionFlow({ venueId, tableRef, intent, onComplete, onBack }: 
       }
     }
     initSession()
-  }, [venueId, tableRef, intent])
+  }, [venueId, tableRef, intent, existingSessionId])
 
   const handleComplete = useCallback(async () => {
     setIsLoading(true)

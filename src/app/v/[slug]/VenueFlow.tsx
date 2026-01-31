@@ -337,6 +337,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
             venueId={venue.id}
             tableRef={tableRef}
             intent={intent}
+            existingSessionId={sessionId}
             onComplete={handleQuestionsComplete}
             onBack={() => setScreen('intent')}
           />

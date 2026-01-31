@@ -168,7 +168,8 @@ export async function getRecommendationsWithFallback(
     return { recommendations: [], fallbackItems: [], showFallbackMessage: false, missingPreferences: null }
   }
 
-  // 2. Get all available menu items with their tags
+  // 2. Get all available FOOD items with their tags
+  // STRICT TYPE FILTER: Only get items where type='food'
   const { data: items, error: itemsError } = await supabase
     .from('menu_items')
     .select(`
@@ -177,6 +178,7 @@ export async function getRecommendationsWithFallback(
       description,
       price,
       category,
+      type,
       popularity_score,
       is_push,
       is_out_of_stock,
@@ -185,11 +187,14 @@ export async function getRecommendationsWithFallback(
     `)
     .eq('menu_id', menu.id)
     .eq('is_available', true)
+    .eq('type', 'food')
 
   if (itemsError || !items) {
     console.error('Failed to fetch menu items:', itemsError?.message, itemsError?.details, itemsError?.hint, itemsError)
     return { recommendations: [], fallbackItems: [], showFallbackMessage: false, missingPreferences: null }
   }
+
+  console.log('[Food Recs] Fetched', items.length, 'FOOD items (type=food)')
 
   // 3. Transform items with tags (also filter out of stock items)
   const itemsWithTags = items
@@ -294,7 +299,8 @@ export async function getDrinkRecommendations(
 
   console.log('Found menu:', menu.id)
 
-  // 2. Get all available drink items with their tags
+  // 2. Get all available DRINK items with their tags
+  // STRICT TYPE FILTER: Only get items where type='drink'
   const { data: items, error: itemsError } = await supabase
     .from('menu_items')
     .select(`
@@ -303,6 +309,7 @@ export async function getDrinkRecommendations(
       description,
       price,
       category,
+      type,
       popularity_score,
       is_push,
       is_out_of_stock,
@@ -311,32 +318,18 @@ export async function getDrinkRecommendations(
     `)
     .eq('menu_id', menu.id)
     .eq('is_available', true)
+    .eq('type', 'drink')
 
   if (itemsError || !items) {
     console.error('Failed to fetch menu items:', itemsError?.message)
     return []
   }
 
-  console.log('Total items fetched:', items.length)
+  console.log('Total DRINK items fetched:', items.length)
 
-  // 3. Filter to only drinks (by category)
-  const drinkCategories = ['cocktails', 'wines', 'beers', 'spirits', 'mocktails', 'soft drinks', 'smoothies', 'coffee', 'tea', 'juice', 'drinks', 'hot drinks', 'beverages', 'wine', 'beer', 'cider']
-
+  // 3. Transform items with tags (filter out of stock)
   const drinkItems = items
     .filter(item => !item.is_out_of_stock && item.is_available !== false)
-    .filter(item => {
-      const cat = item.category?.toLowerCase() || ''
-      // Check if category matches any drink category
-      const isDrinkCategory = drinkCategories.some(dc => cat.includes(dc))
-      // Also check for drink-related tags
-      const hasDrinkTag = (item.item_tags as { tag: string }[])?.some(t =>
-        t.tag.startsWith('drink_') ||
-        t.tag.startsWith('abv_') ||
-        t.tag === 'temp_hot' ||
-        t.tag.startsWith('strength_')
-      )
-      return isDrinkCategory || hasDrinkTag
-    })
     .map(item => ({
       id: item.id,
       name: item.name,
@@ -348,15 +341,17 @@ export async function getDrinkRecommendations(
       tags: (item.item_tags as { tag: string }[])?.map(t => t.tag as MenuTag) || [],
     }))
 
-  console.log('Drink items found:', drinkItems.length)
-  console.log('All drinks by category:')
-  const byCategory: Record<string, string[]> = {}
-  drinkItems.forEach(item => {
-    const cat = item.category || 'Uncategorized'
-    if (!byCategory[cat]) byCategory[cat] = []
-    byCategory[cat].push(`${item.name} [tags: ${item.tags.join(', ')}]`)
-  })
-  console.log(JSON.stringify(byCategory, null, 2))
+  console.log('Drink items (type=drink):', drinkItems.length)
+  if (drinkItems.length > 0) {
+    console.log('Drinks by category:')
+    const byCategory: Record<string, string[]> = {}
+    drinkItems.forEach(item => {
+      const cat = item.category || 'Uncategorized'
+      if (!byCategory[cat]) byCategory[cat] = []
+      byCategory[cat].push(`${item.name} [tags: ${item.tags.join(', ')}]`)
+    })
+    console.log(JSON.stringify(byCategory, null, 2))
+  }
 
   // 4. STRICT ABV filtering - this is mandatory
   // NEW: Support both old strength_* format and new abv_* format
