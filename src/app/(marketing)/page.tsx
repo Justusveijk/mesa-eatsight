@@ -55,6 +55,16 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-16">
+        {/* Decorative gradient blobs with parallax */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ transform: `translateY(${scrollY * 0.4}px)` }}
+        >
+          <div className="absolute top-20 right-10 w-64 h-64 bg-[#722F37]/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-40 left-10 w-48 h-48 bg-[#722F37]/5 rounded-full blur-2xl" />
+          <div className="absolute top-1/2 left-1/3 w-96 h-96 bg-[#722F37]/3 rounded-full blur-3xl" />
+        </div>
+
         {/* Background menu cards with parallax */}
         <div className="absolute inset-0 pointer-events-none" style={{ opacity: heroOpacity }}>
           <div
@@ -236,7 +246,11 @@ export default function LandingPage() {
         {/* Animated gradient background */}
         <AnimatedGradient />
 
-        <div className="max-w-4xl mx-auto text-center relative z-10">
+        {/* Content with subtle parallax */}
+        <div
+          className="max-w-4xl mx-auto text-center relative z-10"
+          style={{ transform: `translateY(${Math.max(0, (scrollY - 800) * 0.1)}px)` }}
+        >
           <p className="text-white/60 uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm mb-8">
             The Solution
           </p>
@@ -275,7 +289,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7]">
+      <section id="how-it-works" className="py-20 md:py-32 px-6 md:px-8 bg-[#FDFBF7] overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 md:mb-20">
             <p className="text-[#7D8471] uppercase tracking-[0.2em] text-sm mb-4">How It Works</p>
@@ -283,10 +297,13 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-6 md:space-y-8">
-            {steps.map((step) => (
+            {steps.map((step, index) => (
               <div
                 key={step.num}
                 className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8 p-6 md:p-8 border-b border-[#1a1a1a]/10 group hover:bg-[#1a1a1a]/[0.02] transition-colors rounded-xl"
+                style={{
+                  transform: `translateY(${Math.max(0, (scrollY - 1800 - index * 100) * -0.05)}px)`,
+                }}
               >
                 <span className="text-[#1a1a1a]/20 font-serif text-4xl md:text-6xl md:w-24">{step.num}</span>
                 <span className="text-3xl md:text-4xl md:w-16">{step.icon}</span>
@@ -307,7 +324,7 @@ export default function LandingPage() {
       <Testimonials />
 
       {/* For Operators */}
-      <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF]">
+      <section className="py-20 md:py-32 px-6 md:px-8 bg-[#F5F3EF] overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 md:mb-20">
             <p className="text-[#722F37] uppercase tracking-[0.2em] text-sm mb-4">For Operators</p>
@@ -315,10 +332,13 @@ export default function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-            {operatorFeatures.map((item) => (
+            {operatorFeatures.map((item, index) => (
               <div
                 key={item.title}
                 className="bg-white p-6 md:p-8 rounded-2xl"
+                style={{
+                  transform: `translateY(${Math.max(0, (scrollY - 2800 - index * 50) * -0.03)}px)`,
+                }}
               >
                 <h3 className="font-serif text-xl md:text-2xl text-[#1a1a1a] mb-3">{item.title}</h3>
                 <p className="text-[#1a1a1a]/70">{item.desc}</p>
