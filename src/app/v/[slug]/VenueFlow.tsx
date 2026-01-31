@@ -140,23 +140,43 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     setIntent('both')
   }
 
+  // Only show Back/Demo links for the demo venue
+  const isDemo = venue.slug === 'bella-taverna'
+
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
       {/* PERSISTENT HEADER - Always visible */}
       <header className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center bg-[#FDFBF7]/95 backdrop-blur-sm border-b border-[#1a1a1a]/5">
-        <Link
-          href="/"
-          className="text-sm text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition"
-        >
-          ← Back
-        </Link>
+        {/* Left side - only show Back for demo */}
+        <div className="w-20">
+          {isDemo ? (
+            <Link
+              href="/"
+              className="text-sm text-[#1a1a1a]/50 hover:text-[#1a1a1a] transition"
+            >
+              ← Back
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
+
+        {/* Center - Venue name */}
         <span className="text-sm font-medium text-[#1a1a1a]">{venue.name}</span>
-        <Link
-          href="/demo"
-          className="text-sm text-[#722F37] hover:text-[#5a252c] transition"
-        >
-          Demo
-        </Link>
+
+        {/* Right side - Demo link for demo venue, "by Mesa" for real venues */}
+        <div className="w-20 text-right">
+          {isDemo ? (
+            <Link
+              href="/demo"
+              className="text-sm text-[#722F37] hover:text-[#5a252c] transition"
+            >
+              Demo
+            </Link>
+          ) : (
+            <span className="text-xs text-[#1a1a1a]/30">by Mesa</span>
+          )}
+        </div>
       </header>
 
       {/* Main content with padding for header */}
@@ -374,6 +394,10 @@ function RecommendationResultsView({
   sessionId,
   onStartOver
 }: RecommendationResultsViewProps) {
+  const [showAppSignup, setShowAppSignup] = useState(false)
+  const [appEmail, setAppEmail] = useState('')
+  const [emailSubmitted, setEmailSubmitted] = useState(false)
+
   // Track item click
   const handleItemClick = async (item: { id: string; name: string; category: string; price: number }) => {
     await trackEvent(venueId, sessionId, EVENTS.ITEM_CLICKED, {
@@ -383,6 +407,18 @@ function RecommendationResultsView({
       item_price: item.price,
     })
   }
+
+  const handleAppSignup = async () => {
+    if (!appEmail || !appEmail.includes('@')) return
+
+    // Track the signup
+    await trackEvent(venueId, sessionId, 'app_waitlist_signup', {
+      email: appEmail,
+    })
+
+    setEmailSubmitted(true)
+  }
+
   const {
     primaryFood,
     primaryDrinks,
@@ -631,6 +667,83 @@ function RecommendationResultsView({
             Try again
           </button>
         </motion.div>
+      )}
+
+      {/* Mesa App Waitlist CTA */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8 }}
+        className="mt-8 pt-6 border-t border-[#1a1a1a]/10 text-center"
+      >
+        <p className="text-sm text-[#1a1a1a]/50 mb-3">
+          Want personalized recommendations at every restaurant?
+        </p>
+        <button
+          onClick={() => setShowAppSignup(true)}
+          className="text-[#722F37] font-medium text-sm hover:text-[#5a252c]"
+        >
+          Get notified when Mesa launches →
+        </button>
+      </motion.div>
+
+      {/* App Signup Modal */}
+      {showAppSignup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-sm w-full"
+          >
+            {emailSubmitted ? (
+              <div className="text-center py-4">
+                <div className="text-4xl mb-4">🎉</div>
+                <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">
+                  You&apos;re on the list!
+                </h3>
+                <p className="text-sm text-[#1a1a1a]/60 mb-4">
+                  We&apos;ll let you know when Mesa is ready for you.
+                </p>
+                <button
+                  onClick={() => setShowAppSignup(false)}
+                  className="text-[#722F37] font-medium text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">
+                  Coming Soon: Mesa App
+                </h3>
+                <p className="text-sm text-[#1a1a1a]/60 mb-4">
+                  Get personalized menu recommendations at any restaurant.
+                  Be the first to know when we launch!
+                </p>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={appEmail}
+                  onChange={(e) => setAppEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 mb-3 focus:outline-none focus:ring-2 focus:ring-[#722F37]/20 focus:border-[#722F37]"
+                />
+                <button
+                  onClick={handleAppSignup}
+                  disabled={!appEmail || !appEmail.includes('@')}
+                  className="w-full py-3 bg-[#722F37] text-white rounded-xl hover:bg-[#5a252c] transition disabled:opacity-50"
+                >
+                  Notify Me
+                </button>
+                <button
+                  onClick={() => setShowAppSignup(false)}
+                  className="w-full py-2 text-[#1a1a1a]/50 text-sm mt-2"
+                >
+                  Maybe later
+                </button>
+              </>
+            )}
+          </motion.div>
+        </div>
       )}
 
       {/* Start over button */}

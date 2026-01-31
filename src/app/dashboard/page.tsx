@@ -283,28 +283,48 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Empty State */}
-      {metrics.scansWeek === 0 && !loading && (
+      {/* Getting Started Banner - show when less than 5 scans */}
+      {metrics.scansWeek < 5 && metrics.scansWeek >= 0 && !loading && (
         <motion.div
           variants={fadeIn}
           initial="initial"
           animate="animate"
-          className="bg-white rounded-2xl p-12 border border-[#1a1a1a]/5 text-center mb-8"
+          className="bg-gradient-to-r from-[#722F37]/10 to-[#1e3a5f]/10 rounded-2xl p-6 mb-8"
         >
-          <div className="w-16 h-16 bg-[#722F37]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <QrCode className="text-[#722F37]" size={28} />
+          <div className="flex flex-col sm:flex-row items-start gap-4">
+            <div className="text-3xl">🚀</div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-[#1a1a1a] mb-2">
+                {metrics.scansWeek === 0 ? 'Get your first scans!' : `You have ${metrics.scansWeek} scan${metrics.scansWeek !== 1 ? 's' : ''} this week!`}
+              </h3>
+              <p className="text-[#1a1a1a]/60 text-sm mb-4">
+                {metrics.scansWeek === 0
+                  ? "Your analytics dashboard will come alive once guests start using Mesa. Here's how to get started:"
+                  : "You're off to a great start! Keep sharing your QR code to gather more guest insights."
+                }
+              </p>
+              <ol className="text-sm text-[#1a1a1a]/70 space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="w-5 h-5 bg-[#722F37] text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">1</span>
+                  Download your QR code from Settings
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-5 h-5 bg-[#722F37] text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">2</span>
+                  Print and place it on tables or menus
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-5 h-5 bg-[#722F37] text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">3</span>
+                  Watch the data flow in!
+                </li>
+              </ol>
+              <Link
+                href="/dashboard/settings"
+                className="inline-block mt-4 text-sm text-[#722F37] font-medium hover:text-[#5a252c]"
+              >
+                Go to Settings →
+              </Link>
+            </div>
           </div>
-          <h3 className="text-xl font-medium text-[#1a1a1a] mb-2">No activity yet</h3>
-          <p className="text-[#1a1a1a]/40 max-w-md mx-auto mb-6">
-            Share your QR code with guests to start receiving recommendations data.
-            Go to Settings to download your QR codes.
-          </p>
-          <Link
-            href="/dashboard/settings"
-            className="inline-block px-6 py-3 bg-[#722F37] text-white rounded-full hover:bg-[#5a252c] transition"
-          >
-            Get QR Codes
-          </Link>
         </motion.div>
       )}
 
@@ -382,7 +402,16 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-[#1a1a1a]/40">No mood data yet</p>
+            <div className="bg-[#F5F3EF] rounded-xl p-5 text-center">
+              <div className="text-2xl mb-2">📊</div>
+              <p className="font-medium text-[#1a1a1a] text-sm mb-1">No mood data yet</p>
+              <p className="text-xs text-[#1a1a1a]/50">
+                {metrics.scansWeek < 5
+                  ? `Share your QR code to collect guest preferences. ${metrics.scansWeek} scan${metrics.scansWeek !== 1 ? 's' : ''} so far.`
+                  : 'Data will appear once guests answer preference questions.'
+                }
+              </p>
+            </div>
           )}
         </motion.div>
 
@@ -413,7 +442,13 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-[#1a1a1a]/40">No click data yet</p>
+            <div className="bg-[#F5F3EF] rounded-xl p-5 text-center">
+              <div className="text-2xl mb-2">👆</div>
+              <p className="font-medium text-[#1a1a1a] text-sm mb-1">No click data yet</p>
+              <p className="text-xs text-[#1a1a1a]/50">
+                When guests tap on recommended items, you&apos;ll see which dishes are most popular.
+              </p>
+            </div>
           )}
         </motion.div>
 
@@ -447,7 +482,13 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-[#1a1a1a]/40">No recent activity</p>
+            <div className="bg-[#F5F3EF] rounded-xl p-5 text-center">
+              <div className="text-2xl mb-2">⏳</div>
+              <p className="font-medium text-[#1a1a1a] text-sm mb-1">Waiting for activity</p>
+              <p className="text-xs text-[#1a1a1a]/50">
+                Guest sessions and clicks will appear here in real-time.
+              </p>
+            </div>
           )}
         </motion.div>
       </div>
