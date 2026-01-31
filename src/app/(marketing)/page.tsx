@@ -3,7 +3,7 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
-import { MarqueeBackground } from '@/components/MarqueeBackground'
+import { AnimatedGradient } from '@/components/AnimatedGradient'
 import { VideoPlayer } from '@/components/VideoPlayer'
 
 const steps = [
@@ -331,8 +331,8 @@ export default function LandingPage() {
 
       {/* Solution Section */}
       <section className="min-h-screen flex items-center justify-center bg-[#1a1a1a] text-white py-20 md:py-32 px-6 md:px-8 relative overflow-hidden">
-        {/* Animated marquee background */}
-        <MarqueeBackground />
+        {/* Animated gradient background */}
+        <AnimatedGradient />
 
         {/* Gradient glow */}
         <motion.div

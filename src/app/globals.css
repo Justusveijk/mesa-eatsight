@@ -179,29 +179,61 @@ body {
 }
 
 /* ========================================
-   Marquee Animations (Landing Page)
+   Animated Gradient (Landing Page)
    ======================================== */
 
-@keyframes marquee-left {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-33.33%); }
+@keyframes gradient-1 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(5%, 5%) scale(1.05);
+  }
+  50% {
+    transform: translate(10%, -5%) scale(1);
+  }
+  75% {
+    transform: translate(-5%, 10%) scale(1.02);
+  }
 }
 
-@keyframes marquee-right {
-  0% { transform: translateX(-33.33%); }
-  100% { transform: translateX(0); }
+@keyframes gradient-2 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(-10%, 5%) scale(1.03);
+  }
+  50% {
+    transform: translate(-5%, -10%) scale(1.05);
+  }
+  75% {
+    transform: translate(5%, -5%) scale(1);
+  }
 }
 
-.animate-marquee-left {
-  animation: marquee-left 40s linear infinite;
+@keyframes gradient-3 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(15%, 10%) scale(1.02);
+  }
+  66% {
+    transform: translate(-10%, -5%) scale(1.04);
+  }
 }
 
-.animate-marquee-right {
-  animation: marquee-right 40s linear infinite;
+.animate-gradient-1 {
+  animation: gradient-1 20s ease-in-out infinite;
 }
 
-.animate-marquee-left-slow {
-  animation: marquee-left 60s linear infinite;
+.animate-gradient-2 {
+  animation: gradient-2 25s ease-in-out infinite;
+}
+
+.animate-gradient-3 {
+  animation: gradient-3 30s ease-in-out infinite;
 }
 
 /* ========================================
