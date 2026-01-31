@@ -66,16 +66,24 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   }, [venue.id])
 
   const handleStartQuestions = async () => {
+    let currentSessionId = sessionId
+
     // Create session if not already created
     if (!sessionCreated.current) {
+      console.log('[VenueFlow] Creating session for venue:', venue.id)
       const newSessionId = await createSession(venue.id, navigator.userAgent, tableRef || undefined)
       if (newSessionId) {
+        console.log('[VenueFlow] Session created:', newSessionId)
         setSessionId(newSessionId)
+        currentSessionId = newSessionId
         sessionCreated.current = true
+      } else {
+        console.error('[VenueFlow] Failed to create session')
       }
     }
 
-    await trackEvent(venue.id, sessionId, EVENTS.FLOW_STARTED, {
+    // Use the local variable, not state (which hasn't updated yet)
+    await trackEvent(venue.id, currentSessionId, EVENTS.FLOW_STARTED, {
       table_ref: tableRef,
     })
 
@@ -83,6 +91,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   }
 
   const handleIntentSelect = async (selectedIntent: Intent) => {
+    console.log('[VenueFlow] Intent selected:', selectedIntent, 'sessionId:', sessionId)
+
     await trackEvent(venue.id, sessionId, EVENTS.QUESTION_ANSWERED, {
       question: 'intent',
       answer: selectedIntent,
