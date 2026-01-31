@@ -3,6 +3,8 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
+import { MarqueeBackground } from '@/components/MarqueeBackground'
+import { VideoPlayer } from '@/components/VideoPlayer'
 
 const steps = [
   { num: '01', title: 'Scan', desc: 'Guest scans QR code at the table. No app download needed.', icon: '📱' },
@@ -329,6 +331,10 @@ export default function LandingPage() {
 
       {/* Solution Section */}
       <section className="min-h-screen flex items-center justify-center bg-[#1a1a1a] text-white py-20 md:py-32 px-6 md:px-8 relative overflow-hidden">
+        {/* Animated marquee background */}
+        <MarqueeBackground />
+
+        {/* Gradient glow */}
         <motion.div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#722F37]/20 rounded-full blur-3xl"
           style={{
@@ -355,6 +361,48 @@ export default function LandingPage() {
             Gets three perfect recommendations in under 15 seconds.
           </motion.p>
         </motion.div>
+      </section>
+
+      {/* Video Section */}
+      <section className="py-20 md:py-28 bg-[#FDFBF7]">
+        <div className="max-w-5xl mx-auto px-6">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            className="text-center mb-12"
+          >
+            <p className="text-sm uppercase tracking-widest text-[#722F37] mb-4">
+              See It In Action
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-serif text-[#1a1a1a] mb-4">
+              From scan to smile in seconds
+            </h2>
+            <p className="text-[#1a1a1a]/60 max-w-2xl mx-auto">
+              Watch how Mesa transforms the dining experience for your guests
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+          >
+            <VideoPlayer placeholder={true} />
+          </motion.div>
+
+          <motion.p
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            className="mt-8 text-center text-sm text-[#1a1a1a]/50"
+          >
+            Full demo video coming soon
+          </motion.p>
+        </div>
       </section>
 
       {/* How It Works - Staggered animation */}
