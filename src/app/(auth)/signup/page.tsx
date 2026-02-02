@@ -4,7 +4,26 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, Check, MapPin, Store, User, Loader2, Eye, EyeOff } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  MapPin,
+  Store,
+  User,
+  Loader2,
+  Eye,
+  EyeOff,
+  UtensilsCrossed,
+  Coffee,
+  Wine,
+  GlassWater,
+  Beer,
+  Truck,
+  Building2,
+  PartyPopper,
+  type LucideIcon
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PlacesAutocomplete } from '@/components/PlacesAutocomplete'
 
@@ -38,15 +57,15 @@ interface Place {
   coordinates: { lat: number; lng: number }
 }
 
-const RESTAURANT_TYPES = [
-  { value: 'restaurant', label: 'Restaurant', icon: '🍽️' },
-  { value: 'cafe', label: 'Cafe', icon: '☕' },
-  { value: 'bar', label: 'Bar', icon: '🍸' },
-  { value: 'bistro', label: 'Bistro', icon: '🥂' },
-  { value: 'brasserie', label: 'Brasserie', icon: '🍺' },
-  { value: 'food_truck', label: 'Food Truck', icon: '🚚' },
-  { value: 'hotel_restaurant', label: 'Hotel Restaurant', icon: '🏨' },
-  { value: 'other', label: 'Other', icon: '🏪' },
+const RESTAURANT_TYPES: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed },
+  { value: 'cafe', label: 'Café', icon: Coffee },
+  { value: 'bar', label: 'Bar', icon: Wine },
+  { value: 'bistro', label: 'Bistro', icon: GlassWater },
+  { value: 'brasserie', label: 'Brasserie', icon: Beer },
+  { value: 'food_truck', label: 'Food Truck', icon: Truck },
+  { value: 'hotel_restaurant', label: 'Hotel Restaurant', icon: Building2 },
+  { value: 'other', label: 'Other', icon: Store },
 ]
 
 const CUISINE_TYPES = [
@@ -539,13 +558,23 @@ function RestaurantStep({ data, updateData, onNext, onBack }: StepProps) {
                 key={type.value}
                 type="button"
                 onClick={() => updateData({ restaurantType: type.value })}
-                className={`p-4 rounded-xl border-2 text-left transition ${
+                className={`p-4 rounded-xl border-2 text-left transition flex items-center gap-3 ${
                   data.restaurantType === type.value
                     ? 'border-[#722F37] bg-[#722F37]/5'
                     : 'border-[#1a1a1a]/10 hover:border-[#1a1a1a]/20'
                 }`}
               >
-                <span className="text-2xl mb-2 block">{type.icon}</span>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  data.restaurantType === type.value
+                    ? 'bg-[#722F37]/10'
+                    : 'bg-[#1a1a1a]/5'
+                }`}>
+                  <type.icon className={`w-5 h-5 ${
+                    data.restaurantType === type.value
+                      ? 'text-[#722F37]'
+                      : 'text-[#1a1a1a]/50'
+                  }`} />
+                </div>
                 <span className="text-sm font-medium text-[#1a1a1a]">{type.label}</span>
               </button>
             ))}
@@ -843,7 +872,9 @@ function ConfirmStep({ data, onBack, onSubmit, isLoading, error }: ConfirmStepPr
         {/* Trial info */}
         <div className="p-4 bg-[#722F37]/5 rounded-xl border border-[#722F37]/20">
           <div className="flex items-start gap-3">
-            <div className="text-2xl">🎉</div>
+            <div className="w-10 h-10 rounded-lg bg-[#722F37]/10 flex items-center justify-center flex-shrink-0">
+              <PartyPopper className="w-5 h-5 text-[#722F37]" />
+            </div>
             <div>
               <p className="font-medium text-[#722F37]">14-day free trial</p>
               <p className="text-sm text-[#722F37]/70 mt-1">

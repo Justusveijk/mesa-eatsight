@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Mail, MapPin, MessageCircle, Camera } from 'lucide-react'
 
 export default function ContactPage() {
   return (
@@ -17,7 +18,9 @@ export default function ContactPage() {
 
         <div className="space-y-6">
           <div className="p-6 bg-white rounded-2xl border border-[#1a1a1a]/5">
-            <div className="text-2xl mb-3">📧</div>
+            <div className="w-10 h-10 rounded-lg bg-[#722F37]/10 flex items-center justify-center mx-auto mb-3">
+              <Mail className="w-5 h-5 text-[#722F37]" />
+            </div>
             <h3 className="font-medium text-[#1a1a1a] mb-1">Email us</h3>
             <a
               href="mailto:hello@eatsight.com"
@@ -28,7 +31,9 @@ export default function ContactPage() {
           </div>
 
           <div className="p-6 bg-white rounded-2xl border border-[#1a1a1a]/5">
-            <div className="text-2xl mb-3">📍</div>
+            <div className="w-10 h-10 rounded-lg bg-[#722F37]/10 flex items-center justify-center mx-auto mb-3">
+              <MapPin className="w-5 h-5 text-[#722F37]" />
+            </div>
             <h3 className="font-medium text-[#1a1a1a] mb-1">Visit us</h3>
             <p className="text-[#1a1a1a]/60">
               Amsterdam, Netherlands
@@ -36,7 +41,9 @@ export default function ContactPage() {
           </div>
 
           <div className="p-6 bg-white rounded-2xl border border-[#1a1a1a]/5">
-            <div className="text-2xl mb-3">💬</div>
+            <div className="w-10 h-10 rounded-lg bg-[#722F37]/10 flex items-center justify-center mx-auto mb-3">
+              <MessageCircle className="w-5 h-5 text-[#722F37]" />
+            </div>
             <h3 className="font-medium text-[#1a1a1a] mb-1">Schedule a demo</h3>
             <p className="text-[#1a1a1a]/60 mb-3">
               Want to see Mesa in action?
@@ -50,7 +57,9 @@ export default function ContactPage() {
           </div>
 
           <div className="p-6 bg-white rounded-2xl border border-[#1a1a1a]/5">
-            <div className="text-2xl mb-3">📸</div>
+            <div className="w-10 h-10 rounded-lg bg-[#722F37]/10 flex items-center justify-center mx-auto mb-3">
+              <Camera className="w-5 h-5 text-[#722F37]" />
+            </div>
             <h3 className="font-medium text-[#1a1a1a] mb-1">Follow us</h3>
             <div className="space-y-2">
               <a

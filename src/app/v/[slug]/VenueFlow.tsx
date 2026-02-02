@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { Utensils, Wine, Sparkles, ClipboardList, Heart, MessageCircle, Lightbulb, HelpCircle, PartyPopper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { QuestionFlow, Intent, RecommendationResults } from '@/components/guest/QuestionFlow'
 import { RecommendationCard } from '@/components/guest/RecommendationCard'
@@ -185,7 +186,9 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
         {screen === 'loading' && (
           <div className="min-h-[calc(100vh-80px)] flex items-center justify-center">
             <div className="text-center">
-              <div className="text-4xl mb-4 animate-pulse">🍽️</div>
+              <div className="w-16 h-16 rounded-2xl bg-[#B2472A]/10 flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <Utensils className="w-8 h-8 text-[#B2472A]" />
+              </div>
               <p className="text-[#1a1a1a]/50">Loading...</p>
             </div>
           </div>
@@ -195,7 +198,9 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
         {screen === 'empty' && (
           <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6">
             <div className="text-center max-w-md">
-              <div className="text-5xl mb-6">📋</div>
+              <div className="w-16 h-16 rounded-2xl bg-[#B2472A]/10 flex items-center justify-center mx-auto mb-6">
+                <ClipboardList className="w-8 h-8 text-[#B2472A]" />
+              </div>
               <h1 className="text-2xl font-medium text-[#1a1a1a] mb-3">
                 Menu coming soon
               </h1>
@@ -248,7 +253,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
                   transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                   className="w-20 h-20 bg-[#B2472A]/10 rounded-2xl flex items-center justify-center mx-auto mb-8"
                 >
-                  <span className="text-4xl">🍽️</span>
+                  <Utensils className="w-10 h-10 text-[#B2472A]" />
                 </motion.div>
                 <motion.h1
                   initial={{ y: 20, opacity: 0 }}
@@ -315,7 +320,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
                 onClick={() => handleIntentSelect('drinks')}
                 className="flex items-center justify-center gap-3 px-6 py-5 bg-white border-2 border-[#1a1a1a]/10 rounded-2xl hover:border-[#1a1a1a]/30 transition-all"
               >
-                <span className="text-2xl">🍸</span>
+                <Wine className="w-6 h-6 text-[#B2472A]" />
                 <span className="text-lg text-[#1a1a1a]">Just drinks</span>
               </motion.button>
 
@@ -326,7 +331,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
                 onClick={() => handleIntentSelect('food')}
                 className="flex items-center justify-center gap-3 px-6 py-5 bg-white border-2 border-[#1a1a1a]/10 rounded-2xl hover:border-[#1a1a1a]/30 transition-all"
               >
-                <span className="text-2xl">🍽️</span>
+                <Utensils className="w-6 h-6 text-[#B2472A]" />
                 <span className="text-lg text-[#1a1a1a]">Just food</span>
               </motion.button>
 
@@ -337,7 +342,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
                 onClick={() => handleIntentSelect('both')}
                 className="flex items-center justify-center gap-3 px-6 py-5 bg-[#B2472A] text-white rounded-2xl hover:bg-[#8a341f] transition-all"
               >
-                <span className="text-2xl">✨</span>
+                <Sparkles className="w-6 h-6" />
                 <span className="text-lg">Food & drinks</span>
               </motion.button>
             </div>
@@ -467,8 +472,8 @@ function RecommendationResultsView({
         <h2 className="text-2xl font-medium text-[#1a1a1a] mb-2">
           Our picks for you
         </h2>
-        <p className="text-[#1a1a1a]/50">
-          Tap ❤️ to save your favorites
+        <p className="text-[#1a1a1a]/50 flex items-center justify-center gap-1">
+          Tap <Heart className="w-4 h-4 text-[#722F37]" /> to save your favorites
         </p>
       </motion.div>
 
@@ -479,8 +484,8 @@ function RecommendationResultsView({
           animate={{ opacity: 1, scale: 1 }}
           className="bg-[#722F37]/10 rounded-xl p-4 text-center mb-6"
         >
-          <span className="text-[#722F37] font-medium">
-            ❤️ {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} picked
+          <span className="text-[#722F37] font-medium flex items-center gap-1">
+            <Heart className="w-4 h-4" fill="#722F37" /> {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} picked
           </span>
         </motion.div>
       )}
@@ -493,7 +498,7 @@ function RecommendationResultsView({
           className="mb-6 p-4 bg-[#722F37]/5 border border-[#722F37]/20 rounded-xl"
         >
           <div className="flex items-start gap-3">
-            <span className="text-lg">💬</span>
+            <MessageCircle className="w-5 h-5 text-[#722F37] flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-[#1a1a1a]/80">{feedbackMessage}</p>
               <p className="text-xs text-[#722F37] mt-1">
@@ -526,7 +531,7 @@ function RecommendationResultsView({
           {primaryFood.length > 0 && (
             <div className="mb-8">
               <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
-                <span>🍽️</span> TO EAT
+                <Utensils className="w-4 h-4" /> TO EAT
               </h3>
               <div className="space-y-3">
                 {primaryFood.map((item, i) => (
@@ -557,7 +562,9 @@ function RecommendationResultsView({
               className="mt-8 pt-6 border-t border-[#1a1a1a]/10"
             >
               <div className="text-center mb-4">
-                <p className="text-sm text-[#1a1a1a]/60">🍸 Something to drink?</p>
+                <p className="text-sm text-[#1a1a1a]/60 flex items-center justify-center gap-1">
+                  <Wine className="w-4 h-4" /> Something to drink?
+                </p>
                 <p className="text-xs text-[#1a1a1a]/40">These pair well with your food</p>
               </div>
               <div className="space-y-3">
@@ -579,7 +586,7 @@ function RecommendationResultsView({
           {primaryDrinks.length > 0 && (
             <div className="mb-8">
               <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
-                <span>🍸</span> TO DRINK
+                <Wine className="w-4 h-4" /> TO DRINK
               </h3>
               <div className="space-y-3">
                 {primaryDrinks.map((item, i) => (
@@ -610,7 +617,9 @@ function RecommendationResultsView({
               className="mt-8 pt-6 border-t border-[#1a1a1a]/10"
             >
               <div className="text-center mb-4">
-                <p className="text-sm text-[#1a1a1a]/60">🍽️ Feeling peckish?</p>
+                <p className="text-sm text-[#1a1a1a]/60 flex items-center justify-center gap-1">
+                  <Utensils className="w-4 h-4" /> Feeling peckish?
+                </p>
                 <p className="text-xs text-[#1a1a1a]/40">These pair well with your drinks</p>
               </div>
               <div className="space-y-3">
@@ -633,7 +642,7 @@ function RecommendationResultsView({
           {primaryFood.length > 0 && (
             <div className="mb-8">
               <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
-                <span>🍽️</span> TO EAT
+                <Utensils className="w-4 h-4" /> TO EAT
               </h3>
               <div className="space-y-3">
                 {primaryFood.map((item, i) => (
@@ -659,7 +668,7 @@ function RecommendationResultsView({
           {primaryDrinks.length > 0 && (
             <div className="mb-8">
               <h3 className="text-xs uppercase tracking-wider text-[#1a1a1a]/40 mb-4 flex items-center gap-2">
-                <span>🍸</span> TO DRINK
+                <Wine className="w-4 h-4" /> TO DRINK
               </h3>
               <div className="space-y-3">
                 {primaryDrinks.map((item, i) => (
@@ -689,8 +698,8 @@ function RecommendationResultsView({
               transition={{ delay: 0.5 }}
               className="mt-4 p-4 bg-[#722F37]/5 rounded-xl text-center"
             >
-              <p className="text-sm text-[#722F37]">
-                💡 <strong>{primaryDrinks[0].name}</strong> pairs beautifully with <strong>{primaryFood[0].name}</strong>
+              <p className="text-sm text-[#722F37] flex items-center gap-1">
+                <Lightbulb className="w-4 h-4 flex-shrink-0" /> <strong>{primaryDrinks[0].name}</strong> pairs beautifully with <strong>{primaryFood[0].name}</strong>
               </p>
             </motion.div>
           )}
@@ -704,7 +713,9 @@ function RecommendationResultsView({
           animate={{ opacity: 1 }}
           className="text-center py-12"
         >
-          <div className="text-5xl mb-4">🤔</div>
+          <div className="w-16 h-16 rounded-2xl bg-[#B2472A]/10 flex items-center justify-center mx-auto mb-4">
+            <HelpCircle className="w-8 h-8 text-[#B2472A]" />
+          </div>
           <h3 className="text-xl font-medium text-[#1a1a1a] mb-2">
             No perfect matches found
           </h3>
@@ -748,7 +759,9 @@ function RecommendationResultsView({
           >
             {emailSubmitted ? (
               <div className="text-center py-4">
-                <div className="text-4xl mb-4">🎉</div>
+                <div className="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-4">
+                  <PartyPopper className="w-6 h-6 text-green-600" />
+                </div>
                 <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">
                   You&apos;re on the list!
                 </h3>

@@ -12,7 +12,9 @@ import {
   ExternalLink,
   Search,
   RefreshCw,
-  DollarSign
+  DollarSign,
+  Shield,
+  User
 } from 'lucide-react'
 
 // Hardcoded admin emails - only these can access
@@ -173,7 +175,9 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center px-6">
         <div className="text-center">
-          <div className="text-5xl mb-6">🔒</div>
+          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-6">
+            <Shield className="w-8 h-8 text-white/60" />
+          </div>
           <h1 className="text-2xl font-semibold text-white mb-4">Admin Access Only</h1>
           <p className="text-white/60 mb-8">You don&apos;t have permission to view this page.</p>
           <Link href="/login" className="text-[#722F37] hover:text-[#5a252c]">
@@ -196,7 +200,10 @@ export default function AdminPage() {
       <header className="bg-[#1a1a1a] border-b border-white/10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-xl font-semibold text-white">🛡️ Eatsight Admin</span>
+            <span className="text-xl font-semibold text-white flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Eatsight Admin
+              </span>
             <span className="text-white/40 text-sm">Platform Overview</span>
           </div>
           <div className="flex items-center gap-4">
@@ -340,8 +347,9 @@ export default function AdminPage() {
                       <span>{new Date(venue.created_at).toLocaleDateString()}</span>
                     </div>
                     {venue.operator_users?.length > 0 && (
-                      <div className="mt-2 text-sm text-white/60">
-                        👤 {venue.operator_users.map((op) => op.email).join(', ')}
+                      <div className="mt-2 text-sm text-white/60 flex items-center gap-1">
+                        <User className="w-4 h-4" />
+                        {venue.operator_users.map((op) => op.email).join(', ')}
                       </div>
                     )}
                   </div>

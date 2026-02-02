@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Lightbulb } from 'lucide-react'
 
 // Demo data
 const demoMetrics = {
@@ -193,8 +193,8 @@ export default function DemoPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-[#1a1a1a]/40 mt-4 italic">
-                💡 Add these to capture more orders
+              <p className="text-xs text-[#1a1a1a]/40 mt-4 italic flex items-center gap-1">
+                <Lightbulb className="w-3 h-3" /> Add these to capture more orders
               </p>
             </motion.div>
           </div>

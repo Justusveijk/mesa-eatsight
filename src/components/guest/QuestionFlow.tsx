@@ -2,8 +2,49 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Wine, Utensils, Beef, Salad, Dumbbell, Soup, CakeSlice,
+  Flame, Heart, Star, Sparkles, Leaf, Coffee, Snowflake,
+  Milk, PartyPopper, Moon, Zap, Dice5, Beer, Candy,
+  UtensilsCrossed, Drumstick, Citrus, type LucideIcon
+} from 'lucide-react'
 import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag, PriceTag } from '@/lib/types/taxonomy'
 import { Button } from '@/components/ui/button'
+import type { IconName } from '@/lib/questions'
+
+// Icon mapping from string names to Lucide components
+const iconMap: Record<IconName, LucideIcon> = {
+  'beef': Beef,
+  'salad': Salad,
+  'dumbbell': Dumbbell,
+  'soup': Soup,
+  'cake-slice': CakeSlice,
+  'cheese': Beef, // Using Beef as fallback for cheese
+  'flame': Flame,
+  'honey': Candy, // Using Candy as fallback for honey
+  'citrus': Citrus,
+  'campfire': Flame, // Using Flame as fallback for campfire
+  'utensils-crossed': UtensilsCrossed,
+  'drumstick': Drumstick,
+  'heart': Heart,
+  'star': Star,
+  'sparkles': Sparkles,
+  'bubbles': Sparkles, // Using Sparkles as fallback for bubbles
+  'leaf': Leaf,
+  'wine': Wine,
+  'coffee': Coffee,
+  'snowflake': Snowflake,
+  'glass-water': Wine, // Using Wine as fallback
+  'milk': Milk,
+  'candy': Candy,
+  'olive': Leaf, // Using Leaf as fallback for olive
+  'wood': Flame, // Using Flame as fallback for wood
+  'party-popper': PartyPopper,
+  'moon': Moon,
+  'zap': Zap,
+  'dice-5': Dice5,
+  'beer': Beer,
+}
 import { createRecSession, trackEvent, getRecommendationsWithFallback, getDrinkRecommendations, saveRecResults, RecommendedItem, trackUnmetDemand } from '@/lib/recommendations'
 import { updateSessionIntents } from '@/lib/analytics'
 import {
@@ -464,29 +505,32 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
   const renderChip = (
     selected: boolean,
     label: string,
-    icon?: string,
+    icon?: IconName,
     onClick?: () => void
-  ) => (
-    <motion.div
-      key={label}
-      variants={chipVariants}
-    >
-      <button
-        onClick={onClick}
-        className={`
-          flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all duration-200
-          ${
-            selected
-              ? 'border-2 border-[#B2472A] bg-[#B2472A] text-white shadow-md'
-              : 'border-2 border-[#1a1a1a]/20 bg-white text-[#1a1a1a]/70 hover:border-[#1a1a1a]/40'
-          }
-        `}
+  ) => {
+    const IconComponent = icon ? iconMap[icon] : null
+    return (
+      <motion.div
+        key={label}
+        variants={chipVariants}
       >
-        {icon && <span className="text-lg">{icon}</span>}
-        <span>{label}</span>
-      </button>
-    </motion.div>
-  )
+        <button
+          onClick={onClick}
+          className={`
+            flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all duration-200
+            ${
+              selected
+                ? 'border-2 border-[#B2472A] bg-[#B2472A] text-white shadow-md'
+                : 'border-2 border-[#1a1a1a]/20 bg-white text-[#1a1a1a]/70 hover:border-[#1a1a1a]/40'
+            }
+          `}
+        >
+          {IconComponent && <IconComponent className="w-5 h-5" />}
+          <span>{label}</span>
+        </button>
+      </motion.div>
+    )
+  }
 
   // Loading screen
   if (isLoading) {
@@ -507,9 +551,9 @@ export function QuestionFlow({ venueId, tableRef, intent, existingSessionId, onC
               repeat: Infinity,
               ease: "easeInOut"
             }}
-            className="text-6xl mb-8"
+            className="w-20 h-20 rounded-2xl bg-[#B2472A]/10 flex items-center justify-center mb-8"
           >
-            {intent === 'drinks' ? '🍸' : '🍽️'}
+            {intent === 'drinks' ? <Wine className="w-10 h-10 text-[#B2472A]" /> : <Utensils className="w-10 h-10 text-[#B2472A]" />}
           </motion.div>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}

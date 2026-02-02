@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { TrendingUp, Clock, AlertTriangle, BarChart3, Heart, Utensils } from 'lucide-react'
+import { TrendingUp, Clock, AlertTriangle, BarChart3, Heart, Utensils, Lightbulb, PartyPopper } from 'lucide-react'
 
 interface UnmetDemandItem {
   preference: string
@@ -479,9 +479,10 @@ export default function AnalyticsPage() {
                   ))}
 
                   {analytics.unmetDemand[0] && (
-                    <div className="mt-4 p-3 bg-blue-50 rounded-xl">
+                    <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-start gap-2">
+                      <Lightbulb className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                       <p className="text-sm text-blue-800">
-                        💡 <strong>Tip:</strong> Consider adding {analytics.unmetDemand[0].preference.toLowerCase()} options to capture more orders.
+                        <strong>Tip:</strong> Consider adding {analytics.unmetDemand[0].preference.toLowerCase()} options to capture more orders.
                       </p>
                     </div>
                   )}
@@ -489,7 +490,9 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="text-center py-6">
                   <p className="text-[#1a1a1a]/40">Great news! Your menu is meeting guest preferences well.</p>
-                  <p className="text-2xl mt-2">🎉</p>
+                  <div className="flex justify-center mt-2">
+                    <PartyPopper className="w-6 h-6 text-green-500" />
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -551,7 +554,7 @@ export default function AnalyticsPage() {
                   {analytics.guestPicks.map((item) => (
                     <div key={item.name} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">❤️</span>
+                        <Heart className="w-5 h-5 text-[#722F37]" fill="#722F37" />
                         <span className="text-[#1a1a1a]">{item.name}</span>
                       </div>
                       <span className="text-[#1a1a1a]/50 text-sm">
@@ -562,7 +565,9 @@ export default function AnalyticsPage() {
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <div className="text-3xl mb-2">❤️</div>
+                  <div className="w-12 h-12 rounded-xl bg-[#722F37]/10 flex items-center justify-center mx-auto mb-2">
+                    <Heart className="w-6 h-6 text-[#722F37]" />
+                  </div>
                   <p className="text-[#1a1a1a]/50 text-sm">
                     When guests tap the heart on recommendations,<br />you&apos;ll see their favorites here.
                   </p>

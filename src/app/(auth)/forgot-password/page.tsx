@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ForgotPasswordPage() {
@@ -35,7 +36,9 @@ export default function ForgotPasswordPage() {
     return (
       <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center px-6">
         <div className="w-full max-w-md text-center">
-          <div className="text-5xl mb-6">📧</div>
+          <div className="w-16 h-16 rounded-2xl bg-[#722F37]/10 flex items-center justify-center mx-auto mb-6">
+            <Mail className="w-8 h-8 text-[#722F37]" />
+          </div>
           <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-4">
             Check your email
           </h1>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Heart } from 'lucide-react'
+import { ChevronDown, Heart, Lightbulb } from 'lucide-react'
 
 interface RecommendationCardProps {
   item: {
@@ -157,8 +157,8 @@ export function RecommendationCard({
               {/* Pairing suggestion */}
               {pairing && (
                 <div className="mt-4 p-3 bg-[#722F37]/5 rounded-xl">
-                  <p className="text-xs text-[#722F37] font-medium mb-1">
-                    💡 Pairs well with
+                  <p className="text-xs text-[#722F37] font-medium mb-1 flex items-center gap-1">
+                    <Lightbulb className="w-3 h-3" /> Pairs well with
                   </p>
                   <div className="flex justify-between items-center">
                     <span className="text-[#1a1a1a]">{pairing.name}</span>

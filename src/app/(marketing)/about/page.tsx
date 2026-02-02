@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { User } from 'lucide-react'
 
 const team = [
   {
@@ -18,8 +19,8 @@ function TeamMemberImage({ member }: { member: typeof team[0] }) {
 
   if (imageError || !member.image) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-4xl">
-        👤
+      <div className="w-full h-full flex items-center justify-center bg-[#F5F3EF]">
+        <User className="w-12 h-12 text-[#1a1a1a]/30" />
       </div>
     )
   }

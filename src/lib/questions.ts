@@ -7,27 +7,39 @@ export type DrinkMood = 'drink_refreshing' | 'drink_warming' | 'drink_celebrator
 export type DrinkStyle = 'style_classic' | 'style_adventurous' | 'style_sweet' | 'style_dry' | 'style_bitter'
 export type DrinkStrength = 'strength_light' | 'strength_medium' | 'strength_strong' | 'strength_none'
 
+// Icon name type for mapping to Lucide icons
+export type IconName =
+  | 'beef' | 'salad' | 'dumbbell' | 'soup' | 'cake-slice'
+  | 'cheese' | 'flame' | 'honey' | 'citrus' | 'campfire'
+  | 'utensils-crossed' | 'soup' | 'drumstick'
+  | 'heart' | 'star' | 'sparkles'
+  | 'bubbles' | 'leaf' | 'wine' | 'flame'
+  | 'coffee' | 'snowflake' | 'glass-water' | 'milk'
+  | 'candy' | 'olive' | 'wood'
+  | 'party-popper' | 'moon' | 'zap'
+  | 'dice-5' | 'beer'
+
 // Food questions (existing)
-export const foodMoodOptions: { id: MoodTag; label: string; icon: string }[] = [
-  { id: 'mood_comfort', label: 'Comfort / Indulgent', icon: '🍔' },
-  { id: 'mood_light', label: 'Fresh / Light', icon: '🥗' },
-  { id: 'mood_protein', label: 'High-protein / Filling', icon: '💪' },
-  { id: 'mood_warm', label: 'Warm / Cozy', icon: '🍜' },
-  { id: 'mood_treat', label: 'Sweet Treat', icon: '🍰' },
+export const foodMoodOptions: { id: MoodTag; label: string; icon: IconName }[] = [
+  { id: 'mood_comfort', label: 'Comfort / Indulgent', icon: 'beef' },
+  { id: 'mood_light', label: 'Fresh / Light', icon: 'salad' },
+  { id: 'mood_protein', label: 'High-protein / Filling', icon: 'dumbbell' },
+  { id: 'mood_warm', label: 'Warm / Cozy', icon: 'soup' },
+  { id: 'mood_treat', label: 'Sweet Treat', icon: 'cake-slice' },
 ]
 
-export const foodFlavorOptions: { id: FlavorTag; label: string; icon: string }[] = [
-  { id: 'flavor_umami', label: 'Savoury / Umami', icon: '🧀' },
-  { id: 'flavor_spicy', label: 'Spicy', icon: '🌶️' },
-  { id: 'flavor_sweet', label: 'Sweet', icon: '🍯' },
-  { id: 'flavor_tangy', label: 'Tangy / Sour', icon: '🍋' },
-  { id: 'flavor_smoky', label: 'Smoky', icon: '🔥' },
+export const foodFlavorOptions: { id: FlavorTag; label: string; icon: IconName }[] = [
+  { id: 'flavor_umami', label: 'Savoury / Umami', icon: 'cheese' },
+  { id: 'flavor_spicy', label: 'Spicy', icon: 'flame' },
+  { id: 'flavor_sweet', label: 'Sweet', icon: 'honey' },
+  { id: 'flavor_tangy', label: 'Tangy / Sour', icon: 'citrus' },
+  { id: 'flavor_smoky', label: 'Smoky', icon: 'campfire' },
 ]
 
-export const foodPortionOptions: { id: PortionTag; label: string; icon: string }[] = [
-  { id: 'portion_bite', label: 'Just a bite', icon: '🥄' },
-  { id: 'portion_standard', label: 'Normal hungry', icon: '🍽️' },
-  { id: 'portion_hearty', label: 'Very hungry', icon: '🍖' },
+export const foodPortionOptions: { id: PortionTag; label: string; icon: IconName }[] = [
+  { id: 'portion_bite', label: 'Just a bite', icon: 'utensils-crossed' },
+  { id: 'portion_standard', label: 'Normal hungry', icon: 'soup' },
+  { id: 'portion_hearty', label: 'Very hungry', icon: 'drumstick' },
 ]
 
 export const foodDietOptions: { id: DietTag; label: string }[] = [
@@ -40,56 +52,56 @@ export const foodDietOptions: { id: DietTag; label: string }[] = [
   { id: 'allergy_nut_free', label: 'Nut allergy' },
 ]
 
-export const foodPriceOptions: { id: PriceTag; label: string; icon: string }[] = [
-  { id: 'price_1', label: '€ Best value', icon: '💚' },
-  { id: 'price_2', label: '€€ Mid-range', icon: '⭐' },
-  { id: 'price_3', label: '€€€ Treat yourself', icon: '✨' },
+export const foodPriceOptions: { id: PriceTag; label: string; icon: IconName }[] = [
+  { id: 'price_1', label: '€ Best value', icon: 'heart' },
+  { id: 'price_2', label: '€€ Mid-range', icon: 'star' },
+  { id: 'price_3', label: '€€€ Treat yourself', icon: 'sparkles' },
 ]
 
 // NEW Drink question structure - simplified and reordered
 // Question 1: Alcohol strength (FIRST - most important filter)
 export type DrinkStrengthValue = 'abv_zero' | 'abv_light' | 'abv_regular' | 'abv_strong'
-export const drinkStrengthOptions: { id: DrinkStrengthValue; label: string; icon: string }[] = [
-  { id: 'abv_zero', label: 'No alcohol', icon: '🫧' },
-  { id: 'abv_light', label: 'Light', icon: '🍃' },
-  { id: 'abv_regular', label: 'Regular', icon: '🍸' },
-  { id: 'abv_strong', label: 'Strong', icon: '🔥' },
+export const drinkStrengthOptions: { id: DrinkStrengthValue; label: string; icon: IconName }[] = [
+  { id: 'abv_zero', label: 'No alcohol', icon: 'bubbles' },
+  { id: 'abv_light', label: 'Light', icon: 'leaf' },
+  { id: 'abv_regular', label: 'Regular', icon: 'wine' },
+  { id: 'abv_strong', label: 'Strong', icon: 'flame' },
 ]
 
 // Question 2: Temperature/Feel (SECOND - narrows down further)
 export type DrinkFeelValue = 'temp_hot' | 'format_crisp' | 'format_sparkling' | 'format_creamy'
-export const drinkFeelOptions: { id: DrinkFeelValue; label: string; icon: string }[] = [
-  { id: 'temp_hot', label: 'Warming', icon: '☕' },
-  { id: 'format_crisp', label: 'Refreshing / Cold', icon: '🧊' },
-  { id: 'format_sparkling', label: 'Bubbly / Sparkling', icon: '✨' },
-  { id: 'format_creamy', label: 'Smooth / Creamy', icon: '🥛' },
+export const drinkFeelOptions: { id: DrinkFeelValue; label: string; icon: IconName }[] = [
+  { id: 'temp_hot', label: 'Warming', icon: 'coffee' },
+  { id: 'format_crisp', label: 'Refreshing / Cold', icon: 'snowflake' },
+  { id: 'format_sparkling', label: 'Bubbly / Sparkling', icon: 'sparkles' },
+  { id: 'format_creamy', label: 'Smooth / Creamy', icon: 'milk' },
 ]
 
 // Question 3: Taste (LAST - fine-tunes the selection)
 export type DrinkTasteValue = 'flavor_sweet' | 'flavor_tangy' | 'flavor_bitter' | 'flavor_spicy' | 'flavor_smoky'
-export const drinkTasteOptions: { id: DrinkTasteValue; label: string; icon: string }[] = [
-  { id: 'flavor_sweet', label: 'Sweet', icon: '🍯' },
-  { id: 'flavor_tangy', label: 'Tangy / Citrus', icon: '🍋' },
-  { id: 'flavor_bitter', label: 'Bitter', icon: '🫒' },
-  { id: 'flavor_spicy', label: 'Spicy', icon: '🌶️' },
-  { id: 'flavor_smoky', label: 'Smoky', icon: '🪵' },
+export const drinkTasteOptions: { id: DrinkTasteValue; label: string; icon: IconName }[] = [
+  { id: 'flavor_sweet', label: 'Sweet', icon: 'honey' },
+  { id: 'flavor_tangy', label: 'Tangy / Citrus', icon: 'citrus' },
+  { id: 'flavor_bitter', label: 'Bitter', icon: 'olive' },
+  { id: 'flavor_spicy', label: 'Spicy', icon: 'flame' },
+  { id: 'flavor_smoky', label: 'Smoky', icon: 'campfire' },
 ]
 
 // Legacy options (keep for backward compatibility during transition)
-export const drinkMoodOptions: { id: DrinkMood; label: string; icon: string }[] = [
-  { id: 'drink_refreshing', label: 'Something refreshing', icon: '🧊' },
-  { id: 'drink_warming', label: 'Something warming', icon: '☕' },
-  { id: 'drink_celebratory', label: 'Celebrating!', icon: '🥂' },
-  { id: 'drink_relaxing', label: 'Wind down', icon: '🌙' },
-  { id: 'drink_energizing', label: 'Pick me up', icon: '⚡' },
+export const drinkMoodOptions: { id: DrinkMood; label: string; icon: IconName }[] = [
+  { id: 'drink_refreshing', label: 'Something refreshing', icon: 'snowflake' },
+  { id: 'drink_warming', label: 'Something warming', icon: 'coffee' },
+  { id: 'drink_celebratory', label: 'Celebrating!', icon: 'party-popper' },
+  { id: 'drink_relaxing', label: 'Wind down', icon: 'moon' },
+  { id: 'drink_energizing', label: 'Pick me up', icon: 'zap' },
 ]
 
-export const drinkStyleOptions: { id: DrinkStyle; label: string; icon: string }[] = [
-  { id: 'style_classic', label: 'Classic / Familiar', icon: '🍷' },
-  { id: 'style_adventurous', label: 'Surprise me', icon: '🎲' },
-  { id: 'style_sweet', label: 'Sweet', icon: '🍬' },
-  { id: 'style_dry', label: 'Dry / Crisp', icon: '🍸' },
-  { id: 'style_bitter', label: 'Bitter / Complex', icon: '🍺' },
+export const drinkStyleOptions: { id: DrinkStyle; label: string; icon: IconName }[] = [
+  { id: 'style_classic', label: 'Classic / Familiar', icon: 'wine' },
+  { id: 'style_adventurous', label: 'Surprise me', icon: 'dice-5' },
+  { id: 'style_sweet', label: 'Sweet', icon: 'candy' },
+  { id: 'style_dry', label: 'Dry / Crisp', icon: 'wine' },
+  { id: 'style_bitter', label: 'Bitter / Complex', icon: 'beer' },
 ]
 
 // Question flow definitions

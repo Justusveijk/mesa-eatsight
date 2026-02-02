@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function VenueNotFound() {
@@ -23,7 +24,7 @@ export default function VenueNotFound() {
             transition={{ type: 'spring' as const, stiffness: 300, damping: 20 }}
             className="w-20 h-20 bg-mesa-500/10 rounded-2xl flex items-center justify-center mx-auto mb-8"
           >
-            <span className="text-4xl">🔍</span>
+            <Search className="w-10 h-10 text-[#B2472A]" />
           </motion.div>
           <motion.h1
             initial={{ y: 20, opacity: 0 }}

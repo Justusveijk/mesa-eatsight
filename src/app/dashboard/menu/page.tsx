@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Upload, Search, Star, Plus, Pencil, Trash2, AlertCircle, Check, X, FileText, HelpCircle } from 'lucide-react'
+import { Upload, Search, Star, Plus, Pencil, Trash2, AlertCircle, Check, X, FileText, HelpCircle, Wine, Utensils, ChefHat, Target, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TagEditor } from '@/components/dashboard/TagEditor'
 import { MenuTag, TAG_LABELS } from '@/lib/types/taxonomy'
@@ -954,12 +954,12 @@ export default function MenuPage() {
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
+                      <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
                         item.type === 'drink'
                           ? 'bg-blue-100 text-blue-700'
                           : 'bg-orange-100 text-orange-700'
                       }`}>
-                        {item.type === 'drink' ? '🍸 Drink' : '🍽️ Food'}
+                        {item.type === 'drink' ? <><Wine className="w-3 h-3" /> Drink</> : <><Utensils className="w-3 h-3" /> Food</>}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-[#1a1a1a]/70">€{item.price.toFixed(2)}</td>
@@ -1104,7 +1104,7 @@ export default function MenuPage() {
                         : 'border-gray-200 text-[#1a1a1a]/60 hover:border-gray-300'
                     }`}
                   >
-                    <span>🍽️</span> Food
+                    <Utensils className="w-4 h-4" /> Food
                   </button>
                   <button
                     type="button"
@@ -1115,7 +1115,7 @@ export default function MenuPage() {
                         : 'border-gray-200 text-[#1a1a1a]/60 hover:border-gray-300'
                     }`}
                   >
-                    <span>🍸</span> Drink
+                    <Wine className="w-4 h-4" /> Drink
                   </button>
                 </div>
               </div>
@@ -1270,7 +1270,7 @@ export default function MenuPage() {
           <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg p-6 shadow-xl">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-14 h-14 bg-[#722F37]/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-                <span className="text-3xl">👨‍🍳</span>
+                <ChefHat className="w-7 h-7 text-[#722F37]" />
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-[#1a1a1a]">Why flavor tags matter</h2>
@@ -1285,21 +1285,21 @@ export default function MenuPage() {
 
               <div className="bg-[#FDFBF7] rounded-xl p-4 space-y-3">
                 <div className="flex items-start gap-3">
-                  <span className="text-lg">🎯</span>
+                  <Target className="w-5 h-5 text-[#722F37] flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-[#1a1a1a]">Better recommendations</p>
                     <p className="text-sm">Match dishes to guest mood, dietary needs, and flavor preferences</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="text-lg">🍷</span>
+                  <Wine className="w-5 h-5 text-[#722F37] flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-[#1a1a1a]">Smart pairings</p>
                     <p className="text-sm">Suggest complementary drinks and sides automatically</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="text-lg">📊</span>
+                  <BarChart3 className="w-5 h-5 text-[#722F37] flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-[#1a1a1a]">Real insights</p>
                     <p className="text-sm">Discover what flavors and moods drive orders at your venue</p>

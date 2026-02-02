@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { RefreshCw, QrCode } from 'lucide-react'
+import { RefreshCw, QrCode, Rocket, BarChart3, Heart, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { TAG_LABELS } from '@/lib/types/taxonomy'
@@ -279,7 +279,9 @@ export default function DashboardPage() {
           className="bg-gradient-to-r from-[#722F37]/10 to-[#1e3a5f]/10 rounded-2xl p-6 mb-8"
         >
           <div className="flex flex-col sm:flex-row items-start gap-4">
-            <div className="text-3xl">🚀</div>
+            <div className="w-12 h-12 rounded-xl bg-[#722F37]/20 flex items-center justify-center flex-shrink-0">
+              <Rocket className="w-6 h-6 text-[#722F37]" />
+            </div>
             <div className="flex-1">
               <h3 className="font-semibold text-[#1a1a1a] mb-2">
                 {metrics.scansWeek === 0 ? 'Get your first scans!' : `You have ${metrics.scansWeek} scan${metrics.scansWeek !== 1 ? 's' : ''} this week!`}
@@ -390,7 +392,9 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="bg-[#F5F3EF] rounded-xl p-5 text-center">
-              <div className="text-2xl mb-2">📊</div>
+              <div className="w-10 h-10 rounded-lg bg-[#1a1a1a]/10 flex items-center justify-center mx-auto mb-2">
+                <BarChart3 className="w-5 h-5 text-[#1a1a1a]/50" />
+              </div>
               <p className="font-medium text-[#1a1a1a] text-sm mb-1">No mood data yet</p>
               <p className="text-xs text-[#1a1a1a]/50">
                 {metrics.scansWeek < 5
@@ -421,7 +425,7 @@ export default function DashboardPage() {
               {metrics.topPicks.map((item, i) => (
                 <div key={item.name} className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <span className="text-lg">❤️</span>
+                    <Heart className="w-5 h-5 text-[#722F37]" fill="#722F37" />
                     <span className="text-[#1a1a1a]">{item.name}</span>
                   </div>
                   <span className="text-[#722F37] font-medium">{item.picks}</span>
@@ -430,7 +434,9 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="bg-[#F5F3EF] rounded-xl p-5 text-center">
-              <div className="text-2xl mb-2">❤️</div>
+              <div className="w-10 h-10 rounded-lg bg-[#722F37]/10 flex items-center justify-center mx-auto mb-2">
+                <Heart className="w-5 h-5 text-[#722F37]" />
+              </div>
               <p className="font-medium text-[#1a1a1a] text-sm mb-1">No picks yet</p>
               <p className="text-xs text-[#1a1a1a]/50">
                 When guests tap the heart on recommendations, you&apos;ll see their favorites here.
@@ -470,7 +476,9 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="bg-[#F5F3EF] rounded-xl p-5 text-center">
-              <div className="text-2xl mb-2">⏳</div>
+              <div className="w-10 h-10 rounded-lg bg-[#1a1a1a]/10 flex items-center justify-center mx-auto mb-2">
+                <Clock className="w-5 h-5 text-[#1a1a1a]/50" />
+              </div>
               <p className="font-medium text-[#1a1a1a] text-sm mb-1">Waiting for activity</p>
               <p className="text-xs text-[#1a1a1a]/50">
                 Guest sessions and clicks will appear here in real-time.

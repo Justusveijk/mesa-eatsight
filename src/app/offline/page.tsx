@@ -1,5 +1,7 @@
 'use client'
 
+import { WifiOff } from 'lucide-react'
+
 export default function OfflinePage() {
   const handleRetry = () => {
     window.location.reload()
@@ -8,8 +10,8 @@ export default function OfflinePage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center px-6">
       <div className="text-center max-w-md">
-        <div className="text-6xl mb-6" role="img" aria-label="No connection">
-          📡
+        <div className="w-20 h-20 rounded-2xl bg-[#722F37]/10 flex items-center justify-center mx-auto mb-6" role="img" aria-label="No connection">
+          <WifiOff className="w-10 h-10 text-[#722F37]" />
         </div>
         <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-4">
           You&apos;re offline
