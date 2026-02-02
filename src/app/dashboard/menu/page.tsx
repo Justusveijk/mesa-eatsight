@@ -1,12 +1,41 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Upload, Search, Star, Plus, Pencil, Trash2, AlertCircle, Check, X, FileText, HelpCircle, Wine, Utensils, ChefHat, Target, BarChart3 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Upload,
+  Search,
+  Star,
+  Plus,
+  Pencil,
+  Trash2,
+  AlertCircle,
+  Check,
+  X,
+  FileText,
+  HelpCircle,
+  Wine,
+  Utensils,
+  ChefHat,
+  Target,
+  BarChart3,
+  Eye,
+  EyeOff,
+  MoreHorizontal,
+  Download,
+  Sparkles,
+  Salad,
+  Beef,
+  Fish,
+  Leaf,
+  IceCream,
+  Coffee,
+} from 'lucide-react'
 import { TagEditor } from '@/components/dashboard/TagEditor'
 import { MenuTag, TAG_LABELS } from '@/lib/types/taxonomy'
 import { parseCSV, ParsedItem, ParseResult, downloadDetailedTemplate } from '@/lib/menu-import'
 import { createClient } from '@/lib/supabase/client'
+import { ScrollReveal } from '@/components/ScrollReveal'
 
 interface MenuItem {
   id: string
@@ -27,13 +56,11 @@ interface MenuData {
   published_at: string | null
 }
 
-// Extended parsed item with editable tags
 interface PreviewItem extends ParsedItem {
   editedTags: MenuTag[]
   editedType?: 'food' | 'drink'
 }
 
-// New item form data
 interface NewItemForm {
   name: string
   description: string
@@ -50,6 +77,18 @@ const defaultNewItem: NewItemForm = {
   type: 'food',
 }
 
+// Category icons
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  starters: Salad,
+  mains: Beef,
+  fish: Fish,
+  vegetarian: Leaf,
+  desserts: IceCream,
+  drinks: Wine,
+  coffee: Coffee,
+  default: Utensils,
+}
+
 export default function MenuPage() {
   const [items, setItems] = useState<MenuItem[]>([])
   const [menu, setMenu] = useState<MenuData | null>(null)
@@ -57,6 +96,7 @@ export default function MenuPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   // CSV Upload state
   const [isDragging, setIsDragging] = useState(false)
@@ -83,6 +123,9 @@ export default function MenuPage() {
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
+  // Action menu state
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -93,11 +136,9 @@ export default function MenuPage() {
   const fetchMenuData = useCallback(async () => {
     const supabase = createClient()
 
-    // Get current user
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Get user's venue
     const { data: operatorUser } = await supabase
       .from('operator_users')
       .select('venue_id')
@@ -106,7 +147,6 @@ export default function MenuPage() {
 
     if (!operatorUser?.venue_id) return
 
-    // Get the menu for this venue
     const { data: menuData } = await supabase
       .from('menus')
       .select('id, status, published_at')
@@ -121,7 +161,6 @@ export default function MenuPage() {
 
     setMenu(menuData)
 
-    // Get menu items with tags
     const { data: itemsData } = await supabase
       .from('menu_items')
       .select(`
@@ -174,9 +213,6 @@ export default function MenuPage() {
   const handleSaveTags = async (tags: MenuTag[]) => {
     if (!editingItem) return
 
-    console.log('[Menu] Saving tags for item:', editingItem.id, editingItem.name)
-    console.log('[Menu] Tags to save:', tags)
-
     try {
       const response = await fetch(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
@@ -185,7 +221,6 @@ export default function MenuPage() {
       })
 
       const data = await response.json()
-      console.log('[Menu] Save tags response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to save tags')
@@ -199,7 +234,6 @@ export default function MenuPage() {
       setEditingItem(null)
       showToast('Tags saved successfully', 'success')
     } catch (error) {
-      console.error('[Menu] Save tags error:', error)
       showToast(`Failed to save tags: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     }
   }
@@ -213,7 +247,6 @@ export default function MenuPage() {
     setEditingPreviewIndex(null)
   }
 
-  // Add new item handler
   const handleAddItem = async () => {
     if (!newItem.name.trim() || !newItem.price || !menu) {
       showToast('Name and price are required', 'error')
@@ -221,9 +254,6 @@ export default function MenuPage() {
     }
 
     setAddingItem(true)
-
-    console.log('[Menu] Adding item:', newItem.name)
-    console.log('[Menu] With tags:', newItemTags)
 
     try {
       const response = await fetch('/api/menu/import', {
@@ -242,19 +272,13 @@ export default function MenuPage() {
       })
 
       const data = await response.json()
-      console.log('[Menu] API response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to add item')
       }
 
-      // Check if tags failed to save
       if (data.tagError) {
-        console.error('[Menu] Tags failed to save:', data.tagError)
         showToast(`Item added but tags failed: ${data.tagError}`, 'error')
-      } else if (data.tagsAttempted > 0 && data.tagsInserted === 0) {
-        console.error('[Menu] Tags were attempted but none saved')
-        showToast('Item added but tags did not save - check RLS policies', 'error')
       } else {
         showToast('Item added successfully', 'success')
       }
@@ -264,14 +288,12 @@ export default function MenuPage() {
       setNewItemTags([])
       fetchMenuData()
     } catch (error) {
-      console.error('Add item error:', error)
       showToast(`Failed to add item: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setAddingItem(false)
     }
   }
 
-  // Bulk delete handler
   const handleBulkDelete = async () => {
     if (selectedItems.length === 0) return
     if (!confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) return
@@ -281,46 +303,36 @@ export default function MenuPage() {
     try {
       const supabase = createClient()
 
-      // First delete tags for all selected items
-      const { error: tagError } = await supabase
+      await supabase
         .from('item_tags')
         .delete()
         .in('item_id', selectedItems)
 
-      if (tagError) {
-        console.error('Bulk tag delete error:', tagError)
-      }
-
-      // Then delete the items
       const { error: itemError } = await supabase
         .from('menu_items')
         .delete()
         .in('id', selectedItems)
 
       if (itemError) {
-        console.error('Bulk item delete error:', itemError)
         showToast('Failed to delete items', 'error')
       } else {
         showToast(`Deleted ${selectedItems.length} items`, 'success')
         setSelectedItems([])
         fetchMenuData()
       }
-    } catch (error) {
-      console.error('Bulk delete error:', error)
+    } catch {
       showToast('Failed to delete items', 'error')
     } finally {
       setDeletingBulk(false)
     }
   }
 
-  // Toggle item selection
   const toggleItemSelection = (id: string) => {
     setSelectedItems((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     )
   }
 
-  // Select all items
   const toggleSelectAll = () => {
     if (selectedItems.length === filteredItems.length) {
       setSelectedItems([])
@@ -335,7 +347,6 @@ export default function MenuPage() {
 
     const newValue = !item.is_out_of_stock
 
-    // Optimistic update
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, is_out_of_stock: newValue } : i))
     )
@@ -348,7 +359,6 @@ export default function MenuPage() {
       })
 
       if (!response.ok) {
-        // Revert on error
         setItems((prev) =>
           prev.map((i) => (i.id === id ? { ...i, is_out_of_stock: !newValue } : i))
         )
@@ -368,7 +378,6 @@ export default function MenuPage() {
 
     const newValue = !item.is_push
 
-    // Optimistic update
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, is_push: newValue } : i))
     )
@@ -399,7 +408,6 @@ export default function MenuPage() {
 
     const itemToDelete = items.find((i) => i.id === id)
 
-    // Optimistic update
     setItems((prev) => prev.filter((item) => item.id !== id))
     setSelectedItems((prev) => prev.filter((i) => i !== id))
 
@@ -409,7 +417,6 @@ export default function MenuPage() {
       })
 
       if (!response.ok) {
-        // Revert on error
         if (itemToDelete) {
           setItems((prev) => [...prev, itemToDelete])
         }
@@ -451,7 +458,6 @@ export default function MenuPage() {
     if (file) {
       await handleFileSelect(file)
     }
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -460,7 +466,6 @@ export default function MenuPage() {
   const handleFileSelect = async (file: File) => {
     const result = await parseCSV(file)
     setParseResult(result)
-    // Initialize preview items with auto-generated tags and type
     setPreviewItems(result.items.map(item => ({
       ...item,
       editedTags: item.autoTags,
@@ -479,9 +484,6 @@ export default function MenuPage() {
 
     setImporting(true)
 
-    console.log('[Menu] Importing items:', validItems.length)
-    console.log('[Menu] Sample item tags:', validItems[0]?.editedTags)
-
     try {
       const response = await fetch('/api/menu/import', {
         method: 'POST',
@@ -499,19 +501,13 @@ export default function MenuPage() {
       })
 
       const data = await response.json()
-      console.log('[Menu] Import response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to import')
       }
 
-      // Check if tags failed
       if (data.tagError) {
-        console.error('[Menu] Tags failed:', data.tagError)
         showToast(`Imported ${data.count} items but tags failed: ${data.tagError}`, 'error')
-      } else if (data.tagsAttempted > 0 && data.tagsInserted === 0) {
-        console.error('[Menu] No tags were saved')
-        showToast(`Imported ${data.count} items but tags did not save`, 'error')
       } else {
         showToast(`Imported ${data.count} items with ${data.tagsInserted || 0} tags`, 'success')
       }
@@ -520,7 +516,6 @@ export default function MenuPage() {
       setPreviewItems([])
       fetchMenuData()
     } catch (error) {
-      console.error('Import error:', error)
       showToast(`Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setImporting(false)
@@ -551,7 +546,6 @@ export default function MenuPage() {
       showToast(data.message, 'success')
       setMenu({ ...menu, status: 'published', published_at: new Date().toISOString() })
     } catch (error) {
-      console.error('Publish error:', error)
       showToast(error instanceof Error ? error.message : 'Failed to publish menu', 'error')
     } finally {
       setPublishing(false)
@@ -569,7 +563,6 @@ export default function MenuPage() {
     return hasMood && hasPortion && hasTemp
   }
 
-  // Calculate preview summary
   const previewSummary = {
     total: previewItems.length,
     valid: previewItems.filter(i => i.isValid).length,
@@ -579,750 +572,848 @@ export default function MenuPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]"></div>
+      <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mesa-burgundy"></div>
       </div>
     )
   }
 
   return (
-    <div>
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${
-            toast.type === 'success'
-              ? 'bg-green-500 text-white'
-              : 'bg-red-500 text-white'
-          }`}
-        >
-          {toast.type === 'success' ? (
-            <Check className="w-4 h-4" />
-          ) : (
-            <AlertCircle className="w-4 h-4" />
+    <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Toast */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 ${
+                toast.type === 'success'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-red-500 text-white'
+              }`}
+            >
+              {toast.type === 'success' ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <AlertCircle className="w-4 h-4" />
+              )}
+              {toast.message}
+            </motion.div>
           )}
-          {toast.message}
-        </div>
-      )}
+        </AnimatePresence>
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-serif text-[#1a1a1a]">Menu Management</h1>
-          <p className="text-[#1a1a1a]/50 text-sm sm:text-base">
-            {items.length} items
-            {menu?.status === 'published' && (
-              <span className="ml-2 text-green-600">
-                (Published)
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+          <div>
+            <motion.h1
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-2xl font-serif text-mesa-charcoal"
+            >
+              Menu Management
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="text-sm text-mesa-charcoal/50 mt-1"
+            >
+              {items.length} items
+              {menu?.status === 'published' && (
+                <span className="ml-2 text-green-600">(Published)</span>
+              )}
+              {menu?.status === 'draft' && (
+                <span className="ml-2 text-amber-600">(Draft)</span>
+              )}
+            </motion.p>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-wrap items-center gap-3"
+          >
+            <button
+              onClick={handlePublish}
+              disabled={publishing || items.length === 0}
+              className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm text-mesa-charcoal/70 hover:text-mesa-charcoal transition disabled:opacity-50"
+            >
+              {publishing ? 'Publishing...' : 'Publish Menu'}
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-mesa-burgundy text-white rounded-xl text-sm font-medium hover:bg-mesa-burgundy/90 transition shadow-lg shadow-mesa-burgundy/20"
+            >
+              <Plus className="w-4 h-4" />
+              Add Item
+            </button>
+          </motion.div>
+        </div>
+
+        {/* Bulk Actions Bar */}
+        <AnimatePresence>
+          {selectedItems.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-center gap-4 p-4 mb-6 glass rounded-xl border-l-4 border-mesa-burgundy"
+            >
+              <span className="text-mesa-charcoal font-medium">
+                {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
               </span>
-            )}
-            {menu?.status === 'draft' && (
-              <span className="ml-2 text-amber-600">
-                (Draft)
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={handlePublish}
-            disabled={publishing || items.length === 0}
-            className="flex-1 sm:flex-none border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/5"
-          >
-            {publishing ? 'Publishing...' : 'Publish Menu'}
-          </Button>
-          <Button onClick={() => setShowAddModal(true)} className="flex-1 sm:flex-none bg-[#1e3a5f] hover:bg-[#0f2440] text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Item
-          </Button>
-        </div>
-      </div>
+              <button
+                onClick={handleBulkDelete}
+                disabled={deletingBulk}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-red-600 bg-red-50 hover:bg-red-100 transition disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deletingBulk ? 'Deleting...' : 'Delete selected'}
+              </button>
+              <button
+                onClick={() => setSelectedItems([])}
+                className="px-4 py-2 rounded-xl text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
+              >
+                Clear selection
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Bulk Actions Bar */}
-      {selectedItems.length > 0 && (
-        <div className="flex items-center gap-4 p-4 mb-6 bg-white border border-gray-200 rounded-xl shadow-sm">
-          <span className="text-[#1a1a1a] font-medium">
-            {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBulkDelete}
-            disabled={deletingBulk}
-            className="text-red-600 border-red-200 hover:bg-red-50"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            {deletingBulk ? 'Deleting...' : 'Delete selected'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSelectedItems([])}
-          >
-            Clear selection
-          </Button>
-        </div>
-      )}
-
-      {/* CSV Preview */}
-      {parseResult && previewItems.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 mb-8 border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-semibold text-[#1a1a1a]">Preview Import</h3>
-              <div className="flex items-center gap-4 mt-1 text-sm">
-                <span className="text-[#1a1a1a]/50">
-                  {previewSummary.valid} of {previewSummary.total} items valid
-                </span>
-                {parseResult.isDetailedFormat && (
-                  <>
-                    <span className="text-green-600">
-                      {previewSummary.ready} ready
+        {/* CSV Preview */}
+        <AnimatePresence>
+          {parseResult && previewItems.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="glass rounded-2xl p-6 mb-8"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-mesa-charcoal">Preview Import</h3>
+                  <div className="flex items-center gap-4 mt-1 text-sm">
+                    <span className="text-mesa-charcoal/50">
+                      {previewSummary.valid} of {previewSummary.total} items valid
                     </span>
-                    {previewSummary.needsReview > 0 && (
-                      <span className="text-amber-600">
-                        {previewSummary.needsReview} need tag review
-                      </span>
+                    {parseResult.isDetailedFormat && (
+                      <>
+                        <span className="text-green-600">{previewSummary.ready} ready</span>
+                        {previewSummary.needsReview > 0 && (
+                          <span className="text-amber-600">{previewSummary.needsReview} need tag review</span>
+                        )}
+                      </>
                     )}
-                  </>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCancelPreview}
+                    className="px-4 py-2 rounded-xl text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    disabled={importing || previewSummary.valid === 0}
+                    className="flex items-center gap-2 px-5 py-2 bg-mesa-burgundy text-white rounded-xl text-sm font-medium hover:bg-mesa-burgundy/90 disabled:opacity-50 transition"
+                  >
+                    {importing ? 'Importing...' : `Import ${previewSummary.valid} Items`}
+                  </button>
+                </div>
+              </div>
+
+              {parseResult.isDetailedFormat && previewSummary.needsReview > 0 && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <p className="text-sm text-amber-700">
+                    {previewSummary.needsReview} items are missing required tags (mood, portion, temperature).
+                    Click &quot;Edit&quot; to add tags before importing.
+                  </p>
+                </div>
+              )}
+
+              {parseResult.errors.length > 0 && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  {parseResult.errors.map((error, i) => (
+                    <p key={i} className="text-sm text-red-600">{error}</p>
+                  ))}
+                </div>
+              )}
+
+              <div className="overflow-x-auto max-h-80 overflow-y-auto rounded-xl">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-mesa-charcoal/5 z-10">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Status</th>
+                      <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Name</th>
+                      <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Price</th>
+                      <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Category</th>
+                      {parseResult.isDetailedFormat && (
+                        <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Auto Tags</th>
+                      )}
+                      <th className="text-right py-3 px-4 text-mesa-charcoal/50 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewItems.slice(0, 50).map((item, i) => {
+                      const itemReady = item.isValid && hasRequiredTags(item.editedTags)
+                      const needsReview = item.isValid && !hasRequiredTags(item.editedTags)
+
+                      return (
+                        <tr
+                          key={i}
+                          className={`border-t border-mesa-charcoal/5 ${
+                            !item.isValid ? 'bg-red-50' : needsReview ? 'bg-amber-50' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-4">
+                            {item.isValid ? (
+                              itemReady ? (
+                                <Check className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <AlertCircle className="w-4 h-4 text-amber-600" />
+                              )
+                            ) : (
+                              <X className="w-4 h-4 text-red-600" />
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-mesa-charcoal font-medium">{item.name}</td>
+                          <td className="py-3 px-4 text-mesa-charcoal/70">
+                            {item.isValid ? `€${item.price.toFixed(2)}` : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-mesa-charcoal/70">{item.category}</td>
+                          {parseResult.isDetailedFormat && (
+                            <td className="py-3 px-4">
+                              <div className="flex flex-wrap gap-1">
+                                {item.editedTags.slice(0, 4).map((tag) => (
+                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-mesa-charcoal/10 text-mesa-charcoal/70">
+                                    {TAG_LABELS[tag]}
+                                  </span>
+                                ))}
+                                {item.editedTags.length > 4 && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-mesa-charcoal/10 text-mesa-charcoal/50">
+                                    +{item.editedTags.length - 4}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          )}
+                          <td className="py-3 px-4 text-right">
+                            {item.isValid && (
+                              <button
+                                onClick={() => setEditingPreviewIndex(i)}
+                                className="text-xs text-mesa-burgundy hover:underline"
+                              >
+                                Edit tags
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {previewItems.length > 50 && (
+                  <p className="text-center text-sm text-mesa-charcoal/50 py-3">
+                    ... and {previewItems.length - 50} more items
+                  </p>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={handleCancelPreview}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleImport}
-                disabled={importing || previewSummary.valid === 0}
-                className="bg-[#1e3a5f] hover:bg-[#0f2440] text-white"
-              >
-                {importing ? 'Importing...' : `Import ${previewSummary.valid} Items`}
-              </Button>
-            </div>
-          </div>
-
-          {/* Import confirmation message */}
-          {parseResult.isDetailedFormat && previewSummary.needsReview > 0 && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <p className="text-sm text-amber-700">
-                {previewSummary.needsReview} items are missing required tags (mood, portion, temperature).
-                Click &quot;Edit&quot; to add tags before importing.
-              </p>
-            </div>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          {parseResult.errors.length > 0 && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              {parseResult.errors.map((error, i) => (
-                <p key={i} className="text-sm text-red-600">{error}</p>
-              ))}
-            </div>
-          )}
-
-          <div className="overflow-x-auto max-h-96 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-gray-50 z-10">
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Status</th>
-                  <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Name</th>
-                  <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Price</th>
-                  <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Category</th>
-                  {parseResult.isDetailedFormat && (
-                    <th className="text-left py-2 px-3 text-[#1a1a1a]/50">Auto Tags</th>
-                  )}
-                  <th className="text-right py-2 px-3 text-[#1a1a1a]/50">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewItems.slice(0, 50).map((item, i) => {
-                  const itemReady = item.isValid && hasRequiredTags(item.editedTags)
-                  const needsReview = item.isValid && !hasRequiredTags(item.editedTags)
-
-                  return (
-                    <tr
-                      key={i}
-                      className={`border-b border-gray-100 ${
-                        !item.isValid
-                          ? 'bg-red-50'
-                          : needsReview
-                            ? 'bg-amber-50'
-                            : ''
-                      }`}
-                    >
-                      <td className="py-2 px-3">
-                        {item.isValid ? (
-                          itemReady ? (
-                            <Check className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <span title="Missing required tags">
-                              <AlertCircle className="w-4 h-4 text-amber-600" />
-                            </span>
-                          )
-                        ) : (
-                          <span title={item.errors.join(', ')}>
-                            <X className="w-4 h-4 text-red-600" />
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-[#1a1a1a] font-medium">{item.name}</td>
-                      <td className="py-2 px-3 text-[#1a1a1a]/70">
-                        {item.isValid ? `€${item.price.toFixed(2)}` : '-'}
-                      </td>
-                      <td className="py-2 px-3 text-[#1a1a1a]/70">{item.category}</td>
-                      {parseResult.isDetailedFormat && (
-                        <td className="py-2 px-3">
-                          <div className="flex flex-wrap gap-1">
-                            {item.editedTags.slice(0, 4).map((tag) => (
-                              <span
-                                key={tag}
-                                className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/70"
-                              >
-                                {TAG_LABELS[tag]}
-                              </span>
-                            ))}
-                            {item.editedTags.length > 4 && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/70">
-                                +{item.editedTags.length - 4}
-                              </span>
-                            )}
-                            {item.editedTags.length === 0 && (
-                              <span className="text-xs text-[#1a1a1a]/40">No tags</span>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                      <td className="py-2 px-3 text-right">
-                        {item.isValid && (
-                          <button
-                            onClick={() => setEditingPreviewIndex(i)}
-                            className="text-xs text-[#1e3a5f] hover:underline"
-                          >
-                            Edit tags
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            {previewItems.length > 50 && (
-              <p className="text-center text-sm text-[#1a1a1a]/50 py-2">
-                ... and {previewItems.length - 50} more items
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Upload Section */}
-      {!parseResult && (
-        <div className="bg-white rounded-2xl p-6 mb-8 border border-gray-200 shadow-sm overflow-visible">
-          <h3 className="font-semibold text-[#1a1a1a] mb-4">Import from CSV</h3>
-          <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-              isDragging
-                ? 'border-[#1e3a5f] bg-[#1e3a5f]/5'
-                : 'border-gray-300 hover:border-[#1e3a5f]'
-            }`}
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <Upload className="w-8 h-8 text-[#1a1a1a]/40 mx-auto mb-3" />
-            <p className="text-[#1a1a1a] mb-1">
-              Drag & drop a CSV file, or click to browse
-            </p>
-            <p className="text-sm text-[#1a1a1a]/50">
-              Simple format: name, description, price, category
-            </p>
-            <p className="text-sm text-[#1a1a1a]/50">
-              Detailed format: includes flavor profiles for auto-tagging
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleFileInput}
-            />
-          </div>
-          <div className="flex items-center gap-4 mt-3">
-            <button
-              onClick={() => downloadDetailedTemplate()}
-              className="flex items-center gap-2 text-sm text-[#1e3a5f] hover:underline"
-            >
-              <FileText className="w-4 h-4" />
-              Download CSV template
-            </button>
-            <button
-              onClick={() => setShowChefModal(true)}
-              className="flex items-center gap-1 text-sm text-[#722F37] hover:underline"
-            >
-              <HelpCircle className="w-4 h-4" />
-              Why add flavor tags?
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1a1a1a]/40" />
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 text-sm focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
-          />
-        </div>
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] text-sm focus:outline-none focus:border-[#1e3a5f]"
-        >
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat === 'all' ? 'All Categories' : cat}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Table */}
-      {items.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-sm">
-          <Upload className="w-12 h-12 text-[#1a1a1a]/30 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">No menu items yet</h3>
-          <p className="text-[#1a1a1a]/50 mb-4">
-            Import items from a CSV file or add items manually
-          </p>
-          <Button onClick={() => setShowAddModal(true)} className="bg-[#1e3a5f] hover:bg-[#0f2440] text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Add First Item
-          </Button>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <div className="min-w-[700px] sm:min-w-0 px-4 sm:px-0">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50 w-10">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.length === filteredItems.length && filteredItems.length > 0}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f]"
-                    />
-                  </th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Name</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Type</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Price</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Category</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Tags</th>
-                  <th className="text-left py-4 px-4 text-sm font-medium text-[#1a1a1a]/50">Status</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-[#1a1a1a]/50">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => (
-                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => toggleItemSelection(item.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f]"
-                      />
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-[#1a1a1a]">{item.name}</span>
-                        {!hasRequiredTags(item.tags) && (
-                          <span title="Missing required tags">
-                            <AlertCircle className="w-4 h-4 text-amber-600" />
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
-                        item.type === 'drink'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {item.type === 'drink' ? <><Wine className="w-3 h-3" /> Drink</> : <><Utensils className="w-3 h-3" /> Food</>}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-[#1a1a1a]/70">€{item.price.toFixed(2)}</td>
-                    <td className="py-4 px-4 text-[#1a1a1a]/70">{item.category}</td>
-                    <td className="py-4 px-4">
-                      <button
-                        onClick={() => setEditingItem(item)}
-                        className="flex flex-wrap gap-1 cursor-pointer group"
-                      >
-                        {getDisplayTags(item.tags).length > 0 ? (
-                          <>
-                            {getDisplayTags(item.tags).map((tag) => (
-                              <span
-                                key={tag}
-                                className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/70 group-hover:bg-[#1e3a5f]/10 group-hover:text-[#1e3a5f] transition-colors"
-                              >
-                                {TAG_LABELS[tag]}
-                              </span>
-                            ))}
-                            {item.tags.length > 3 && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/50">
-                                +{item.tags.length - 3}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-xs text-[#1a1a1a]/40 hover:text-[#1e3a5f]">
-                            + Add tags
-                          </span>
-                        )}
-                      </button>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => toggleAvailable(item.id)}
-                          className={`w-10 h-5 rounded-full transition-colors relative ${
-                            item.is_out_of_stock ? 'bg-gray-300' : 'bg-green-500'
-                          }`}
-                          title={item.is_out_of_stock ? 'Out of stock' : 'Available'}
-                        >
-                          <span
-                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                              item.is_out_of_stock ? 'left-0.5' : 'left-5'
-                            }`}
-                          />
-                        </button>
-                        <button
-                          onClick={() => togglePush(item.id)}
-                          className={`p-1 rounded transition-colors ${
-                            item.is_push
-                              ? 'text-amber-500'
-                              : 'text-[#1a1a1a]/40 hover:text-[#1a1a1a]'
-                          }`}
-                          title={item.is_push ? 'Featured item' : 'Feature this item'}
-                        >
-                          <Star className="w-4 h-4" fill={item.is_push ? 'currentColor' : 'none'} />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setEditingItem(item)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-[#1a1a1a]/50 hover:text-[#1a1a1a]"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteItem(item.id)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors text-[#1a1a1a]/50 hover:text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Item Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-[#1a1a1a]">Add New Item</h2>
-              <button
-                onClick={() => {
-                  setShowAddModal(false)
-                  setNewItem(defaultNewItem)
-                  setNewItemTags([])
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-[#1a1a1a]/50"
+        {/* Upload Section */}
+        {!parseResult && (
+          <ScrollReveal>
+            <div className="glass rounded-2xl p-6 mb-8">
+              <h3 className="font-semibold text-mesa-charcoal mb-4">Import from CSV</h3>
+              <div
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                  isDragging
+                    ? 'border-mesa-burgundy bg-mesa-burgundy/5'
+                    : 'border-mesa-charcoal/20 hover:border-mesa-burgundy/50'
+                }`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
-                  Name *
-                </label>
+                <Upload className="w-10 h-10 text-mesa-charcoal/30 mx-auto mb-3" />
+                <p className="text-mesa-charcoal font-medium mb-1">
+                  Drag & drop a CSV file, or click to browse
+                </p>
+                <p className="text-sm text-mesa-charcoal/50">
+                  Simple format: name, description, price, category
+                </p>
+                <p className="text-sm text-mesa-charcoal/50">
+                  Detailed format: includes flavor profiles for auto-tagging
+                </p>
                 <input
-                  type="text"
-                  value={newItem.name}
-                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                  placeholder="e.g., Classic Burger"
-                  className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={handleFileInput}
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={newItem.description}
-                  onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                  placeholder="Describe the item..."
-                  rows={2}
-                  className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f] resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
-                  Type *
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setNewItem({ ...newItem, type: 'food' })}
-                    className={`py-2.5 px-4 rounded-lg border-2 transition flex items-center justify-center gap-2 text-sm ${
-                      newItem.type === 'food'
-                        ? 'border-[#722F37] bg-[#722F37]/5 text-[#722F37]'
-                        : 'border-gray-200 text-[#1a1a1a]/60 hover:border-gray-300'
-                    }`}
-                  >
-                    <Utensils className="w-4 h-4" /> Food
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewItem({ ...newItem, type: 'drink' })}
-                    className={`py-2.5 px-4 rounded-lg border-2 transition flex items-center justify-center gap-2 text-sm ${
-                      newItem.type === 'drink'
-                        ? 'border-[#722F37] bg-[#722F37]/5 text-[#722F37]'
-                        : 'border-gray-200 text-[#1a1a1a]/60 hover:border-gray-300'
-                    }`}
-                  >
-                    <Wine className="w-4 h-4" /> Drink
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
-                    Price *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={newItem.price}
-                    onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
-                    placeholder="0.00"
-                    className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
-                    Category
-                  </label>
-                  <input
-                    type="text"
-                    value={newItem.category}
-                    onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                    placeholder="e.g., Mains"
-                    className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-[#1a1a1a] placeholder-[#1a1a1a]/40 focus:outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a]/70 mb-1">
-                  Tags
-                </label>
+              <div className="flex items-center gap-4 mt-4">
                 <button
-                  onClick={() => setShowNewItemTagEditor(true)}
-                  className="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-left hover:border-[#1e3a5f] transition-colors"
+                  onClick={() => downloadDetailedTemplate()}
+                  className="flex items-center gap-2 text-sm text-mesa-burgundy hover:underline"
                 >
-                  {newItemTags.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {newItemTags.slice(0, 4).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-xs px-2 py-0.5 rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"
-                        >
-                          {TAG_LABELS[tag]}
-                        </span>
-                      ))}
-                      {newItemTags.length > 4 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#1a1a1a]/50">
-                          +{newItemTags.length - 4}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-[#1a1a1a]/40">Click to add tags...</span>
-                  )}
+                  <FileText className="w-4 h-4" />
+                  Download CSV template
+                </button>
+                <button
+                  onClick={() => setShowChefModal(true)}
+                  className="flex items-center gap-1 text-sm text-mesa-charcoal/50 hover:text-mesa-charcoal"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  Why add flavor tags?
                 </button>
               </div>
             </div>
+          </ScrollReveal>
+        )}
 
-            <div className="flex justify-end gap-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowAddModal(false)
-                  setNewItem(defaultNewItem)
-                  setNewItemTags([])
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddItem}
-                disabled={addingItem || !newItem.name.trim() || !newItem.price}
-                className="bg-[#1e3a5f] hover:bg-[#0f2440] text-white"
-              >
-                {addingItem ? 'Adding...' : 'Add Item'}
-              </Button>
-            </div>
+        {/* Search & Filters */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+            <input
+              type="text"
+              placeholder="Search menu items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 glass rounded-xl text-sm text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+            />
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
+            {categories.map((cat) => {
+              const iconKey = cat.toLowerCase().replace(/\s+/g, '') as keyof typeof categoryIcons
+              const Icon = categoryIcons[iconKey] || categoryIcons.default
+              const count = cat === 'all' ? items.length : items.filter(i => i.category === cat).length
+
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition ${
+                    categoryFilter === cat
+                      ? 'bg-mesa-burgundy text-white'
+                      : 'glass text-mesa-charcoal/70 hover:text-mesa-charcoal'
+                  }`}
+                >
+                  {cat !== 'all' && <Icon className="w-4 h-4" />}
+                  {cat === 'all' ? 'All' : cat}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    categoryFilter === cat ? 'bg-white/20' : 'bg-mesa-charcoal/10'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
-      )}
 
-      {/* Tag Editor Modal for existing items */}
-      {editingItem && (
-        <TagEditor
-          item={{
-            id: editingItem.id,
-            name: editingItem.name,
-            description: editingItem.description || '',
-            price: editingItem.price,
-            category: editingItem.category,
-            tags: editingItem.tags,
-            popularity: editingItem.popularity_score,
-            isPush: editingItem.is_push,
-            isOutOfStock: editingItem.is_out_of_stock,
-          }}
-          onSave={handleSaveTags}
-          onClose={() => setEditingItem(null)}
-        />
-      )}
-
-      {/* Tag Editor Modal for preview items */}
-      {editingPreviewIndex !== null && previewItems[editingPreviewIndex] && (
-        <TagEditor
-          item={{
-            id: `preview-${editingPreviewIndex}`,
-            name: previewItems[editingPreviewIndex].name,
-            description: previewItems[editingPreviewIndex].description || '',
-            price: previewItems[editingPreviewIndex].price,
-            category: previewItems[editingPreviewIndex].category,
-            tags: previewItems[editingPreviewIndex].editedTags,
-            popularity: 0,
-            isPush: false,
-            isOutOfStock: false,
-          }}
-          onSave={(tags) => handleSavePreviewTags(editingPreviewIndex, tags)}
-          onClose={() => setEditingPreviewIndex(null)}
-        />
-      )}
-
-      {/* Tag Editor Modal for new item */}
-      {showNewItemTagEditor && (
-        <TagEditor
-          item={{
-            id: 'new-item',
-            name: newItem.name || 'New Item',
-            description: newItem.description || '',
-            price: parseFloat(newItem.price) || 0,
-            category: newItem.category || 'Uncategorized',
-            tags: newItemTags,
-            popularity: 0,
-            isPush: false,
-            isOutOfStock: false,
-          }}
-          onSave={(tags) => {
-            setNewItemTags(tags)
-            setShowNewItemTagEditor(false)
-          }}
-          onClose={() => setShowNewItemTagEditor(false)}
-        />
-      )}
-
-      {/* Chef Modal - Why add flavor tags */}
-      {showChefModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg p-6 shadow-xl">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-14 h-14 bg-[#722F37]/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-                <ChefHat className="w-7 h-7 text-[#722F37]" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-[#1a1a1a]">Why flavor tags matter</h2>
-                <p className="text-[#1a1a1a]/50 text-sm mt-1">From our culinary team</p>
-              </div>
+        {/* Menu Items */}
+        {items.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass rounded-2xl p-12 text-center"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-mesa-burgundy/10 flex items-center justify-center mx-auto mb-4">
+              <Utensils className="w-8 h-8 text-mesa-burgundy/50" />
             </div>
-
-            <div className="space-y-4 text-[#1a1a1a]/70">
-              <p>
-                Flavor tags help us understand the <strong className="text-[#1a1a1a]">soul of each dish</strong> so we can match guests with exactly what they&apos;re craving.
-              </p>
-
-              <div className="bg-[#FDFBF7] rounded-xl p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <Target className="w-5 h-5 text-[#722F37] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-[#1a1a1a]">Better recommendations</p>
-                    <p className="text-sm">Match dishes to guest mood, dietary needs, and flavor preferences</p>
+            <h3 className="text-lg font-semibold text-mesa-charcoal mb-2">No menu items yet</h3>
+            <p className="text-mesa-charcoal/50 mb-6">
+              Import items from a CSV file or add items manually
+            </p>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-6 py-2.5 bg-mesa-burgundy text-white rounded-xl text-sm font-medium hover:bg-mesa-burgundy/90 transition mx-auto"
+            >
+              <Plus className="w-4 h-4" />
+              Add First Item
+            </button>
+          </motion.div>
+        ) : (
+          <motion.div
+            layout
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            <AnimatePresence mode="popLayout">
+              {filteredItems.map((item, index) => (
+                <motion.div
+                  layout
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.3, delay: index * 0.02 }}
+                  className={`glass rounded-2xl overflow-hidden hover-lift group relative ${
+                    item.is_out_of_stock ? 'opacity-60' : ''
+                  }`}
+                >
+                  {/* Selection checkbox */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(item.id)}
+                      onChange={() => toggleItemSelection(item.id)}
+                      className="w-4 h-4 rounded border-white/50 text-mesa-burgundy focus:ring-mesa-burgundy bg-white/80"
+                    />
                   </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Wine className="w-5 h-5 text-[#722F37] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-[#1a1a1a]">Smart pairings</p>
-                    <p className="text-sm">Suggest complementary drinks and sides automatically</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <BarChart3 className="w-5 h-5 text-[#722F37] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-[#1a1a1a]">Real insights</p>
-                    <p className="text-sm">Discover what flavors and moods drive orders at your venue</p>
-                  </div>
-                </div>
-              </div>
 
-              <p className="text-sm">
-                The more detailed your tags, the better we can serve your guests. Most restaurants see a <strong className="text-[#1a1a1a]">15-20% increase</strong> in add-on orders after adding flavor profiles.
-              </p>
-            </div>
+                  {/* Image/gradient area */}
+                  <div className="relative h-32 bg-gradient-to-br from-mesa-burgundy/10 to-mesa-terracotta/10">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      {item.type === 'drink' ? (
+                        <Wine className="w-10 h-10 text-mesa-burgundy/20" />
+                      ) : (
+                        <Utensils className="w-10 h-10 text-mesa-burgundy/20" />
+                      )}
+                    </div>
 
-            <div className="flex justify-end mt-6">
-              <Button
-                onClick={() => setShowChefModal(false)}
-                className="bg-[#722F37] hover:bg-[#5a252c] text-white"
+                    {/* Featured badge */}
+                    {item.is_push && (
+                      <div className="absolute top-3 left-10 flex items-center gap-1 px-2 py-1 bg-mesa-burgundy text-white text-xs font-medium rounded-full">
+                        <Sparkles className="w-3 h-3" />
+                        Featured
+                      </div>
+                    )}
+
+                    {/* Out of stock badge */}
+                    {item.is_out_of_stock && (
+                      <div className="absolute top-3 right-12 flex items-center gap-1 px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-full">
+                        <EyeOff className="w-3 h-3" />
+                        Hidden
+                      </div>
+                    )}
+
+                    {/* Type badge */}
+                    <div className={`absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                      item.type === 'drink' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {item.type === 'drink' ? <Wine className="w-3 h-3" /> : <Utensils className="w-3 h-3" />}
+                      {item.type === 'drink' ? 'Drink' : 'Food'}
+                    </div>
+
+                    {/* Actions menu */}
+                    <div className="absolute top-3 right-3">
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                          className="p-2 rounded-xl bg-white/80 backdrop-blur-sm text-mesa-charcoal/60 hover:text-mesa-charcoal transition"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+
+                        <AnimatePresence>
+                          {openMenuId === item.id && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                              className="absolute top-full right-0 mt-2 w-40 glass rounded-xl shadow-xl overflow-hidden z-20"
+                            >
+                              <button
+                                onClick={() => { setEditingItem(item); setOpenMenuId(null); }}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
+                              >
+                                <Pencil className="w-4 h-4" />
+                                Edit Tags
+                              </button>
+                              <button
+                                onClick={() => { togglePush(item.id); setOpenMenuId(null); }}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
+                              >
+                                <Star className="w-4 h-4" fill={item.is_push ? 'currentColor' : 'none'} />
+                                {item.is_push ? 'Unfeature' : 'Feature'}
+                              </button>
+                              <button
+                                onClick={() => { toggleAvailable(item.id); setOpenMenuId(null); }}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
+                              >
+                                {item.is_out_of_stock ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                {item.is_out_of_stock ? 'Show' : 'Hide'}
+                              </button>
+                              <button
+                                onClick={() => { deleteItem(item.id); setOpenMenuId(null); }}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-mesa-charcoal line-clamp-1">{item.name}</h3>
+                        {!hasRequiredTags(item.tags) && (
+                          <span title="Missing required tags">
+                            <AlertCircle className="w-4 h-4 text-amber-500" />
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-lg font-semibold text-mesa-burgundy whitespace-nowrap">
+                        €{item.price.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-mesa-charcoal/50 line-clamp-2 mb-3">
+                      {item.description || 'No description'}
+                    </p>
+
+                    {/* Tags */}
+                    <button
+                      onClick={() => setEditingItem(item)}
+                      className="flex flex-wrap gap-1.5 cursor-pointer group/tags w-full text-left"
+                    >
+                      {getDisplayTags(item.tags).length > 0 ? (
+                        <>
+                          {getDisplayTags(item.tags).map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-mesa-charcoal/5 text-mesa-charcoal/70 group-hover/tags:bg-mesa-burgundy/10 group-hover/tags:text-mesa-burgundy transition"
+                            >
+                              {TAG_LABELS[tag]}
+                            </span>
+                          ))}
+                          {item.tags.length > 3 && (
+                            <span className="text-xs text-mesa-charcoal/40">
+                              +{item.tags.length - 3}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-xs text-mesa-charcoal/40 hover:text-mesa-burgundy">
+                          + Add tags
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
+
+        {/* Add Item Modal */}
+        <AnimatePresence>
+          {showAddModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+              onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md max-h-[90vh] overflow-y-auto glass rounded-2xl shadow-2xl"
               >
-                Got it
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+                <div className="sticky top-0 flex items-center justify-between p-6 border-b border-mesa-charcoal/5 bg-white/80 backdrop-blur-sm rounded-t-2xl">
+                  <h2 className="text-xl font-serif text-mesa-charcoal">Add New Item</h2>
+                  <button
+                    onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
+                    className="p-2 rounded-xl hover:bg-mesa-charcoal/5 transition"
+                  >
+                    <X className="w-5 h-5 text-mesa-charcoal/50" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-mesa-charcoal mb-2">Name *</label>
+                    <input
+                      type="text"
+                      value={newItem.name}
+                      onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                      placeholder="e.g., Classic Burger"
+                      className="w-full px-4 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-mesa-charcoal mb-2">Description</label>
+                    <textarea
+                      value={newItem.description}
+                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                      placeholder="Describe the item..."
+                      rows={2}
+                      className="w-full px-4 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20 resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-mesa-charcoal mb-2">Type *</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setNewItem({ ...newItem, type: 'food' })}
+                        className={`py-3 px-4 rounded-xl border-2 transition flex items-center justify-center gap-2 text-sm font-medium ${
+                          newItem.type === 'food'
+                            ? 'border-mesa-burgundy bg-mesa-burgundy/5 text-mesa-burgundy'
+                            : 'border-mesa-charcoal/10 text-mesa-charcoal/60 hover:border-mesa-charcoal/20'
+                        }`}
+                      >
+                        <Utensils className="w-4 h-4" /> Food
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewItem({ ...newItem, type: 'drink' })}
+                        className={`py-3 px-4 rounded-xl border-2 transition flex items-center justify-center gap-2 text-sm font-medium ${
+                          newItem.type === 'drink'
+                            ? 'border-mesa-burgundy bg-mesa-burgundy/5 text-mesa-burgundy'
+                            : 'border-mesa-charcoal/10 text-mesa-charcoal/60 hover:border-mesa-charcoal/20'
+                        }`}
+                      >
+                        <Wine className="w-4 h-4" /> Drink
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-mesa-charcoal mb-2">Price *</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-mesa-charcoal/50">€</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={newItem.price}
+                          onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                          placeholder="0.00"
+                          className="w-full pl-8 pr-4 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-mesa-charcoal mb-2">Category</label>
+                      <input
+                        type="text"
+                        value={newItem.category}
+                        onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                        placeholder="e.g., Mains"
+                        className="w-full px-4 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-mesa-charcoal mb-2">Tags</label>
+                    <button
+                      onClick={() => setShowNewItemTagEditor(true)}
+                      className="w-full px-4 py-3 rounded-xl border border-mesa-charcoal/10 text-left hover:border-mesa-burgundy/30 transition"
+                    >
+                      {newItemTags.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {newItemTags.slice(0, 4).map((tag) => (
+                            <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-mesa-burgundy/10 text-mesa-burgundy">
+                              {TAG_LABELS[tag]}
+                            </span>
+                          ))}
+                          {newItemTags.length > 4 && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-mesa-charcoal/10 text-mesa-charcoal/50">
+                              +{newItemTags.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-mesa-charcoal/40">Click to add tags...</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-6 pt-0">
+                  <button
+                    onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
+                    className="flex-1 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal font-medium hover:bg-mesa-charcoal/5 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddItem}
+                    disabled={addingItem || !newItem.name.trim() || !newItem.price}
+                    className="flex-1 py-3 rounded-xl bg-mesa-burgundy text-white font-medium hover:bg-mesa-burgundy/90 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                  >
+                    {addingItem ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                        />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Add Item
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Tag Editor Modals */}
+        {editingItem && (
+          <TagEditor
+            item={{
+              id: editingItem.id,
+              name: editingItem.name,
+              description: editingItem.description || '',
+              price: editingItem.price,
+              category: editingItem.category,
+              tags: editingItem.tags,
+              popularity: editingItem.popularity_score,
+              isPush: editingItem.is_push,
+              isOutOfStock: editingItem.is_out_of_stock,
+            }}
+            onSave={handleSaveTags}
+            onClose={() => setEditingItem(null)}
+          />
+        )}
+
+        {editingPreviewIndex !== null && previewItems[editingPreviewIndex] && (
+          <TagEditor
+            item={{
+              id: `preview-${editingPreviewIndex}`,
+              name: previewItems[editingPreviewIndex].name,
+              description: previewItems[editingPreviewIndex].description || '',
+              price: previewItems[editingPreviewIndex].price,
+              category: previewItems[editingPreviewIndex].category,
+              tags: previewItems[editingPreviewIndex].editedTags,
+              popularity: 0,
+              isPush: false,
+              isOutOfStock: false,
+            }}
+            onSave={(tags) => handleSavePreviewTags(editingPreviewIndex, tags)}
+            onClose={() => setEditingPreviewIndex(null)}
+          />
+        )}
+
+        {showNewItemTagEditor && (
+          <TagEditor
+            item={{
+              id: 'new-item',
+              name: newItem.name || 'New Item',
+              description: newItem.description || '',
+              price: parseFloat(newItem.price) || 0,
+              category: newItem.category || 'Uncategorized',
+              tags: newItemTags,
+              popularity: 0,
+              isPush: false,
+              isOutOfStock: false,
+            }}
+            onSave={(tags) => {
+              setNewItemTags(tags)
+              setShowNewItemTagEditor(false)
+            }}
+            onClose={() => setShowNewItemTagEditor(false)}
+          />
+        )}
+
+        {/* Chef Modal */}
+        <AnimatePresence>
+          {showChefModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowChefModal(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-lg glass rounded-2xl p-6 shadow-2xl"
+              >
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-14 h-14 bg-mesa-burgundy/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <ChefHat className="w-7 h-7 text-mesa-burgundy" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-serif text-mesa-charcoal">Why flavor tags matter</h2>
+                    <p className="text-mesa-charcoal/50 text-sm mt-1">From our culinary team</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 text-mesa-charcoal/70">
+                  <p>
+                    Flavor tags help us understand the <strong className="text-mesa-charcoal">soul of each dish</strong> so we can match guests with exactly what they&apos;re craving.
+                  </p>
+
+                  <div className="glass-warm rounded-xl p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Target className="w-5 h-5 text-mesa-burgundy flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-mesa-charcoal">Better recommendations</p>
+                        <p className="text-sm">Match dishes to guest mood, dietary needs, and flavor preferences</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Wine className="w-5 h-5 text-mesa-burgundy flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-mesa-charcoal">Smart pairings</p>
+                        <p className="text-sm">Suggest complementary drinks and sides automatically</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <BarChart3 className="w-5 h-5 text-mesa-burgundy flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-mesa-charcoal">Real insights</p>
+                        <p className="text-sm">Discover what flavors and moods drive orders at your venue</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-sm">
+                    The more detailed your tags, the better we can serve your guests. Most restaurants see a <strong className="text-mesa-charcoal">15-20% increase</strong> in add-on orders after adding flavor profiles.
+                  </p>
+                </div>
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={() => setShowChefModal(false)}
+                    className="px-6 py-2.5 bg-mesa-burgundy text-white rounded-xl font-medium hover:bg-mesa-burgundy/90 transition"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
