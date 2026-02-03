@@ -16,23 +16,29 @@ interface MenuBackgroundProps {
 }
 
 export function MenuBackground({ items, filterProgress, flowState }: MenuBackgroundProps) {
-  // Create floating card positions
+  // Create floating card positions (deterministic from item index)
   const cards = useMemo(() => {
-    return items.slice(0, 20).map((item, i) => ({
-      ...item,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      rotation: (Math.random() - 0.5) * 30,
-      scale: 0.6 + Math.random() * 0.4,
-      delay: i * 0.1,
-    }))
+    return items.slice(0, 20).map((item, i) => {
+      // Use seeded pseudo-random based on index for deterministic layout
+      const seed = (i * 2654435761) % 1000
+      return {
+        ...item,
+        x: (seed % 100),
+        y: ((seed * 3) % 100),
+        rotation: ((seed % 60) - 30),
+        scale: 0.6 + (seed % 40) / 100,
+        delay: i * 0.1,
+      }
+    })
   }, [items])
 
-  // Calculate how many cards to "fade out" based on progress
+  // Calculate how many cards to show based on filter progress
   const visibleCount = Math.max(
     3,
     Math.floor(cards.length * (1 - filterProgress / 100))
   )
+
+  const isProcessing = flowState === 'processing'
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -55,17 +61,29 @@ export function MenuBackground({ items, filterProgress, flowState }: MenuBackgro
             }}
             animate={{
               opacity: isVisible ? 0.15 : 0,
-              y: flowState === 'processing'
-                ? ['0vh', '-100vh']
+              y: isProcessing
+                ? [`${card.y}vh`, `${card.y - 5}vh`, `${card.y + 3}vh`]
                 : `${card.y}vh`,
-              scale: isVisible ? card.scale : 0,
+              rotate: isProcessing
+                ? [card.rotation, card.rotation + 5, card.rotation - 3, card.rotation]
+                : card.rotation,
+              scale: isVisible
+                ? isProcessing
+                  ? [card.scale, card.scale * 1.05, card.scale * 0.95, card.scale]
+                  : card.scale
+                : 0,
             }}
             transition={{
               opacity: { duration: 0.5 },
-              y: flowState === 'processing'
-                ? { duration: 2, delay: i * 0.1 }
-                : { duration: 0 },
-              scale: { duration: 0.3 },
+              y: isProcessing
+                ? { duration: 3, repeat: Infinity, ease: 'easeInOut' }
+                : { duration: 0.5 },
+              rotate: isProcessing
+                ? { duration: 4, repeat: Infinity, ease: 'easeInOut', delay: i * 0.2 }
+                : { duration: 0.3 },
+              scale: isProcessing
+                ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: i * 0.15 }
+                : { duration: 0.3, type: 'spring' },
             }}
             className="absolute w-40 h-24 rounded-xl bg-white shadow-lg flex flex-col justify-center px-4"
           >
@@ -80,29 +98,36 @@ export function MenuBackground({ items, filterProgress, flowState }: MenuBackgro
       })}
 
       {/* Particles during processing */}
-      {flowState === 'processing' && (
+      {isProcessing && (
         <>
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={`particle-${i}`}
-              initial={{
-                x: '50%',
-                y: '50%',
-                scale: 0,
-              }}
-              animate={{
-                x: `${30 + Math.random() * 40}%`,
-                y: `${30 + Math.random() * 40}%`,
-                scale: [0, 1, 0],
-              }}
-              transition={{
-                duration: 2,
-                delay: i * 0.1,
-                repeat: Infinity,
-              }}
-              className="absolute w-2 h-2 rounded-full bg-mesa-burgundy/30"
-            />
-          ))}
+          {[...Array(20)].map((_, i) => {
+            const angle = (i / 20) * Math.PI * 2
+            const radius = 15 + (i % 3) * 8
+            return (
+              <motion.div
+                key={`particle-${i}`}
+                initial={{
+                  x: '50vw',
+                  y: '50vh',
+                  scale: 0,
+                  opacity: 0,
+                }}
+                animate={{
+                  x: `${50 + Math.cos(angle) * radius}vw`,
+                  y: `${50 + Math.sin(angle) * radius}vh`,
+                  scale: [0, 1, 0.5, 0],
+                  opacity: [0, 0.6, 0.3, 0],
+                }}
+                transition={{
+                  duration: 3,
+                  delay: i * 0.15,
+                  repeat: Infinity,
+                  ease: 'easeOut',
+                }}
+                className="absolute w-2 h-2 rounded-full bg-mesa-burgundy/40"
+              />
+            )
+          })}
         </>
       )}
     </div>

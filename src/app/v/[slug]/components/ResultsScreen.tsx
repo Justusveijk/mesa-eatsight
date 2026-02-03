@@ -6,35 +6,26 @@ import {
   Sparkles,
   Heart,
   RefreshCw,
-  Share2,
   ChevronDown,
   Star,
   Utensils,
   Wine,
 } from 'lucide-react'
-
-interface MenuItem {
-  id: string
-  name: string
-  description: string
-  price: number
-  category: string
-  tags?: string[]
-  type: 'food' | 'drink'
-}
+import { ShareButton } from './ShareButton'
+import type { RecommendedItem } from '@/lib/recommendations'
 
 interface ResultsScreenProps {
-  venue: { name: string }
-  recommendations: MenuItem[]
+  venue: { name: string; slug?: string }
+  recommendations: RecommendedItem[]
   onRestart: () => void
-  onItemLike?: (item: MenuItem) => void
+  onItemLike?: (item: RecommendedItem) => void
 }
 
 export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }: ResultsScreenProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
 
-  const toggleLike = (item: MenuItem) => {
+  const toggleLike = (item: RecommendedItem) => {
     setLikedIds(prev => {
       const next = new Set(prev)
       if (next.has(item.id)) {
@@ -49,6 +40,13 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
 
   const topPick = recommendations[0]
   const otherPicks = recommendations.slice(1)
+
+  // Infer type from tags
+  const getItemType = (item: RecommendedItem): 'food' | 'drink' => {
+    const tags = item.tags || []
+    if (tags.some(t => (t as string).startsWith('drink_'))) return 'drink'
+    return 'food'
+  }
 
   if (recommendations.length === 0) {
     return (
@@ -126,15 +124,15 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
 
             {/* Card */}
             <div className="mesa-card p-6 pt-8">
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`w-6 h-6 rounded-md flex items-center justify-center ${
-                      topPick.type === 'food'
+                      getItemType(topPick) === 'food'
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-purple-100 text-purple-700'
                     }`}>
-                      {topPick.type === 'food'
+                      {getItemType(topPick) === 'food'
                         ? <Utensils className="w-3 h-3" />
                         : <Wine className="w-3 h-3" />
                       }
@@ -158,17 +156,12 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
                 </div>
               </div>
 
-              {/* Tags */}
-              {topPick.tags && topPick.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {topPick.tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="px-2 py-1 text-xs font-medium bg-mesa-cream text-mesa-charcoal/60 rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+              {/* Reason badge */}
+              {topPick.reason && (
+                <div className="mb-4">
+                  <span className="inline-block px-3 py-1 text-xs font-medium bg-mesa-burgundy/10 text-mesa-burgundy rounded-full">
+                    {topPick.reason}
+                  </span>
                 </div>
               )}
 
@@ -218,18 +211,20 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        item.type === 'food'
+                        getItemType(item) === 'food'
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-purple-100 text-purple-700'
                       }`}>
-                        {item.type === 'food'
+                        {getItemType(item) === 'food'
                           ? <Utensils className="w-4 h-4" />
                           : <Wine className="w-4 h-4" />
                         }
                       </span>
                       <div>
                         <h4 className="font-medium text-mesa-charcoal">{item.name}</h4>
-                        <p className="text-sm text-mesa-charcoal/40">{item.category}</p>
+                        <p className="text-sm text-mesa-charcoal/40">
+                          {item.reason || item.category}
+                        </p>
                       </div>
                     </div>
 
@@ -256,17 +251,10 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
                             {item.description}
                           </p>
 
-                          {item.tags && item.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {item.tags.map(tag => (
-                                <span
-                                  key={tag}
-                                  className="px-2 py-0.5 text-xs bg-mesa-cream text-mesa-charcoal/60 rounded-full"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
+                          {item.isCrossSell && (
+                            <span className="inline-block px-2 py-0.5 text-xs bg-purple-50 text-purple-600 rounded-full mb-3">
+                              Drink pairing
+                            </span>
                           )}
 
                           <button
@@ -323,12 +311,11 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
             <RefreshCw className="w-5 h-5" />
             Start Over
           </button>
-          <button
-            className="flex-1 flex items-center justify-center gap-2 py-4 rounded-full mesa-btn"
-          >
-            <Share2 className="w-5 h-5" />
-            Share
-          </button>
+          <ShareButton
+            venueName={venue.name}
+            venueSlug={venue.slug || ''}
+            recommendations={recommendations}
+          />
         </div>
       </motion.div>
     </motion.div>

@@ -3,13 +3,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { Utensils, ClipboardList } from 'lucide-react'
+import { ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { trackEvent, createSession, EVENTS } from '@/lib/analytics'
+import {
+  getRecommendationsWithFallback,
+  getNewDrinkRecommendations,
+  type RecommendedItem,
+} from '@/lib/recommendations'
+import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag } from '@/lib/types/taxonomy'
 import { WelcomeScreen } from './components/WelcomeScreen'
-import { QuestionFlow } from './components/QuestionFlow'
+import { QuestionFlow, type GuestAnswers } from './components/QuestionFlow'
 import { ResultsScreen } from './components/ResultsScreen'
 import { MenuBackground } from './components/MenuBackground'
+import { ProcessingScreen } from './components/ProcessingScreen'
 
 interface Venue {
   id: string
@@ -30,9 +37,6 @@ interface MenuItem {
   category: string
   tags?: string[]
   type: 'food' | 'drink'
-  is_vegetarian?: boolean
-  is_vegan?: boolean
-  is_gluten_free?: boolean
 }
 
 type FlowState = 'loading' | 'empty' | 'welcome' | 'questions' | 'processing' | 'results'
@@ -40,8 +44,7 @@ type FlowState = 'loading' | 'empty' | 'welcome' | 'questions' | 'processing' | 
 export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [flowState, setFlowState] = useState<FlowState>('loading')
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
-  const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [recommendations, setRecommendations] = useState<MenuItem[]>([])
+  const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
   const [filterProgress, setFilterProgress] = useState(0)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const sessionCreated = useRef(false)
@@ -51,7 +54,6 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   // Fetch menu items on load
   useEffect(() => {
     async function fetchData() {
-      // Get the published menu for this venue
       const { data: menu } = await supabase
         .from('menus')
         .select('id')
@@ -64,7 +66,6 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
         return
       }
 
-      // Get available menu items
       const { data: items } = await supabase
         .from('menu_items')
         .select('*')
@@ -88,7 +89,6 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const handleStart = useCallback(async () => {
     let currentSessionId = sessionId
 
-    // Create session if not already created
     if (!sessionCreated.current) {
       const newSessionId = await createSession(venue.id, navigator.userAgent, tableRef || undefined)
       if (newSessionId) {
@@ -105,124 +105,112 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     setFlowState('questions')
   }, [venue.id, tableRef, sessionId])
 
-  // Handle answer submission
-  const handleAnswer = useCallback((questionId: string, answer: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: answer }))
+  // Handle question answer (for analytics)
+  const handleAnswer = useCallback(
+    (questionId: string, answer: string | string[]) => {
+      trackEvent(venue.id, sessionId, EVENTS.QUESTION_ANSWERED, {
+        question_id: questionId,
+        answer,
+      })
+    },
+    [venue.id, sessionId]
+  )
 
-    // Track the answer
-    trackEvent(venue.id, sessionId, EVENTS.QUESTION_ANSWERED, {
-      question_id: questionId,
-      answer,
-    })
-
-    // Calculate filter progress
-    const totalQuestions = 4
-    const answeredCount = Object.keys({ ...answers, [questionId]: answer }).length
-    setFilterProgress((answeredCount / totalQuestions) * 100)
-  }, [answers, venue.id, sessionId])
+  // Handle progress updates from QuestionFlow
+  const handleProgress = useCallback((progress: number) => {
+    setFilterProgress(progress)
+  }, [])
 
   // Handle flow completion - generate recommendations
-  const handleComplete = useCallback(async () => {
-    setFlowState('processing')
+  const handleComplete = useCallback(
+    async (answers: GuestAnswers) => {
+      setFlowState('processing')
 
-    // Simulate processing animation
-    await new Promise(resolve => setTimeout(resolve, 2000))
+      // Processing animation duration
+      const processingDelay = new Promise(resolve => setTimeout(resolve, 3000))
 
-    // Filter and score recommendations based on answers
-    let filtered = [...menuItems]
+      let allResults: RecommendedItem[] = []
 
-    // Filter by type (food/drink/both)
-    if (answers.type === 'food') {
-      filtered = filtered.filter(item => item.type === 'food')
-    } else if (answers.type === 'drink') {
-      filtered = filtered.filter(item => item.type === 'drink')
-    }
+      try {
+        if (answers.type === 'food' || answers.type === 'both') {
+          // Build GuestPreferences for food scoring
+          const foodPrefs: GuestPreferences = {
+            mood: (answers.mood as MoodTag) || null,
+            flavors: (answers.flavors || []) as FlavorTag[],
+            portion: (answers.portion as PortionTag) || null,
+            dietary: (answers.dietary || []) as DietTag[],
+            price: null,
+          }
 
-    // Filter by dietary preferences
-    if (answers.dietary === 'vegetarian') {
-      filtered = filtered.filter(item => item.is_vegetarian)
-    } else if (answers.dietary === 'vegan') {
-      filtered = filtered.filter(item => item.is_vegan)
-    } else if (answers.dietary === 'gluten-free') {
-      filtered = filtered.filter(item => item.is_gluten_free)
-    }
-
-    // Score items based on mood and hunger
-    const scored = filtered.map(item => {
-      let score = Math.random() * 20 // Base random score for variety
-
-      // Mood-based scoring
-      if (answers.mood === 'comfort') {
-        if (item.tags?.some(t => ['hearty', 'warm', 'rich', 'comfort'].includes(t.toLowerCase()))) {
-          score += 30
+          const foodResult = await getRecommendationsWithFallback(venue.id, foodPrefs, 3)
+          allResults.push(...foodResult.recommendations, ...foodResult.fallbackItems)
         }
-      } else if (answers.mood === 'light') {
-        if (item.tags?.some(t => ['light', 'fresh', 'salad', 'healthy'].includes(t.toLowerCase()))) {
-          score += 30
+
+        if (answers.type === 'drink') {
+          // Use new drink recommendation engine
+          const drinkResults = await getNewDrinkRecommendations(venue.id, {
+            drinkMood: answers.drinkMood,
+            drinkFlavors: answers.drinkFlavors,
+            drinkPreferences: answers.drinkPreferences,
+          }, 3)
+          allResults.push(...drinkResults)
         }
-      } else if (answers.mood === 'adventurous') {
-        if (item.tags?.some(t => ['special', 'unique', 'signature', 'exotic'].includes(t.toLowerCase()))) {
-          score += 30
+
+        if (answers.type === 'both') {
+          // Also get 2 drink pairings (popular drinks)
+          const drinkPairings = await getNewDrinkRecommendations(venue.id, {}, 2)
+          allResults.push(
+            ...drinkPairings.map(d => ({ ...d, isCrossSell: true }))
+          )
         }
-      } else if (answers.mood === 'indulgent') {
-        if (item.tags?.some(t => ['indulgent', 'premium', 'luxury', 'decadent'].includes(t.toLowerCase()))) {
-          score += 30
-        }
+      } catch (err) {
+        console.error('Failed to get recommendations:', err)
       }
 
-      // Hunger-based scoring
-      if (answers.hunger === 'snack') {
-        if (item.category?.toLowerCase().includes('appetizer') || item.category?.toLowerCase().includes('starter')) {
-          score += 20
-        }
-      } else if (answers.hunger === 'starving') {
-        if (item.category?.toLowerCase().includes('main') || item.category?.toLowerCase().includes('entree')) {
-          score += 20
-        }
-      }
+      // Ensure processing animation completes
+      await processingDelay
 
-      return { ...item, score }
-    }).sort((a, b) => b.score - a.score)
+      // Convert to the format ResultsScreen expects
+      setRecommendations(allResults.length > 0 ? allResults.slice(0, 5) : [])
 
-    // Take top 5 recommendations
-    const topRecommendations = scored.slice(0, 5)
-    setRecommendations(topRecommendations)
+      // Track analytics
+      await trackEvent(venue.id, sessionId, EVENTS.RECOMMENDATIONS_SHOWN, {
+        item_count: allResults.length,
+        item_ids: allResults.map(i => i.id),
+        item_names: allResults.map(i => i.name),
+        type: answers.type,
+      })
 
-    // Track recommendations shown
-    await trackEvent(venue.id, sessionId, EVENTS.RECOMMENDATIONS_SHOWN, {
-      item_count: topRecommendations.length,
-      item_ids: topRecommendations.map(i => i.id),
-      item_names: topRecommendations.map(i => i.name),
-    })
+      await trackEvent(venue.id, sessionId, EVENTS.FLOW_COMPLETED, {
+        recommendation_count: allResults.length,
+        answers,
+      })
 
-    await trackEvent(venue.id, sessionId, EVENTS.FLOW_COMPLETED, {
-      recommendation_count: topRecommendations.length,
-      answers,
-    })
+      setFlowState('results')
+    },
+    [venue.id, sessionId]
+  )
 
-    setFlowState('results')
-  }, [menuItems, answers, venue.id, sessionId])
-
-  // Handle item like/favorite
-  const handleItemLike = useCallback(async (item: MenuItem) => {
-    await trackEvent(venue.id, sessionId, 'item_selected', {
-      item_id: item.id,
-      item_name: item.name,
-      item_type: item.type,
-      item_category: item.category,
-      item_price: item.price,
-    })
-  }, [venue.id, sessionId])
+  // Handle item like
+  const handleItemLike = useCallback(
+    async (item: RecommendedItem) => {
+      await trackEvent(venue.id, sessionId, 'item_selected', {
+        item_id: item.id,
+        item_name: item.name,
+        item_category: item.category,
+        item_price: item.price,
+      })
+    },
+    [venue.id, sessionId]
+  )
 
   // Handle restart
   const handleRestart = useCallback(() => {
-    setAnswers({})
     setFilterProgress(0)
     setRecommendations([])
     setFlowState('welcome')
   }, [])
 
-  // Only show Back/Demo links for the demo venue
   const isDemo = venue.slug === 'bella-taverna'
 
   return (
@@ -297,7 +285,6 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
                 Check back soon for personalized recommendations!
               </p>
 
-              {/* For operators viewing their own empty venue */}
               <div className="p-4 bg-mesa-warm rounded-xl mb-6">
                 <p className="text-sm text-mesa-charcoal/60 mb-3">
                   Are you the owner?
@@ -335,10 +322,9 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
           <QuestionFlow
             key="questions"
             venue={venue}
-            onAnswer={handleAnswer}
             onComplete={handleComplete}
-            answers={answers}
-            filterProgress={filterProgress}
+            onProgress={handleProgress}
+            onAnswer={handleAnswer}
           />
         )}
 
@@ -362,82 +348,5 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
         )}
       </AnimatePresence>
     </div>
-  )
-}
-
-// Processing Screen - The "digging" animation
-function ProcessingScreen({ itemCount }: { itemCount: number }) {
-  const [stage, setStage] = useState(0)
-  const stages = [
-    'Scanning the menu...',
-    'Analyzing your preferences...',
-    'Finding perfect matches...',
-    'Almost there...'
-  ]
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setStage(prev => (prev < stages.length - 1 ? prev + 1 : prev))
-    }, 500)
-    return () => clearInterval(timer)
-  }, [stages.length])
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="min-h-screen flex items-center justify-center p-6 relative z-10"
-    >
-      <div className="text-center">
-        {/* Animated stack of cards */}
-        <div className="relative w-48 h-32 mx-auto mb-8">
-          {[...Array(5)].map((_, i) => (
-            <motion.div
-              key={i}
-              initial={{ y: 0, rotate: (i - 2) * 3, scale: 1 - i * 0.05 }}
-              animate={{
-                y: [0, -20, 0],
-                rotate: [(i - 2) * 3, (i - 2) * 5, (i - 2) * 3],
-              }}
-              transition={{
-                duration: 0.8,
-                delay: i * 0.1,
-                repeat: Infinity,
-                repeatDelay: 0.5
-              }}
-              className="absolute inset-0 mesa-card flex items-center justify-center"
-              style={{
-                zIndex: 5 - i,
-                transformOrigin: 'bottom center'
-              }}
-            >
-              <div className="w-3/4 h-2 bg-mesa-burgundy/10 rounded-full" />
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Scanning line */}
-        <motion.div
-          animate={{ y: [0, 60, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="w-48 h-0.5 bg-gradient-to-r from-transparent via-mesa-burgundy to-transparent mx-auto mb-8"
-        />
-
-        {/* Stage text */}
-        <motion.p
-          key={stage}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-lg text-mesa-charcoal font-medium"
-        >
-          {stages[stage]}
-        </motion.p>
-
-        <p className="text-sm text-mesa-charcoal/50 mt-2">
-          Searching through {itemCount} items
-        </p>
-      </div>
-    </motion.div>
   )
 }
