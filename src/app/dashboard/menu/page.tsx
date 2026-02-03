@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload,
   Search,
-  Star,
   Plus,
   Pencil,
   Trash2,
@@ -13,33 +12,18 @@ import {
   Check,
   X,
   FileText,
-  HelpCircle,
-  Wine,
-  Utensils,
-  ChefHat,
-  Target,
-  BarChart3,
-  Eye,
-  EyeOff,
   MoreHorizontal,
   Download,
-  Sparkles,
-  Salad,
-  Beef,
-  Fish,
-  Leaf,
-  IceCream,
-  Coffee,
-  Clock,
-  Ban,
-  CheckCircle2,
-  TrendingUp,
+  ChevronRight,
+  LayoutGrid,
+  LayoutList,
+  Zap,
+  Eye,
 } from 'lucide-react'
 import { TagEditor } from '@/components/dashboard/TagEditor'
 import { MenuTag, TAG_LABELS } from '@/lib/types/taxonomy'
 import { parseCSV, ParsedItem, ParseResult, downloadDetailedTemplate } from '@/lib/menu-import'
 import { createClient } from '@/lib/supabase/client'
-import { ScrollReveal } from '@/components/ScrollReveal'
 
 type StockStatus = 'available' | 'out_today' | 'out_indefinitely'
 
@@ -84,27 +68,15 @@ const defaultNewItem: NewItemForm = {
   type: 'food',
 }
 
-// Category icons
-const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  starters: Salad,
-  mains: Beef,
-  fish: Fish,
-  vegetarian: Leaf,
-  desserts: IceCream,
-  drinks: Wine,
-  coffee: Coffee,
-  default: Utensils,
-}
-
 export default function MenuPage() {
   const [items, setItems] = useState<MenuItem[]>([])
   const [menu, setMenu] = useState<MenuData | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [stockFilter, setStockFilter] = useState<'all' | StockStatus>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [stockFilter, setStockFilter] = useState<string>('all')
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
 
   // CSV Upload state
   const [isDragging, setIsDragging] = useState(false)
@@ -112,7 +84,6 @@ export default function MenuPage() {
   const [previewItems, setPreviewItems] = useState<PreviewItem[]>([])
   const [importing, setImporting] = useState(false)
   const [publishing, setPublishing] = useState(false)
-  const [showChefModal, setShowChefModal] = useState(false)
 
   // Preview tag editing
   const [editingPreviewIndex, setEditingPreviewIndex] = useState<number | null>(null)
@@ -133,6 +104,9 @@ export default function MenuPage() {
 
   // Action menu state
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
+  // Expanded categories for table view
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -190,7 +164,6 @@ export default function MenuPage() {
 
     if (itemsData) {
       const transformedItems: MenuItem[] = itemsData.map((item) => {
-        // Derive stock_status from is_out_of_stock for backwards compatibility
         let stockStatus: StockStatus = 'available'
         if ((item as Record<string, unknown>).stock_status) {
           stockStatus = (item as Record<string, unknown>).stock_status as StockStatus
@@ -213,6 +186,9 @@ export default function MenuPage() {
         }
       })
       setItems(transformedItems)
+      // Expand all categories by default
+      const cats = new Set(transformedItems.map(i => i.category))
+      setExpandedCategories(cats)
     }
 
     setLoading(false)
@@ -222,14 +198,47 @@ export default function MenuPage() {
     fetchMenuData()
   }, [fetchMenuData])
 
-  const categories = ['all', ...Array.from(new Set(items.map((i) => i.category)))]
+  // Computed values
+  const categories = useMemo(() => {
+    const cats = new Map<string, number>()
+    items.forEach(item => {
+      cats.set(item.category, (cats.get(item.category) || 0) + 1)
+    })
+    return Array.from(cats.entries()).map(([name, count]) => ({ name, count }))
+  }, [items])
 
-  const filteredItems = items.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter
-    const matchesStock = stockFilter === 'all' || item.stock_status === stockFilter
-    return matchesSearch && matchesCategory && matchesStock
-  })
+  const stockCounts = useMemo(() => ({
+    all: items.length,
+    available: items.filter(i => i.stock_status === 'available').length,
+    out_today: items.filter(i => i.stock_status === 'out_today').length,
+    out_indefinitely: items.filter(i => i.stock_status === 'out_indefinitely').length,
+  }), [items])
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           item.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesCategory = !selectedCategory || item.category === selectedCategory
+      const matchesStock = stockFilter === 'all' || item.stock_status === stockFilter
+      return matchesSearch && matchesCategory && matchesStock
+    })
+  }, [items, searchQuery, selectedCategory, stockFilter])
+
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, MenuItem[]>()
+    filteredItems.forEach(item => {
+      const existing = groups.get(item.category) || []
+      groups.set(item.category, [...existing, item])
+    })
+    return groups
+  }, [filteredItems])
+
+  const toggleCategory = (cat: string) => {
+    const next = new Set(expandedCategories)
+    if (next.has(cat)) next.delete(cat)
+    else next.add(cat)
+    setExpandedCategories(next)
+  }
 
   const handleSaveTags = async (tags: MenuTag[]) => {
     if (!editingItem) return
@@ -253,9 +262,9 @@ export default function MenuPage() {
         )
       )
       setEditingItem(null)
-      showToast('Tags saved successfully', 'success')
+      showToast('Tags saved', 'success')
     } catch (error) {
-      showToast(`Failed to save tags: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
+      showToast(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     }
   }
 
@@ -270,7 +279,7 @@ export default function MenuPage() {
 
   const handleAddItem = async () => {
     if (!newItem.name.trim() || !newItem.price || !menu) {
-      showToast('Name and price are required', 'error')
+      showToast('Name and price required', 'error')
       return
     }
 
@@ -298,18 +307,13 @@ export default function MenuPage() {
         throw new Error(data.error || 'Failed to add item')
       }
 
-      if (data.tagError) {
-        showToast(`Item added but tags failed: ${data.tagError}`, 'error')
-      } else {
-        showToast('Item added successfully', 'success')
-      }
-
+      showToast('Item added', 'success')
       setShowAddModal(false)
       setNewItem(defaultNewItem)
       setNewItemTags([])
       fetchMenuData()
     } catch (error) {
-      showToast(`Failed to add item: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
+      showToast(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setAddingItem(false)
     }
@@ -317,7 +321,7 @@ export default function MenuPage() {
 
   const handleBulkDelete = async () => {
     if (selectedItems.length === 0) return
-    if (!confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) return
+    if (!confirm(`Delete ${selectedItems.length} items?`)) return
 
     setDeletingBulk(true)
 
@@ -354,14 +358,6 @@ export default function MenuPage() {
     )
   }
 
-  const toggleSelectAll = () => {
-    if (selectedItems.length === filteredItems.length) {
-      setSelectedItems([])
-    } else {
-      setSelectedItems(filteredItems.map((i) => i.id))
-    }
-  }
-
   const setStockStatus = async (id: string, status: StockStatus) => {
     const item = items.find((i) => i.id === id)
     if (!item) return
@@ -384,20 +380,13 @@ export default function MenuPage() {
         setItems((prev) =>
           prev.map((i) => (i.id === id ? { ...i, stock_status: previousStatus, is_out_of_stock: previousStatus !== 'available' } : i))
         )
-        showToast('Failed to update stock status', 'error')
-      } else {
-        const statusLabels: Record<StockStatus, string> = {
-          available: 'Available',
-          out_today: 'Out Today',
-          out_indefinitely: 'Out Indefinitely',
-        }
-        showToast(`Stock status: ${statusLabels[status]}`, 'success')
+        showToast('Failed to update status', 'error')
       }
     } catch {
       setItems((prev) =>
         prev.map((i) => (i.id === id ? { ...i, stock_status: previousStatus, is_out_of_stock: previousStatus !== 'available' } : i))
       )
-      showToast('Failed to update stock status', 'error')
+      showToast('Failed to update status', 'error')
     }
   }
 
@@ -422,18 +411,18 @@ export default function MenuPage() {
         setItems((prev) =>
           prev.map((i) => (i.id === id ? { ...i, is_push: !newValue } : i))
         )
-        showToast('Failed to update featured status', 'error')
+        showToast('Failed to update', 'error')
       }
     } catch {
       setItems((prev) =>
         prev.map((i) => (i.id === id ? { ...i, is_push: !newValue } : i))
       )
-      showToast('Failed to update featured status', 'error')
+      showToast('Failed to update', 'error')
     }
   }
 
   const deleteItem = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return
+    if (!confirm('Delete this item?')) return
 
     const itemToDelete = items.find((i) => i.id === id)
 
@@ -449,7 +438,7 @@ export default function MenuPage() {
         if (itemToDelete) {
           setItems((prev) => [...prev, itemToDelete])
         }
-        showToast('Failed to delete item', 'error')
+        showToast('Failed to delete', 'error')
       } else {
         showToast('Item deleted', 'success')
       }
@@ -457,7 +446,7 @@ export default function MenuPage() {
       if (itemToDelete) {
         setItems((prev) => [...prev, itemToDelete])
       }
-      showToast('Failed to delete item', 'error')
+      showToast('Failed to delete', 'error')
     }
   }
 
@@ -535,17 +524,12 @@ export default function MenuPage() {
         throw new Error(data.error || 'Failed to import')
       }
 
-      if (data.tagError) {
-        showToast(`Imported ${data.count} items but tags failed: ${data.tagError}`, 'error')
-      } else {
-        showToast(`Imported ${data.count} items with ${data.tagsInserted || 0} tags`, 'success')
-      }
-
+      showToast(`Imported ${data.count} items`, 'success')
       setParseResult(null)
       setPreviewItems([])
       fetchMenuData()
     } catch (error) {
-      showToast(`Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
+      showToast(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setImporting(false)
     }
@@ -575,14 +559,10 @@ export default function MenuPage() {
       showToast(data.message, 'success')
       setMenu({ ...menu, status: 'published', published_at: new Date().toISOString() })
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to publish menu', 'error')
+      showToast(error instanceof Error ? error.message : 'Failed to publish', 'error')
     } finally {
       setPublishing(false)
     }
-  }
-
-  const getDisplayTags = (tags: MenuTag[]) => {
-    return tags.filter((t) => !t.startsWith('price_')).slice(0, 3)
   }
 
   const hasRequiredTags = (tags: MenuTag[]) => {
@@ -601,112 +581,105 @@ export default function MenuPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mesa-burgundy"></div>
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-neutral-300 border-t-neutral-900"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Toast */}
-        <AnimatePresence>
-          {toast && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 ${
-                toast.type === 'success'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-red-500 text-white'
-              }`}
-            >
-              {toast.type === 'success' ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <AlertCircle className="w-4 h-4" />
-              )}
-              {toast.message}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
-          <div>
-            <motion.h1
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-2xl font-serif text-mesa-charcoal"
-            >
-              Menu Management
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-sm text-mesa-charcoal/50 mt-1"
-            >
-              {items.length} items
-              {menu?.status === 'published' && (
-                <span className="ml-2 text-green-600">(Published)</span>
-              )}
-              {menu?.status === 'draft' && (
-                <span className="ml-2 text-amber-600">(Draft)</span>
-              )}
-            </motion.p>
-          </div>
-
+    <div className="min-h-screen bg-neutral-50">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-wrap items-center gap-3"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-md shadow-lg flex items-center gap-2 text-sm font-medium ${
+              toast.type === 'success'
+                ? 'bg-green-600 text-white'
+                : 'bg-red-600 text-white'
+            }`}
           >
-            <button
-              onClick={handlePublish}
-              disabled={publishing || items.length === 0}
-              className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm text-mesa-charcoal/70 hover:text-mesa-charcoal transition disabled:opacity-50"
-            >
-              {publishing ? 'Publishing...' : 'Publish Menu'}
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-mesa-burgundy text-white rounded-xl text-sm font-medium hover:bg-mesa-burgundy/90 transition shadow-lg shadow-mesa-burgundy/20"
-            >
-              <Plus className="w-4 h-4" />
-              Add Item
-            </button>
+            {toast.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+            {toast.message}
           </motion.div>
-        </div>
+        )}
+      </AnimatePresence>
 
-        {/* Bulk Actions Bar */}
+      {/* Header */}
+      <div className="bg-white border-b border-neutral-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold text-neutral-900">Menu</h1>
+              <p className="text-sm text-neutral-500">
+                {items.length} items
+                {menu?.status === 'published' && <span className="ml-2 text-green-600">(Published)</span>}
+                {menu?.status === 'draft' && <span className="ml-2 text-amber-600">(Draft)</span>}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePublish}
+                disabled={publishing || items.length === 0}
+                className="px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition disabled:opacity-50"
+              >
+                {publishing ? 'Publishing...' : 'Publish'}
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition"
+              >
+                <Upload className="w-4 h-4" />
+                Import
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-neutral-900 hover:bg-neutral-800 rounded-md transition"
+              >
+                <Plus className="w-4 h-4" />
+                Add Item
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleFileInput}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Bulk Actions */}
         <AnimatePresence>
           {selectedItems.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex items-center gap-4 p-4 mb-6 glass rounded-xl border-l-4 border-mesa-burgundy"
+              className="flex items-center gap-4 p-3 mb-4 bg-neutral-100 rounded-md"
             >
-              <span className="text-mesa-charcoal font-medium">
-                {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
+              <span className="text-sm font-medium text-neutral-700">
+                {selectedItems.length} selected
               </span>
               <button
                 onClick={handleBulkDelete}
                 disabled={deletingBulk}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-red-600 bg-red-50 hover:bg-red-100 transition disabled:opacity-50"
+                className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-md transition disabled:opacity-50"
               >
-                <Trash2 className="w-4 h-4" />
-                {deletingBulk ? 'Deleting...' : 'Delete selected'}
+                {deletingBulk ? 'Deleting...' : 'Delete'}
               </button>
               <button
                 onClick={() => setSelectedItems([])}
-                className="px-4 py-2 rounded-xl text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
+                className="px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200 rounded-md transition"
               >
-                Clear selection
+                Clear
               </button>
             </motion.div>
           )}
@@ -719,803 +692,688 @@ export default function MenuPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="glass rounded-2xl p-6 mb-8"
+              className="bg-white border border-neutral-200 rounded-lg p-4 mb-6"
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-semibold text-mesa-charcoal">Preview Import</h3>
-                  <div className="flex items-center gap-4 mt-1 text-sm">
-                    <span className="text-mesa-charcoal/50">
-                      {previewSummary.valid} of {previewSummary.total} items valid
-                    </span>
-                    {parseResult.isDetailedFormat && (
-                      <>
-                        <span className="text-green-600">{previewSummary.ready} ready</span>
-                        {previewSummary.needsReview > 0 && (
-                          <span className="text-amber-600">{previewSummary.needsReview} need tag review</span>
-                        )}
-                      </>
-                    )}
-                  </div>
+                  <h3 className="font-medium text-neutral-900">Import Preview</h3>
+                  <p className="text-sm text-neutral-500">
+                    {previewSummary.valid} of {previewSummary.total} items valid
+                  </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={handleCancelPreview}
-                    className="px-4 py-2 rounded-xl text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
+                    className="px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 rounded-md transition"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleImport}
                     disabled={importing || previewSummary.valid === 0}
-                    className="flex items-center gap-2 px-5 py-2 bg-mesa-burgundy text-white rounded-xl text-sm font-medium hover:bg-mesa-burgundy/90 disabled:opacity-50 transition"
+                    className="px-4 py-1.5 text-sm font-medium text-white bg-neutral-900 hover:bg-neutral-800 rounded-md disabled:opacity-50 transition"
                   >
-                    {importing ? 'Importing...' : `Import ${previewSummary.valid} Items`}
+                    {importing ? 'Importing...' : `Import ${previewSummary.valid}`}
                   </button>
                 </div>
               </div>
 
-              {parseResult.isDetailedFormat && previewSummary.needsReview > 0 && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                  <p className="text-sm text-amber-700">
-                    {previewSummary.needsReview} items are missing required tags (mood, portion, temperature).
-                    Click &quot;Edit&quot; to add tags before importing.
-                  </p>
-                </div>
-              )}
-
               {parseResult.errors.length > 0 && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
                   {parseResult.errors.map((error, i) => (
-                    <p key={i} className="text-sm text-red-600">{error}</p>
+                    <p key={i}>{error}</p>
                   ))}
                 </div>
               )}
 
-              <div className="overflow-x-auto max-h-80 overflow-y-auto rounded-xl">
+              <div className="overflow-x-auto max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-mesa-charcoal/5 z-10">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Status</th>
-                      <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Name</th>
-                      <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Price</th>
-                      <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Category</th>
-                      {parseResult.isDetailedFormat && (
-                        <th className="text-left py-3 px-4 text-mesa-charcoal/50 font-medium">Auto Tags</th>
-                      )}
-                      <th className="text-right py-3 px-4 text-mesa-charcoal/50 font-medium">Actions</th>
+                  <thead className="sticky top-0 bg-neutral-50">
+                    <tr className="text-left text-xs text-neutral-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 font-medium">Status</th>
+                      <th className="px-3 py-2 font-medium">Name</th>
+                      <th className="px-3 py-2 font-medium">Price</th>
+                      <th className="px-3 py-2 font-medium">Category</th>
+                      <th className="px-3 py-2 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {previewItems.slice(0, 50).map((item, i) => {
-                      const itemReady = item.isValid && hasRequiredTags(item.editedTags)
-                      const needsReview = item.isValid && !hasRequiredTags(item.editedTags)
-
-                      return (
-                        <tr
-                          key={i}
-                          className={`border-t border-mesa-charcoal/5 ${
-                            !item.isValid ? 'bg-red-50' : needsReview ? 'bg-amber-50' : ''
-                          }`}
-                        >
-                          <td className="py-3 px-4">
-                            {item.isValid ? (
-                              itemReady ? (
-                                <Check className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <AlertCircle className="w-4 h-4 text-amber-600" />
-                              )
-                            ) : (
-                              <X className="w-4 h-4 text-red-600" />
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-mesa-charcoal font-medium">{item.name}</td>
-                          <td className="py-3 px-4 text-mesa-charcoal/70">
-                            {item.isValid ? `€${item.price.toFixed(2)}` : '-'}
-                          </td>
-                          <td className="py-3 px-4 text-mesa-charcoal/70">{item.category}</td>
-                          {parseResult.isDetailedFormat && (
-                            <td className="py-3 px-4">
-                              <div className="flex flex-wrap gap-1">
-                                {item.editedTags.slice(0, 4).map((tag) => (
-                                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-mesa-charcoal/10 text-mesa-charcoal/70">
-                                    {TAG_LABELS[tag]}
-                                  </span>
-                                ))}
-                                {item.editedTags.length > 4 && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-mesa-charcoal/10 text-mesa-charcoal/50">
-                                    +{item.editedTags.length - 4}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
+                  <tbody className="divide-y divide-neutral-100">
+                    {previewItems.slice(0, 20).map((item, i) => (
+                      <tr key={i} className={!item.isValid ? 'bg-red-50' : ''}>
+                        <td className="px-3 py-2">
+                          {item.isValid ? (
+                            <Check className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <X className="w-4 h-4 text-red-600" />
                           )}
-                          <td className="py-3 px-4 text-right">
-                            {item.isValid && (
-                              <button
-                                onClick={() => setEditingPreviewIndex(i)}
-                                className="text-xs text-mesa-burgundy hover:underline"
-                              >
-                                Edit tags
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
+                        </td>
+                        <td className="px-3 py-2 text-neutral-900">{item.name}</td>
+                        <td className="px-3 py-2 text-neutral-600 tabular-nums">
+                          {item.isValid ? `€${item.price.toFixed(2)}` : '-'}
+                        </td>
+                        <td className="px-3 py-2 text-neutral-600">{item.category}</td>
+                        <td className="px-3 py-2 text-right">
+                          {item.isValid && (
+                            <button
+                              onClick={() => setEditingPreviewIndex(i)}
+                              className="text-xs text-neutral-500 hover:text-neutral-900"
+                            >
+                              Edit tags
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
-                {previewItems.length > 50 && (
-                  <p className="text-center text-sm text-mesa-charcoal/50 py-3">
-                    ... and {previewItems.length - 50} more items
-                  </p>
-                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Upload Section */}
-        {!parseResult && (
-          <ScrollReveal>
-            <div className="glass rounded-2xl p-6 mb-8">
-              <h3 className="font-semibold text-mesa-charcoal mb-4">Import from CSV</h3>
-              <div
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-                  isDragging
-                    ? 'border-mesa-burgundy bg-mesa-burgundy/5'
-                    : 'border-mesa-charcoal/20 hover:border-mesa-burgundy/50'
-                }`}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <Upload className="w-10 h-10 text-mesa-charcoal/30 mx-auto mb-3" />
-                <p className="text-mesa-charcoal font-medium mb-1">
-                  Drag & drop a CSV file, or click to browse
-                </p>
-                <p className="text-sm text-mesa-charcoal/50">
-                  Simple format: name, description, price, category
-                </p>
-                <p className="text-sm text-mesa-charcoal/50">
-                  Detailed format: includes flavor profiles for auto-tagging
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={handleFileInput}
-                />
-              </div>
-              <div className="flex items-center gap-4 mt-4">
-                <button
-                  onClick={() => downloadDetailedTemplate()}
-                  className="flex items-center gap-2 text-sm text-mesa-burgundy hover:underline"
-                >
-                  <FileText className="w-4 h-4" />
-                  Download CSV template
-                </button>
-                <button
-                  onClick={() => setShowChefModal(true)}
-                  className="flex items-center gap-1 text-sm text-mesa-charcoal/50 hover:text-mesa-charcoal"
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  Why add flavor tags?
-                </button>
-              </div>
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* Search & Filters */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
-            <input
-              type="text"
-              placeholder="Search menu items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 glass rounded-xl text-sm text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
-            />
-          </div>
-
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
-            {categories.map((cat) => {
-              const iconKey = cat.toLowerCase().replace(/\s+/g, '') as keyof typeof categoryIcons
-              const Icon = categoryIcons[iconKey] || categoryIcons.default
-              const count = cat === 'all' ? items.length : items.filter(i => i.category === cat).length
-
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition ${
-                    categoryFilter === cat
-                      ? 'bg-mesa-burgundy text-white'
-                      : 'glass text-mesa-charcoal/70 hover:text-mesa-charcoal'
-                  }`}
-                >
-                  {cat !== 'all' && <Icon className="w-4 h-4" />}
-                  {cat === 'all' ? 'All' : cat}
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    categoryFilter === cat ? 'bg-white/20' : 'bg-mesa-charcoal/10'
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Stock Filter */}
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-          <span className="text-sm text-mesa-charcoal/50 mr-2">Stock:</span>
-          {[
-            { value: 'all', label: 'All', icon: null },
-            { value: 'available', label: 'Available', icon: CheckCircle2 },
-            { value: 'out_today', label: 'Out Today', icon: Clock },
-            { value: 'out_indefinitely', label: 'Out Indefinitely', icon: Ban },
-          ].map((option) => {
-            const count = option.value === 'all'
-              ? items.length
-              : items.filter(i => i.stock_status === option.value).length
-            const Icon = option.icon
-
-            return (
-              <button
-                key={option.value}
-                onClick={() => setStockFilter(option.value as 'all' | StockStatus)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
-                  stockFilter === option.value
-                    ? option.value === 'available'
-                      ? 'bg-green-100 text-green-700'
-                      : option.value === 'out_today'
-                        ? 'bg-amber-100 text-amber-700'
-                        : option.value === 'out_indefinitely'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-mesa-burgundy text-white'
-                    : 'glass text-mesa-charcoal/60 hover:text-mesa-charcoal'
-                }`}
-              >
-                {Icon && <Icon className="w-4 h-4" />}
-                {option.label}
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                  stockFilter === option.value ? 'bg-white/30' : 'bg-mesa-charcoal/10'
-                }`}>
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Menu Items */}
-        {items.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-2xl p-12 text-center"
+        {/* Drop Zone (when no items) */}
+        {!parseResult && items.length === 0 && (
+          <div
+            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer mb-6 ${
+              isDragging
+                ? 'border-neutral-400 bg-neutral-100'
+                : 'border-neutral-300 hover:border-neutral-400'
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           >
-            <div className="w-16 h-16 rounded-2xl bg-mesa-burgundy/10 flex items-center justify-center mx-auto mb-4">
-              <Utensils className="w-8 h-8 text-mesa-burgundy/50" />
-            </div>
-            <h3 className="text-lg font-semibold text-mesa-charcoal mb-2">No menu items yet</h3>
-            <p className="text-mesa-charcoal/50 mb-6">
-              Import items from a CSV file or add items manually
+            <Upload className="w-8 h-8 text-neutral-400 mx-auto mb-3" />
+            <p className="text-neutral-600 font-medium mb-1">
+              Drop CSV file here or click to upload
+            </p>
+            <p className="text-sm text-neutral-500">
+              Or add items manually with the button above
             </p>
             <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-6 py-2.5 bg-mesa-burgundy text-white rounded-xl text-sm font-medium hover:bg-mesa-burgundy/90 transition mx-auto"
+              onClick={(e) => { e.stopPropagation(); downloadDetailedTemplate(); }}
+              className="mt-4 text-sm text-neutral-500 hover:text-neutral-700 underline"
             >
-              <Plus className="w-4 h-4" />
-              Add First Item
+              Download CSV template
             </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            layout
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            <AnimatePresence mode="popLayout">
-              {filteredItems.map((item, index) => (
-                <motion.div
-                  layout
-                  key={item.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.3, delay: index * 0.02 }}
-                  className={`glass rounded-2xl overflow-hidden hover-lift group relative ${
-                    item.stock_status !== 'available' ? 'opacity-60' : ''
-                  }`}
-                >
-                  {/* Selection checkbox */}
-                  <div className="absolute top-3 left-3 z-10">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(item.id)}
-                      onChange={() => toggleItemSelection(item.id)}
-                      className="w-4 h-4 rounded border-white/50 text-mesa-burgundy focus:ring-mesa-burgundy bg-white/80"
-                    />
-                  </div>
-
-                  {/* Image/gradient area */}
-                  <div className="relative h-32 bg-gradient-to-br from-mesa-burgundy/10 to-mesa-terracotta/10">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      {item.type === 'drink' ? (
-                        <Wine className="w-10 h-10 text-mesa-burgundy/20" />
-                      ) : (
-                        <Utensils className="w-10 h-10 text-mesa-burgundy/20" />
-                      )}
-                    </div>
-
-                    {/* Featured badge */}
-                    {item.is_push && (
-                      <div className="absolute top-3 left-10 flex items-center gap-1 px-2 py-1 bg-mesa-burgundy text-white text-xs font-medium rounded-full">
-                        <Sparkles className="w-3 h-3" />
-                        Featured
-                      </div>
-                    )}
-
-                    {/* Stock status badge */}
-                    {item.stock_status === 'out_today' && (
-                      <div className="absolute top-3 right-12 flex items-center gap-1 px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded-full">
-                        <Clock className="w-3 h-3" />
-                        Out Today
-                      </div>
-                    )}
-                    {item.stock_status === 'out_indefinitely' && (
-                      <div className="absolute top-3 right-12 flex items-center gap-1 px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-full">
-                        <Ban className="w-3 h-3" />
-                        Out Indef.
-                      </div>
-                    )}
-
-                    {/* Type badge */}
-                    <div className={`absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                      item.type === 'drink' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
-                    }`}>
-                      {item.type === 'drink' ? <Wine className="w-3 h-3" /> : <Utensils className="w-3 h-3" />}
-                      {item.type === 'drink' ? 'Drink' : 'Food'}
-                    </div>
-
-                    {/* Actions menu */}
-                    <div className="absolute top-3 right-3">
-                      <div className="relative">
-                        <button
-                          onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                          className="p-2 rounded-xl bg-white/80 backdrop-blur-sm text-mesa-charcoal/60 hover:text-mesa-charcoal transition"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-
-                        <AnimatePresence>
-                          {openMenuId === item.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                              className="absolute top-full right-0 mt-2 w-40 glass rounded-xl shadow-xl overflow-hidden z-20"
-                            >
-                              <button
-                                onClick={() => { setEditingItem(item); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
-                              >
-                                <Pencil className="w-4 h-4" />
-                                Edit Tags
-                              </button>
-                              <button
-                                onClick={() => { togglePush(item.id); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
-                              >
-                                <TrendingUp className="w-4 h-4" />
-                                {item.is_push ? 'Remove Push' : 'Push Item'}
-                              </button>
-                              <div className="border-t border-mesa-charcoal/5 my-1" />
-                              <div className="px-4 py-1">
-                                <span className="text-xs text-mesa-charcoal/40">Stock Status</span>
-                              </div>
-                              <button
-                                onClick={() => { setStockStatus(item.id, 'available'); setOpenMenuId(null); }}
-                                className={`w-full flex items-center gap-2 px-4 py-2 text-sm transition ${
-                                  item.stock_status === 'available' ? 'text-green-600 bg-green-50' : 'text-mesa-charcoal/70 hover:bg-mesa-charcoal/5'
-                                }`}
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                                Available
-                              </button>
-                              <button
-                                onClick={() => { setStockStatus(item.id, 'out_today'); setOpenMenuId(null); }}
-                                className={`w-full flex items-center gap-2 px-4 py-2 text-sm transition ${
-                                  item.stock_status === 'out_today' ? 'text-amber-600 bg-amber-50' : 'text-mesa-charcoal/70 hover:bg-mesa-charcoal/5'
-                                }`}
-                              >
-                                <Clock className="w-4 h-4" />
-                                Out Today
-                              </button>
-                              <button
-                                onClick={() => { setStockStatus(item.id, 'out_indefinitely'); setOpenMenuId(null); }}
-                                className={`w-full flex items-center gap-2 px-4 py-2 text-sm transition ${
-                                  item.stock_status === 'out_indefinitely' ? 'text-red-600 bg-red-50' : 'text-mesa-charcoal/70 hover:bg-mesa-charcoal/5'
-                                }`}
-                              >
-                                <Ban className="w-4 h-4" />
-                                Out Indefinitely
-                              </button>
-                              <div className="border-t border-mesa-charcoal/5 my-1" />
-                              <button
-                                onClick={() => { deleteItem(item.id); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                              </button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-mesa-charcoal line-clamp-1">{item.name}</h3>
-                        {!hasRequiredTags(item.tags) && (
-                          <span title="Missing required tags">
-                            <AlertCircle className="w-4 h-4 text-amber-500" />
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-lg font-semibold text-mesa-burgundy whitespace-nowrap">
-                        €{item.price.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-mesa-charcoal/50 line-clamp-2 mb-3">
-                      {item.description || 'No description'}
-                    </p>
-
-                    {/* Tags */}
-                    <button
-                      onClick={() => setEditingItem(item)}
-                      className="flex flex-wrap gap-1.5 cursor-pointer group/tags w-full text-left"
-                    >
-                      {getDisplayTags(item.tags).length > 0 ? (
-                        <>
-                          {getDisplayTags(item.tags).map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-mesa-charcoal/5 text-mesa-charcoal/70 group-hover/tags:bg-mesa-burgundy/10 group-hover/tags:text-mesa-burgundy transition"
-                            >
-                              {TAG_LABELS[tag]}
-                            </span>
-                          ))}
-                          {item.tags.length > 3 && (
-                            <span className="text-xs text-mesa-charcoal/40">
-                              +{item.tags.length - 3}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-xs text-mesa-charcoal/40 hover:text-mesa-burgundy">
-                          + Add tags
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          </div>
         )}
 
-        {/* Add Item Modal */}
-        <AnimatePresence>
-          {showAddModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-              onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md max-h-[90vh] overflow-y-auto glass rounded-2xl shadow-2xl"
-              >
-                <div className="sticky top-0 flex items-center justify-between p-6 border-b border-mesa-charcoal/5 bg-white/80 backdrop-blur-sm rounded-t-2xl">
-                  <h2 className="text-xl font-serif text-mesa-charcoal">Add New Item</h2>
+        {/* Filters */}
+        {items.length > 0 && (
+          <>
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-4">
+              {/* Search */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Search items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
+                />
+              </div>
+
+              {/* Stock Filter */}
+              <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-md">
+                {[
+                  { value: 'all', label: 'All', count: stockCounts.all },
+                  { value: 'available', label: 'Available', count: stockCounts.available },
+                  { value: 'out_today', label: 'Out Today', count: stockCounts.out_today },
+                  { value: 'out_indefinitely', label: 'Out', count: stockCounts.out_indefinitely },
+                ].map((option) => (
                   <button
-                    onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
-                    className="p-2 rounded-xl hover:bg-mesa-charcoal/5 transition"
+                    key={option.value}
+                    onClick={() => setStockFilter(option.value)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition ${
+                      stockFilter === option.value
+                        ? 'bg-white text-neutral-900 shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-700'
+                    }`}
                   >
-                    <X className="w-5 h-5 text-mesa-charcoal/50" />
+                    {option.label}
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                      stockFilter === option.value
+                        ? 'bg-neutral-900 text-white'
+                        : 'bg-neutral-200 text-neutral-600'
+                    }`}>
+                      {option.count}
+                    </span>
                   </button>
+                ))}
+              </div>
+
+              {/* View Toggle */}
+              <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-md">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`p-1.5 rounded transition ${
+                    viewMode === 'table' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-400'
+                  }`}
+                  title="Table view"
+                >
+                  <LayoutList className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded transition ${
+                    viewMode === 'grid' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-400'
+                  }`}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Category Pills */}
+            <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition ${
+                  !selectedCategory
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                }`}
+              >
+                All categories
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.name}
+                  onClick={() => setSelectedCategory(cat.name === selectedCategory ? null : cat.name)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition ${
+                    selectedCategory === cat.name
+                      ? 'bg-neutral-900 text-white'
+                      : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                  }`}
+                >
+                  {cat.name}
+                  <span className="ml-1.5 text-[10px] opacity-60">{cat.count}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Content */}
+        {items.length === 0 ? null : filteredItems.length === 0 ? (
+          <div className="text-center py-16">
+            <Search className="w-8 h-8 text-neutral-300 mx-auto mb-3" />
+            <h3 className="text-sm font-medium text-neutral-900 mb-1">No items found</h3>
+            <p className="text-sm text-neutral-500">
+              {searchQuery ? `No items match "${searchQuery}"` : 'Try adjusting your filters'}
+            </p>
+          </div>
+        ) : viewMode === 'table' ? (
+          /* Table View */
+          <div className="space-y-3">
+            {Array.from(groupedItems.entries()).map(([category, categoryItems]) => (
+              <div key={category} className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100 transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <ChevronRight className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      expandedCategories.has(category) ? 'rotate-90' : ''
+                    }`} />
+                    <span className="text-sm font-medium text-neutral-900">{category}</span>
+                    <span className="text-xs text-neutral-400">{categoryItems.length} items</span>
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {expandedCategories.has(category) && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: 'auto' }}
+                      exit={{ height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <table className="w-full">
+                        <thead className="border-b border-neutral-100">
+                          <tr className="text-xs text-neutral-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left font-medium w-8"></th>
+                            <th className="px-4 py-2 text-left font-medium">Item</th>
+                            <th className="px-4 py-2 text-left font-medium">Tags</th>
+                            <th className="px-4 py-2 text-right font-medium">Price</th>
+                            <th className="px-4 py-2 text-center font-medium">Status</th>
+                            <th className="px-4 py-2 text-center font-medium">Push</th>
+                            <th className="px-4 py-2 text-right font-medium w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-100">
+                          {categoryItems.map((item) => (
+                            <tr key={item.id} className={`hover:bg-neutral-50 transition ${
+                              item.stock_status !== 'available' ? 'opacity-60' : ''
+                            }`}>
+                              <td className="px-4 py-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedItems.includes(item.id)}
+                                  onChange={() => toggleItemSelection(item.id)}
+                                  className="w-4 h-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500"
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-medium ${
+                                    item.type === 'food'
+                                      ? 'bg-amber-50 text-amber-700'
+                                      : 'bg-purple-50 text-purple-700'
+                                  }`}>
+                                    {item.type === 'food' ? 'F' : 'D'}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-neutral-900">{item.name}</p>
+                                    <p className="text-xs text-neutral-500 line-clamp-1 max-w-xs">
+                                      {item.description}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <button
+                                  onClick={() => setEditingItem(item)}
+                                  className="flex flex-wrap gap-1 hover:opacity-70"
+                                >
+                                  {item.tags.slice(0, 2).map(tag => (
+                                    <span
+                                      key={tag}
+                                      className="px-1.5 py-0.5 text-[10px] font-medium bg-neutral-100 text-neutral-600 rounded"
+                                    >
+                                      {TAG_LABELS[tag]}
+                                    </span>
+                                  ))}
+                                  {item.tags.length > 2 && (
+                                    <span className="text-[10px] text-neutral-400">+{item.tags.length - 2}</span>
+                                  )}
+                                  {item.tags.length === 0 && (
+                                    <span className="text-[10px] text-neutral-400">+ Add tags</span>
+                                  )}
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-sm font-medium text-neutral-900 tabular-nums">
+                                  €{item.price.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={item.stock_status}
+                                  onChange={(e) => setStockStatus(item.id, e.target.value as StockStatus)}
+                                  className={`px-2 py-1 text-xs font-medium rounded border-0 cursor-pointer focus:ring-2 focus:ring-neutral-900/10 ${
+                                    item.stock_status === 'available' ? 'text-green-700 bg-green-50' :
+                                    item.stock_status === 'out_today' ? 'text-amber-700 bg-amber-50' :
+                                    'text-red-700 bg-red-50'
+                                  }`}
+                                >
+                                  <option value="available">Available</option>
+                                  <option value="out_today">Out Today</option>
+                                  <option value="out_indefinitely">Out</option>
+                                </select>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <button
+                                  onClick={() => togglePush(item.id)}
+                                  className={`p-1.5 rounded transition ${
+                                    item.is_push
+                                      ? 'bg-violet-100 text-violet-700'
+                                      : 'text-neutral-300 hover:text-neutral-500 hover:bg-neutral-100'
+                                  }`}
+                                  title={item.is_push ? 'Remove from pushed' : 'Push item'}
+                                >
+                                  <Zap className={`w-4 h-4 ${item.is_push ? 'fill-current' : ''}`} />
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="relative">
+                                  <button
+                                    onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                                    className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded transition"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+
+                                  <AnimatePresence>
+                                    {openMenuId === item.id && (
+                                      <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                                        <motion.div
+                                          initial={{ opacity: 0, scale: 0.95 }}
+                                          animate={{ opacity: 1, scale: 1 }}
+                                          exit={{ opacity: 0, scale: 0.95 }}
+                                          className="absolute right-0 top-full mt-1 w-36 bg-white border border-neutral-200 rounded-md shadow-lg z-20 py-1"
+                                        >
+                                          <button
+                                            onClick={() => { setEditingItem(item); setOpenMenuId(null); }}
+                                            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+                                          >
+                                            <Eye className="w-3.5 h-3.5" />
+                                            Edit Tags
+                                          </button>
+                                          <hr className="my-1 border-neutral-100" />
+                                          <button
+                                            onClick={() => { deleteItem(item.id); setOpenMenuId(null); }}
+                                            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            Delete
+                                          </button>
+                                        </motion.div>
+                                      </>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Grid View */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {filteredItems.map((item) => (
+              <motion.div
+                key={item.id}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`bg-white border border-neutral-200 rounded-lg p-4 hover:border-neutral-300 transition ${
+                  item.stock_status !== 'available' ? 'opacity-60' : ''
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                    item.type === 'food'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-purple-50 text-purple-700'
+                  }`}>
+                    {item.type === 'food' ? 'Food' : 'Drink'}
+                  </div>
+                  <div className="relative">
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                      className="p-1 text-neutral-400 hover:text-neutral-600 rounded transition"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    <AnimatePresence>
+                      {openMenuId === item.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="absolute right-0 top-full mt-1 w-32 bg-white border border-neutral-200 rounded-md shadow-lg z-20 py-1"
+                          >
+                            <button
+                              onClick={() => { setEditingItem(item); setOpenMenuId(null); }}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => { deleteItem(item.id); setOpenMenuId(null); }}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Delete
+                            </button>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
 
-                <div className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-mesa-charcoal mb-2">Name *</label>
-                    <input
-                      type="text"
-                      value={newItem.name}
-                      onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                      placeholder="e.g., Classic Burger"
-                      className="w-full px-4 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
-                    />
-                  </div>
+                <h3 className="text-sm font-medium text-neutral-900 mb-1">{item.name}</h3>
+                <p className="text-xs text-neutral-500 line-clamp-2 mb-3">{item.description}</p>
 
-                  <div>
-                    <label className="block text-sm font-medium text-mesa-charcoal mb-2">Description</label>
-                    <textarea
-                      value={newItem.description}
-                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                      placeholder="Describe the item..."
-                      rows={2}
-                      className="w-full px-4 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20 resize-none"
-                    />
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-neutral-900 tabular-nums">
+                    €{item.price.toFixed(2)}
+                  </span>
 
-                  <div>
-                    <label className="block text-sm font-medium text-mesa-charcoal mb-2">Type *</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setNewItem({ ...newItem, type: 'food' })}
-                        className={`py-3 px-4 rounded-xl border-2 transition flex items-center justify-center gap-2 text-sm font-medium ${
-                          newItem.type === 'food'
-                            ? 'border-mesa-burgundy bg-mesa-burgundy/5 text-mesa-burgundy'
-                            : 'border-mesa-charcoal/10 text-mesa-charcoal/60 hover:border-mesa-charcoal/20'
-                        }`}
-                      >
-                        <Utensils className="w-4 h-4" /> Food
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewItem({ ...newItem, type: 'drink' })}
-                        className={`py-3 px-4 rounded-xl border-2 transition flex items-center justify-center gap-2 text-sm font-medium ${
-                          newItem.type === 'drink'
-                            ? 'border-mesa-burgundy bg-mesa-burgundy/5 text-mesa-burgundy'
-                            : 'border-mesa-charcoal/10 text-mesa-charcoal/60 hover:border-mesa-charcoal/20'
-                        }`}
-                      >
-                        <Wine className="w-4 h-4" /> Drink
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <select
+                      value={item.stock_status}
+                      onChange={(e) => setStockStatus(item.id, e.target.value as StockStatus)}
+                      className={`px-1.5 py-0.5 text-[10px] font-medium rounded border-0 cursor-pointer ${
+                        item.stock_status === 'available' ? 'text-green-700 bg-green-50' :
+                        item.stock_status === 'out_today' ? 'text-amber-700 bg-amber-50' :
+                        'text-red-700 bg-red-50'
+                      }`}
+                    >
+                      <option value="available">Available</option>
+                      <option value="out_today">Out Today</option>
+                      <option value="out_indefinitely">Out</option>
+                    </select>
+                    <button
+                      onClick={() => togglePush(item.id)}
+                      className={`p-1 rounded transition ${
+                        item.is_push
+                          ? 'bg-violet-100 text-violet-700'
+                          : 'text-neutral-300 hover:text-neutral-500'
+                      }`}
+                    >
+                      <Zap className={`w-3.5 h-3.5 ${item.is_push ? 'fill-current' : ''}`} />
+                    </button>
                   </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-mesa-charcoal mb-2">Price *</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-mesa-charcoal/50">€</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={newItem.price}
-                          onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
-                          placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-mesa-charcoal mb-2">Category</label>
+      {/* Add Item Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white rounded-lg shadow-xl"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-neutral-200">
+                <h2 className="font-semibold text-neutral-900">Add Item</h2>
+                <button
+                  onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
+                  className="p-1 text-neutral-400 hover:text-neutral-600 rounded transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={newItem.name}
+                    onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                    placeholder="e.g., Classic Burger"
+                    className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+                  <textarea
+                    value={newItem.description}
+                    onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                    placeholder="Describe the item..."
+                    rows={2}
+                    className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Type</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setNewItem({ ...newItem, type: 'food' })}
+                      className={`flex-1 py-2 text-sm font-medium rounded-md border transition ${
+                        newItem.type === 'food'
+                          ? 'border-neutral-900 bg-neutral-900 text-white'
+                          : 'border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                      }`}
+                    >
+                      Food
+                    </button>
+                    <button
+                      onClick={() => setNewItem({ ...newItem, type: 'drink' })}
+                      className={`flex-1 py-2 text-sm font-medium rounded-md border transition ${
+                        newItem.type === 'drink'
+                          ? 'border-neutral-900 bg-neutral-900 text-white'
+                          : 'border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                      }`}
+                    >
+                      Drink
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">Price *</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">€</span>
                       <input
-                        type="text"
-                        value={newItem.category}
-                        onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                        placeholder="e.g., Mains"
-                        className="w-full px-4 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newItem.price}
+                        onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                        placeholder="0.00"
+                        className="w-full pl-7 pr-3 py-2 text-sm border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
                       />
                     </div>
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-mesa-charcoal mb-2">Tags</label>
-                    <button
-                      onClick={() => setShowNewItemTagEditor(true)}
-                      className="w-full px-4 py-3 rounded-xl border border-mesa-charcoal/10 text-left hover:border-mesa-burgundy/30 transition"
-                    >
-                      {newItemTags.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {newItemTags.slice(0, 4).map((tag) => (
-                            <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-mesa-burgundy/10 text-mesa-burgundy">
-                              {TAG_LABELS[tag]}
-                            </span>
-                          ))}
-                          {newItemTags.length > 4 && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-mesa-charcoal/10 text-mesa-charcoal/50">
-                              +{newItemTags.length - 4}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-mesa-charcoal/40">Click to add tags...</span>
-                      )}
-                    </button>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">Category</label>
+                    <input
+                      type="text"
+                      value={newItem.category}
+                      onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                      placeholder="e.g., Mains"
+                      className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
+                    />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-6 pt-0">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Tags</label>
                   <button
-                    onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
-                    className="flex-1 py-3 rounded-xl border border-mesa-charcoal/10 text-mesa-charcoal font-medium hover:bg-mesa-charcoal/5 transition"
+                    onClick={() => setShowNewItemTagEditor(true)}
+                    className="w-full px-3 py-2 text-sm text-left border border-neutral-200 rounded-md hover:border-neutral-300 transition"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddItem}
-                    disabled={addingItem || !newItem.name.trim() || !newItem.price}
-                    className="flex-1 py-3 rounded-xl bg-mesa-burgundy text-white font-medium hover:bg-mesa-burgundy/90 disabled:opacity-50 transition flex items-center justify-center gap-2"
-                  >
-                    {addingItem ? (
-                      <>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                        />
-                        Adding...
-                      </>
+                    {newItemTags.length > 0 ? (
+                      <span className="text-neutral-700">{newItemTags.length} tags selected</span>
                     ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Add Item
-                      </>
+                      <span className="text-neutral-400">Click to add tags...</span>
                     )}
                   </button>
                 </div>
-              </motion.div>
+              </div>
+
+              <div className="flex items-center gap-2 p-4 border-t border-neutral-200">
+                <button
+                  onClick={() => { setShowAddModal(false); setNewItem(defaultNewItem); setNewItemTags([]); }}
+                  className="flex-1 py-2 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-md hover:bg-neutral-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddItem}
+                  disabled={addingItem || !newItem.name.trim() || !newItem.price}
+                  className="flex-1 py-2 text-sm font-medium text-white bg-neutral-900 rounded-md hover:bg-neutral-800 disabled:opacity-50 transition"
+                >
+                  {addingItem ? 'Adding...' : 'Add Item'}
+                </button>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Tag Editor Modals */}
-        {editingItem && (
-          <TagEditor
-            item={{
-              id: editingItem.id,
-              name: editingItem.name,
-              description: editingItem.description || '',
-              price: editingItem.price,
-              category: editingItem.category,
-              tags: editingItem.tags,
-              popularity: editingItem.popularity_score,
-              isPush: editingItem.is_push,
-              isOutOfStock: editingItem.is_out_of_stock,
-            }}
-            onSave={handleSaveTags}
-            onClose={() => setEditingItem(null)}
-          />
+          </motion.div>
         )}
+      </AnimatePresence>
 
-        {editingPreviewIndex !== null && previewItems[editingPreviewIndex] && (
-          <TagEditor
-            item={{
-              id: `preview-${editingPreviewIndex}`,
-              name: previewItems[editingPreviewIndex].name,
-              description: previewItems[editingPreviewIndex].description || '',
-              price: previewItems[editingPreviewIndex].price,
-              category: previewItems[editingPreviewIndex].category,
-              tags: previewItems[editingPreviewIndex].editedTags,
-              popularity: 0,
-              isPush: false,
-              isOutOfStock: false,
-            }}
-            onSave={(tags) => handleSavePreviewTags(editingPreviewIndex, tags)}
-            onClose={() => setEditingPreviewIndex(null)}
-          />
-        )}
+      {/* Tag Editor Modals */}
+      {editingItem && (
+        <TagEditor
+          item={{
+            id: editingItem.id,
+            name: editingItem.name,
+            description: editingItem.description || '',
+            price: editingItem.price,
+            category: editingItem.category,
+            tags: editingItem.tags,
+            popularity: editingItem.popularity_score,
+            isPush: editingItem.is_push,
+            isOutOfStock: editingItem.is_out_of_stock,
+          }}
+          onSave={handleSaveTags}
+          onClose={() => setEditingItem(null)}
+        />
+      )}
 
-        {showNewItemTagEditor && (
-          <TagEditor
-            item={{
-              id: 'new-item',
-              name: newItem.name || 'New Item',
-              description: newItem.description || '',
-              price: parseFloat(newItem.price) || 0,
-              category: newItem.category || 'Uncategorized',
-              tags: newItemTags,
-              popularity: 0,
-              isPush: false,
-              isOutOfStock: false,
-            }}
-            onSave={(tags) => {
-              setNewItemTags(tags)
-              setShowNewItemTagEditor(false)
-            }}
-            onClose={() => setShowNewItemTagEditor(false)}
-          />
-        )}
+      {editingPreviewIndex !== null && previewItems[editingPreviewIndex] && (
+        <TagEditor
+          item={{
+            id: `preview-${editingPreviewIndex}`,
+            name: previewItems[editingPreviewIndex].name,
+            description: previewItems[editingPreviewIndex].description || '',
+            price: previewItems[editingPreviewIndex].price,
+            category: previewItems[editingPreviewIndex].category,
+            tags: previewItems[editingPreviewIndex].editedTags,
+            popularity: 0,
+            isPush: false,
+            isOutOfStock: false,
+          }}
+          onSave={(tags) => handleSavePreviewTags(editingPreviewIndex, tags)}
+          onClose={() => setEditingPreviewIndex(null)}
+        />
+      )}
 
-        {/* Chef Modal */}
-        <AnimatePresence>
-          {showChefModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-              onClick={() => setShowChefModal(false)}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg glass rounded-2xl p-6 shadow-2xl"
-              >
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-14 h-14 bg-mesa-burgundy/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <ChefHat className="w-7 h-7 text-mesa-burgundy" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-serif text-mesa-charcoal">Why flavor tags matter</h2>
-                    <p className="text-mesa-charcoal/50 text-sm mt-1">From our culinary team</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4 text-mesa-charcoal/70">
-                  <p>
-                    Flavor tags help us understand the <strong className="text-mesa-charcoal">soul of each dish</strong> so we can match guests with exactly what they&apos;re craving.
-                  </p>
-
-                  <div className="glass-warm rounded-xl p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Target className="w-5 h-5 text-mesa-burgundy flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-mesa-charcoal">Better recommendations</p>
-                        <p className="text-sm">Match dishes to guest mood, dietary needs, and flavor preferences</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Wine className="w-5 h-5 text-mesa-burgundy flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-mesa-charcoal">Smart pairings</p>
-                        <p className="text-sm">Suggest complementary drinks and sides automatically</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <BarChart3 className="w-5 h-5 text-mesa-burgundy flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-mesa-charcoal">Real insights</p>
-                        <p className="text-sm">Discover what flavors and moods drive orders at your venue</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-sm">
-                    The more detailed your tags, the better we can serve your guests. Most restaurants see a <strong className="text-mesa-charcoal">15-20% increase</strong> in add-on orders after adding flavor profiles.
-                  </p>
-                </div>
-
-                <div className="flex justify-end mt-6">
-                  <button
-                    onClick={() => setShowChefModal(false)}
-                    className="px-6 py-2.5 bg-mesa-burgundy text-white rounded-xl font-medium hover:bg-mesa-burgundy/90 transition"
-                  >
-                    Got it
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {showNewItemTagEditor && (
+        <TagEditor
+          item={{
+            id: 'new-item',
+            name: newItem.name || 'New Item',
+            description: newItem.description || '',
+            price: parseFloat(newItem.price) || 0,
+            category: newItem.category || 'Uncategorized',
+            tags: newItemTags,
+            popularity: 0,
+            isPush: false,
+            isOutOfStock: false,
+          }}
+          onSave={(tags) => {
+            setNewItemTags(tags)
+            setShowNewItemTagEditor(false)
+          }}
+          onClose={() => setShowNewItemTagEditor(false)}
+        />
+      )}
     </div>
   )
 }

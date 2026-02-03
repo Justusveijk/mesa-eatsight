@@ -412,14 +412,14 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#722F37]"></div>
+      <div className="min-h-screen bg-neutral-50 p-6 lg:p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8">
+    <div className="min-h-screen bg-neutral-50 p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -427,7 +427,7 @@ export default function AnalyticsPage() {
             <motion.h1
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-2xl font-serif text-mesa-charcoal"
+              className="text-2xl font-semibold text-neutral-900"
             >
               Analytics
             </motion.h1>
@@ -435,7 +435,7 @@ export default function AnalyticsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="text-sm text-mesa-charcoal/50 mt-1"
+              className="text-sm text-neutral-500 mt-1"
             >
               Insights from the past {dateRange} days
             </motion.p>
@@ -447,7 +447,7 @@ export default function AnalyticsPage() {
             transition={{ delay: 0.2 }}
             className="flex items-center gap-3 mt-4 sm:mt-0"
           >
-            <button className="flex items-center gap-2 px-4 py-2 glass rounded-xl text-sm text-mesa-charcoal/70 hover:text-mesa-charcoal transition">
+            <div className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-600 hover:border-neutral-300 transition">
               <Calendar className="w-4 h-4" />
               <select
                 value={dateRange}
@@ -458,8 +458,8 @@ export default function AnalyticsPage() {
                 <option value="30">Last 30 days</option>
                 <option value="90">Last 90 days</option>
               </select>
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 glass rounded-xl text-sm text-mesa-charcoal/70 hover:text-mesa-charcoal transition">
+            </div>
+            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-600 hover:border-neutral-300 transition">
               <Filter className="w-4 h-4" />
               Filters
             </button>
@@ -512,18 +512,18 @@ export default function AnalyticsPage() {
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           {/* Guest Traffic */}
           <ScrollReveal className="lg:col-span-2">
-            <div className="glass rounded-2xl p-6">
+            <div className="bg-white border border-neutral-200 rounded-lg p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-mesa-charcoal">Guest Traffic</h3>
-                  <p className="text-sm text-mesa-charcoal/50">Daily recommendations served</p>
+                  <h3 className="text-lg font-semibold text-neutral-900">Guest Traffic</h3>
+                  <p className="text-sm text-neutral-500">Daily recommendations served</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="flex items-center gap-1 text-green-600">
                     <TrendingUp className="w-4 h-4" />
                     +24%
                   </span>
-                  <span className="text-mesa-charcoal/40">vs last week</span>
+                  <span className="text-neutral-400">vs last week</span>
                 </div>
               </div>
               <AreaChartPremium
@@ -536,21 +536,21 @@ export default function AnalyticsPage() {
 
           {/* Radial Stats */}
           <ScrollReveal delay={0.1}>
-            <div className="glass rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-mesa-charcoal mb-2">Menu Coverage</h3>
-              <p className="text-sm text-mesa-charcoal/50 mb-6">Items recommended at least once</p>
+            <div className="bg-white border border-neutral-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Menu Coverage</h3>
+              <p className="text-sm text-neutral-500 mb-6">Items recommended at least once</p>
 
               <div className="flex flex-col items-center">
                 <RadialProgress value={analytics.menuCoverage || 87} size={180} label="coverage" />
 
                 <div className="grid grid-cols-2 gap-6 mt-8 w-full">
                   <div className="text-center">
-                    <p className="text-2xl font-semibold text-mesa-charcoal">{analytics.activeItems || 42}</p>
-                    <p className="text-xs text-mesa-charcoal/50">Active items</p>
+                    <p className="text-2xl font-semibold text-neutral-900 tabular-nums">{analytics.activeItems || 42}</p>
+                    <p className="text-xs text-neutral-500">Active items</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-semibold text-mesa-charcoal">{analytics.neverShown || 6}</p>
-                    <p className="text-xs text-mesa-charcoal/50">Never shown</p>
+                    <p className="text-2xl font-semibold text-neutral-900 tabular-nums">{analytics.neverShown || 6}</p>
+                    <p className="text-xs text-neutral-500">Never shown</p>
                   </div>
                 </div>
               </div>
@@ -562,9 +562,9 @@ export default function AnalyticsPage() {
         <div className="grid lg:grid-cols-2 gap-6 mb-8">
           {/* Guest Mood Preferences */}
           <ScrollReveal>
-            <div className="glass rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-mesa-charcoal mb-2">Guest Moods</h3>
-              <p className="text-sm text-mesa-charcoal/50 mb-6">What are guests looking for?</p>
+            <div className="bg-white border border-neutral-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Guest Moods</h3>
+              <p className="text-sm text-neutral-500 mb-6">What are guests looking for?</p>
               {moodChartData.length > 0 ? (
                 <BarChartPremium
                   data={moodChartData}
@@ -572,18 +572,18 @@ export default function AnalyticsPage() {
                   height={260}
                 />
               ) : (
-                <div className="flex items-center justify-center h-[260px] text-mesa-charcoal/40">
+                <div className="flex items-center justify-center h-[260px] text-neutral-400">
                   No mood data yet
                 </div>
               )}
             </div>
           </ScrollReveal>
 
-          {/* Dietary Preferences */}
+          {/* Conversion Funnel */}
           <ScrollReveal delay={0.1}>
-            <div className="glass rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-mesa-charcoal mb-2">Conversion Funnel</h3>
-              <p className="text-sm text-mesa-charcoal/50 mb-6">Guest journey through the flow</p>
+            <div className="bg-white border border-neutral-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Conversion Funnel</h3>
+              <p className="text-sm text-neutral-500 mb-6">Guest journey through the flow</p>
 
               <div className="space-y-4">
                 {[
@@ -598,15 +598,15 @@ export default function AnalyticsPage() {
                     transition={{ delay: index * 0.1 }}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-mesa-charcoal/70">{item.name}</span>
-                      <span className="text-sm font-medium text-mesa-charcoal">{item.value} ({item.percent}%)</span>
+                      <span className="text-sm text-neutral-600">{item.name}</span>
+                      <span className="text-sm font-medium text-neutral-900 tabular-nums">{item.value} ({item.percent}%)</span>
                     </div>
-                    <div className="h-2 bg-mesa-charcoal/5 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${item.percent}%` }}
                         transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                        className="h-full bg-gradient-to-r from-mesa-burgundy to-mesa-terracotta rounded-full"
+                        className="h-full bg-neutral-900 rounded-full"
                       />
                     </div>
                   </motion.div>
@@ -620,52 +620,48 @@ export default function AnalyticsPage() {
         <div className="grid lg:grid-cols-2 gap-6 mb-8">
           {/* Top Recommended Dishes */}
           <ScrollReveal>
-            <div className="glass rounded-2xl p-6">
+            <div className="bg-white border border-neutral-200 rounded-lg p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-mesa-charcoal">Top Picks</h3>
-                  <p className="text-sm text-mesa-charcoal/50">Most liked this period</p>
+                  <h3 className="text-lg font-semibold text-neutral-900">Top Picks</h3>
+                  <p className="text-sm text-neutral-500">Most liked this period</p>
                 </div>
-                <button className="text-sm text-mesa-burgundy font-medium flex items-center gap-1 hover:underline">
+                <button className="text-sm text-neutral-600 font-medium flex items-center gap-1 hover:text-neutral-900 transition">
                   View all
                   <ArrowUpRight className="w-4 h-4" />
                 </button>
               </div>
 
               {topDishesData.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {topDishesData.map((dish, index) => (
                     <motion.div
                       key={dish.name}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-mesa-charcoal/5 transition cursor-pointer"
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-neutral-50 transition cursor-pointer"
                     >
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm"
-                        style={{ backgroundColor: dish.color }}
-                      >
-                        #{index + 1}
+                      <div className="w-8 h-8 rounded-md bg-neutral-900 flex items-center justify-center text-white font-medium text-sm">
+                        {index + 1}
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-mesa-charcoal">{dish.name}</p>
-                        <p className="text-xs text-mesa-charcoal/50">{dish.value} picks</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-neutral-900 truncate">{dish.name}</p>
+                        <p className="text-xs text-neutral-500 tabular-nums">{dish.value} picks</p>
                       </div>
-                      <div className="w-24 h-2 bg-mesa-charcoal/5 rounded-full overflow-hidden">
+                      <div className="w-20 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${(dish.value / (topDishesData[0]?.value || 1)) * 100}%` }}
                           transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                          className="h-full rounded-full"
-                          style={{ backgroundColor: dish.color }}
+                          className="h-full bg-neutral-900 rounded-full"
                         />
                       </div>
                     </motion.div>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-[200px] text-mesa-charcoal/40">
+                <div className="flex flex-col items-center justify-center h-[200px] text-neutral-400">
                   <Heart className="w-8 h-8 mb-2 opacity-30" />
                   <p>No picks yet</p>
                 </div>
@@ -675,9 +671,9 @@ export default function AnalyticsPage() {
 
           {/* Peak Hours Heat Map */}
           <ScrollReveal delay={0.1}>
-            <div className="glass rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-mesa-charcoal mb-2">Peak Hours</h3>
-              <p className="text-sm text-mesa-charcoal/50 mb-6">When are guests most active?</p>
+            <div className="bg-white border border-neutral-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Peak Hours</h3>
+              <p className="text-sm text-neutral-500 mb-6">When are guests most active?</p>
               <HeatMap data={heatMapData} />
             </div>
           </ScrollReveal>
@@ -685,15 +681,15 @@ export default function AnalyticsPage() {
 
         {/* Unmet Demand Section */}
         <ScrollReveal>
-          <div className="glass rounded-2xl p-6">
+          <div className="bg-white border border-neutral-200 rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
                   <AlertTriangle className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-mesa-charcoal">Unmet Demand</h3>
-                  <p className="text-sm text-mesa-charcoal/50">Preferences your menu doesn&apos;t fully satisfy</p>
+                  <h3 className="text-lg font-semibold text-neutral-900">Unmet Demand</h3>
+                  <p className="text-sm text-neutral-500">Preferences your menu doesn&apos;t fully satisfy</p>
                 </div>
               </div>
             </div>
@@ -707,17 +703,17 @@ export default function AnalyticsPage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="p-4 rounded-xl bg-red-50 border border-red-100"
+                      className="p-4 rounded-lg bg-red-50 border border-red-100"
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-medium text-mesa-charcoal">{item.preference}</p>
-                          <p className="text-xs text-mesa-charcoal/50 mt-1">
+                          <p className="font-medium text-neutral-900">{item.preference}</p>
+                          <p className="text-xs text-neutral-500 mt-1">
                             {item.matchedItems} items match - {item.requests} requests
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-red-600">{item.requests - item.matchedItems}</p>
+                          <p className="text-2xl font-bold text-red-600 tabular-nums">{item.requests - item.matchedItems}</p>
                           <p className="text-xs text-red-500">gap</p>
                         </div>
                       </div>
@@ -733,14 +729,14 @@ export default function AnalyticsPage() {
                 </div>
 
                 {analytics.unmetDemand[0] && (
-                  <div className="mt-6 p-4 rounded-xl bg-blue-50 border border-blue-100">
+                  <div className="mt-6 p-4 rounded-lg bg-neutral-50 border border-neutral-200">
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <Lightbulb className="w-4 h-4 text-blue-600" />
+                      <div className="w-8 h-8 rounded-md bg-neutral-200 flex items-center justify-center flex-shrink-0">
+                        <Lightbulb className="w-4 h-4 text-neutral-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-blue-800">Recommendation</p>
-                        <p className="text-sm text-blue-600 mt-1">
+                        <p className="text-sm font-medium text-neutral-900">Recommendation</p>
+                        <p className="text-sm text-neutral-600 mt-1">
                           Consider adding more {analytics.unmetDemand[0].preference.toLowerCase()} options. {analytics.unmetDemand[0].requests} guests requested this preference,
                           but only {analytics.unmetDemand[0].matchedItems} menu item{analytics.unmetDemand[0].matchedItems !== 1 ? 's' : ''} currently match{analytics.unmetDemand[0].matchedItems === 1 ? 'es' : ''}.
                         </p>
@@ -752,8 +748,8 @@ export default function AnalyticsPage() {
             ) : (
               <div className="text-center py-8">
                 <PartyPopper className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                <p className="text-mesa-charcoal font-medium">Great news!</p>
-                <p className="text-mesa-charcoal/50 text-sm">Your menu is meeting guest preferences well.</p>
+                <p className="text-neutral-900 font-medium">Great news!</p>
+                <p className="text-neutral-500 text-sm">Your menu is meeting guest preferences well.</p>
               </div>
             )}
           </div>
