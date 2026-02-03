@@ -30,12 +30,18 @@ import {
   Leaf,
   IceCream,
   Coffee,
+  Clock,
+  Ban,
+  CheckCircle2,
+  TrendingUp,
 } from 'lucide-react'
 import { TagEditor } from '@/components/dashboard/TagEditor'
 import { MenuTag, TAG_LABELS } from '@/lib/types/taxonomy'
 import { parseCSV, ParsedItem, ParseResult, downloadDetailedTemplate } from '@/lib/menu-import'
 import { createClient } from '@/lib/supabase/client'
 import { ScrollReveal } from '@/components/ScrollReveal'
+
+type StockStatus = 'available' | 'out_today' | 'out_indefinitely'
 
 interface MenuItem {
   id: string
@@ -47,6 +53,7 @@ interface MenuItem {
   popularity_score: number
   is_push: boolean
   is_out_of_stock: boolean
+  stock_status: StockStatus
   tags: MenuTag[]
 }
 
@@ -95,6 +102,7 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [stockFilter, setStockFilter] = useState<'all' | StockStatus>('all')
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
@@ -173,6 +181,7 @@ export default function MenuPage() {
         popularity_score,
         is_push,
         is_out_of_stock,
+        stock_status,
         item_tags (tag)
       `)
       .eq('menu_id', menuData.id)
@@ -180,18 +189,29 @@ export default function MenuPage() {
       .order('name')
 
     if (itemsData) {
-      const transformedItems: MenuItem[] = itemsData.map((item) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        price: item.price,
-        category: item.category,
-        type: (item.type as 'food' | 'drink') || 'food',
-        popularity_score: item.popularity_score || 0,
-        is_push: item.is_push || false,
-        is_out_of_stock: item.is_out_of_stock || false,
-        tags: (item.item_tags as { tag: string }[])?.map((t) => t.tag as MenuTag) || [],
-      }))
+      const transformedItems: MenuItem[] = itemsData.map((item) => {
+        // Derive stock_status from is_out_of_stock for backwards compatibility
+        let stockStatus: StockStatus = 'available'
+        if ((item as Record<string, unknown>).stock_status) {
+          stockStatus = (item as Record<string, unknown>).stock_status as StockStatus
+        } else if (item.is_out_of_stock) {
+          stockStatus = 'out_indefinitely'
+        }
+
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          category: item.category,
+          type: (item.type as 'food' | 'drink') || 'food',
+          popularity_score: item.popularity_score || 0,
+          is_push: item.is_push || false,
+          is_out_of_stock: item.is_out_of_stock || false,
+          stock_status: stockStatus,
+          tags: (item.item_tags as { tag: string }[])?.map((t) => t.tag as MenuTag) || [],
+        }
+      })
       setItems(transformedItems)
     }
 
@@ -207,7 +227,8 @@ export default function MenuPage() {
   const filteredItems = items.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter
-    return matchesSearch && matchesCategory
+    const matchesStock = stockFilter === 'all' || item.stock_status === stockFilter
+    return matchesSearch && matchesCategory && matchesStock
   })
 
   const handleSaveTags = async (tags: MenuTag[]) => {
@@ -341,34 +362,42 @@ export default function MenuPage() {
     }
   }
 
-  const toggleAvailable = async (id: string) => {
+  const setStockStatus = async (id: string, status: StockStatus) => {
     const item = items.find((i) => i.id === id)
     if (!item) return
 
-    const newValue = !item.is_out_of_stock
+    const previousStatus = item.stock_status
+    const isOutOfStock = status !== 'available'
 
     setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, is_out_of_stock: newValue } : i))
+      prev.map((i) => (i.id === id ? { ...i, stock_status: status, is_out_of_stock: isOutOfStock } : i))
     )
 
     try {
       const response = await fetch(`/api/menu/items/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_out_of_stock: newValue }),
+        body: JSON.stringify({ stock_status: status, is_out_of_stock: isOutOfStock }),
       })
 
       if (!response.ok) {
         setItems((prev) =>
-          prev.map((i) => (i.id === id ? { ...i, is_out_of_stock: !newValue } : i))
+          prev.map((i) => (i.id === id ? { ...i, stock_status: previousStatus, is_out_of_stock: previousStatus !== 'available' } : i))
         )
-        showToast('Failed to update availability', 'error')
+        showToast('Failed to update stock status', 'error')
+      } else {
+        const statusLabels: Record<StockStatus, string> = {
+          available: 'Available',
+          out_today: 'Out Today',
+          out_indefinitely: 'Out Indefinitely',
+        }
+        showToast(`Stock status: ${statusLabels[status]}`, 'success')
       }
     } catch {
       setItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, is_out_of_stock: !newValue } : i))
+        prev.map((i) => (i.id === id ? { ...i, stock_status: previousStatus, is_out_of_stock: previousStatus !== 'available' } : i))
       )
-      showToast('Failed to update availability', 'error')
+      showToast('Failed to update stock status', 'error')
     }
   }
 
@@ -925,6 +954,48 @@ export default function MenuPage() {
           </div>
         </div>
 
+        {/* Stock Filter */}
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+          <span className="text-sm text-mesa-charcoal/50 mr-2">Stock:</span>
+          {[
+            { value: 'all', label: 'All', icon: null },
+            { value: 'available', label: 'Available', icon: CheckCircle2 },
+            { value: 'out_today', label: 'Out Today', icon: Clock },
+            { value: 'out_indefinitely', label: 'Out Indefinitely', icon: Ban },
+          ].map((option) => {
+            const count = option.value === 'all'
+              ? items.length
+              : items.filter(i => i.stock_status === option.value).length
+            const Icon = option.icon
+
+            return (
+              <button
+                key={option.value}
+                onClick={() => setStockFilter(option.value as 'all' | StockStatus)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                  stockFilter === option.value
+                    ? option.value === 'available'
+                      ? 'bg-green-100 text-green-700'
+                      : option.value === 'out_today'
+                        ? 'bg-amber-100 text-amber-700'
+                        : option.value === 'out_indefinitely'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-mesa-burgundy text-white'
+                    : 'glass text-mesa-charcoal/60 hover:text-mesa-charcoal'
+                }`}
+              >
+                {Icon && <Icon className="w-4 h-4" />}
+                {option.label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  stockFilter === option.value ? 'bg-white/30' : 'bg-mesa-charcoal/10'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
         {/* Menu Items */}
         {items.length === 0 ? (
           <motion.div
@@ -962,7 +1033,7 @@ export default function MenuPage() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3, delay: index * 0.02 }}
                   className={`glass rounded-2xl overflow-hidden hover-lift group relative ${
-                    item.is_out_of_stock ? 'opacity-60' : ''
+                    item.stock_status !== 'available' ? 'opacity-60' : ''
                   }`}
                 >
                   {/* Selection checkbox */}
@@ -993,11 +1064,17 @@ export default function MenuPage() {
                       </div>
                     )}
 
-                    {/* Out of stock badge */}
-                    {item.is_out_of_stock && (
+                    {/* Stock status badge */}
+                    {item.stock_status === 'out_today' && (
+                      <div className="absolute top-3 right-12 flex items-center gap-1 px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded-full">
+                        <Clock className="w-3 h-3" />
+                        Out Today
+                      </div>
+                    )}
+                    {item.stock_status === 'out_indefinitely' && (
                       <div className="absolute top-3 right-12 flex items-center gap-1 px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-full">
-                        <EyeOff className="w-3 h-3" />
-                        Hidden
+                        <Ban className="w-3 h-3" />
+                        Out Indef.
                       </div>
                     )}
 
@@ -1038,16 +1115,41 @@ export default function MenuPage() {
                                 onClick={() => { togglePush(item.id); setOpenMenuId(null); }}
                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
                               >
-                                <Star className="w-4 h-4" fill={item.is_push ? 'currentColor' : 'none'} />
-                                {item.is_push ? 'Unfeature' : 'Feature'}
+                                <TrendingUp className="w-4 h-4" />
+                                {item.is_push ? 'Remove Push' : 'Push Item'}
+                              </button>
+                              <div className="border-t border-mesa-charcoal/5 my-1" />
+                              <div className="px-4 py-1">
+                                <span className="text-xs text-mesa-charcoal/40">Stock Status</span>
+                              </div>
+                              <button
+                                onClick={() => { setStockStatus(item.id, 'available'); setOpenMenuId(null); }}
+                                className={`w-full flex items-center gap-2 px-4 py-2 text-sm transition ${
+                                  item.stock_status === 'available' ? 'text-green-600 bg-green-50' : 'text-mesa-charcoal/70 hover:bg-mesa-charcoal/5'
+                                }`}
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                Available
                               </button>
                               <button
-                                onClick={() => { toggleAvailable(item.id); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-mesa-charcoal/70 hover:bg-mesa-charcoal/5 transition"
+                                onClick={() => { setStockStatus(item.id, 'out_today'); setOpenMenuId(null); }}
+                                className={`w-full flex items-center gap-2 px-4 py-2 text-sm transition ${
+                                  item.stock_status === 'out_today' ? 'text-amber-600 bg-amber-50' : 'text-mesa-charcoal/70 hover:bg-mesa-charcoal/5'
+                                }`}
                               >
-                                {item.is_out_of_stock ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                {item.is_out_of_stock ? 'Show' : 'Hide'}
+                                <Clock className="w-4 h-4" />
+                                Out Today
                               </button>
+                              <button
+                                onClick={() => { setStockStatus(item.id, 'out_indefinitely'); setOpenMenuId(null); }}
+                                className={`w-full flex items-center gap-2 px-4 py-2 text-sm transition ${
+                                  item.stock_status === 'out_indefinitely' ? 'text-red-600 bg-red-50' : 'text-mesa-charcoal/70 hover:bg-mesa-charcoal/5'
+                                }`}
+                              >
+                                <Ban className="w-4 h-4" />
+                                Out Indefinitely
+                              </button>
+                              <div className="border-t border-mesa-charcoal/5 my-1" />
                               <button
                                 onClick={() => { deleteItem(item.id); setOpenMenuId(null); }}
                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"

@@ -1,402 +1,831 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { QRCode } from 'react-qrcode-logo'
-import { Download, Upload, Check, AlertCircle, CreditCard } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  User,
+  Building2,
+  Bell,
+  CreditCard,
+  Shield,
+  Camera,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
+  Clock,
+  Save,
+  Check,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Smartphone,
+  Utensils,
+  ChefHat,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ScrollReveal } from '@/components/ScrollReveal'
 
-interface Venue {
-  id: string
+type TabType = 'profile' | 'venue' | 'notifications' | 'billing' | 'security'
+
+interface ProfileData {
+  name: string
+  email: string
+  phone: string
+  role: string
+}
+
+interface VenueData {
   name: string
   slug: string
-  address: string | null
-  city: string | null
-  country: string | null
-  phone: string | null
-  website: string | null
-  logo_url: string | null
+  address: string
+  phone: string
+  website: string
+  cuisine_type: string
+  opening_hours: string
 }
 
-interface Subscription {
-  id: string
-  status: string
-  plan: string
-  trial_ends_at: string | null
-  current_period_end: string | null
+interface NotificationSettings {
+  email_orders: boolean
+  email_reports: boolean
+  push_orders: boolean
+  push_stock: boolean
+  sms_critical: boolean
 }
+
+const tabs: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'venue', label: 'Venue', icon: Building2 },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'billing', label: 'Billing', icon: CreditCard },
+  { id: 'security', label: 'Security', icon: Shield },
+]
 
 export default function SettingsPage() {
-  const [venue, setVenue] = useState<Venue | null>(null)
-  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [activeTab, setActiveTab] = useState<TabType>('profile')
   const [loading, setLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  // Form state
-  const [venueName, setVenueName] = useState('')
-  const [venueAddress, setVenueAddress] = useState('')
-  const [tableNumber, setTableNumber] = useState('')
+  const [profile, setProfile] = useState<ProfileData>({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'Owner',
+  })
 
-  const qrRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
+  const [venue, setVenue] = useState<VenueData>({
+    name: '',
+    slug: '',
+    address: '',
+    phone: '',
+    website: '',
+    cuisine_type: '',
+    opening_hours: '',
+  })
+
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    email_orders: true,
+    email_reports: true,
+    push_orders: true,
+    push_stock: true,
+    sms_critical: false,
+  })
+
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
   }
 
-  // Fetch venue data
-  useEffect(() => {
-    const fetchVenue = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+  const fetchData = useCallback(async () => {
+    const supabase = createClient()
 
-      const { data: operator } = await supabase
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: operatorUser } = await supabase
+      .from('operator_users')
+      .select('*, venues(*)')
+      .eq('auth_user_id', user.id)
+      .single()
+
+    if (operatorUser) {
+      setProfile({
+        name: operatorUser.name || '',
+        email: user.email || '',
+        phone: operatorUser.phone || '',
+        role: operatorUser.role || 'Owner',
+      })
+
+      if (operatorUser.venues) {
+        const v = operatorUser.venues as Record<string, string | null>
+        setVenue({
+          name: v.name || '',
+          slug: v.slug || '',
+          address: v.address || '',
+          phone: v.phone || '',
+          website: v.website || '',
+          cuisine_type: v.cuisine_type || '',
+          opening_hours: v.opening_hours || '',
+        })
+      }
+    }
+
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  const handleSaveProfile = async () => {
+    setSaving(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const { error } = await supabase
+        .from('operator_users')
+        .update({
+          name: profile.name,
+          phone: profile.phone,
+        })
+        .eq('auth_user_id', user.id)
+
+      if (error) throw error
+      showToast('Profile saved successfully', 'success')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to save', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveVenue = async () => {
+    setSaving(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const { data: operatorUser } = await supabase
         .from('operator_users')
         .select('venue_id')
         .eq('auth_user_id', user.id)
         .single()
 
-      if (!operator?.venue_id) {
-        setLoading(false)
-        return
-      }
+      if (!operatorUser?.venue_id) throw new Error('No venue found')
 
-      const { data: venueData } = await supabase
+      const { error } = await supabase
         .from('venues')
-        .select('*')
-        .eq('id', operator.venue_id)
-        .single()
+        .update({
+          name: venue.name,
+          address: venue.address,
+          phone: venue.phone,
+          website: venue.website,
+          cuisine_type: venue.cuisine_type,
+          opening_hours: venue.opening_hours,
+        })
+        .eq('id', operatorUser.venue_id)
 
-      if (venueData) {
-        setVenue(venueData)
-        setVenueName(venueData.name)
-        setVenueAddress(venueData.address || '')
-
-        // Fetch subscription
-        const { data: sub } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('venue_id', venueData.id)
-          .single()
-
-        if (sub) {
-          setSubscription(sub)
-        }
-      }
-
-      setLoading(false)
-    }
-
-    fetchVenue()
-  }, [supabase])
-
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eatsight.ai'
-  const qrUrl = venue
-    ? `${baseUrl}/v/${venue.slug}${tableNumber ? `?t=${tableNumber}` : ''}`
-    : ''
-
-  const handleSave = async () => {
-    if (!venue) return
-
-    setIsSaving(true)
-
-    const { error } = await supabase
-      .from('venues')
-      .update({
-        name: venueName,
-        address: venueAddress || null,
-      })
-      .eq('id', venue.id)
-
-    setIsSaving(false)
-
-    if (error) {
-      console.error('Save error:', error)
-      showToast('Failed to save changes', 'error')
-    } else {
-      setVenue({ ...venue, name: venueName, address: venueAddress })
-      showToast('Changes saved successfully', 'success')
+      if (error) throw error
+      showToast('Venue settings saved', 'success')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to save', 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
-  const downloadQR = () => {
-    const canvas = qrRef.current?.querySelector('canvas') as HTMLCanvasElement
-    if (!canvas) {
-      showToast('Unable to generate QR code', 'error')
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      showToast('Passwords do not match', 'error')
       return
     }
 
-    const pngFile = canvas.toDataURL('image/png')
-    const downloadLink = document.createElement('a')
-    downloadLink.download = `${venue?.slug || 'qr'}-table-${tableNumber || 'all'}.png`
-    downloadLink.href = pngFile
-    downloadLink.click()
-  }
+    if (newPassword.length < 8) {
+      showToast('Password must be at least 8 characters', 'error')
+      return
+    }
 
-  const downloadAllTables = async () => {
-    if (!venue) return
-    showToast('Downloaded QR codes for tables 1-20', 'success')
+    setSaving(true)
+    try {
+      const supabase = createClient()
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      })
+
+      if (error) throw error
+
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      showToast('Password updated successfully', 'success')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to update password', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#722F37]"></div>
-      </div>
-    )
-  }
-
-  if (!venue) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <AlertCircle className="w-12 h-12 text-[#1a1a1a]/30 mb-4" />
-        <p className="text-[#1a1a1a]/50">No venue found. Please complete onboarding first.</p>
+      <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-mesa-burgundy"></div>
       </div>
     )
   }
 
   return (
-    <div>
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${
-            toast.type === 'success'
-              ? 'bg-green-500 text-white'
-              : 'bg-red-500 text-white'
-          }`}
-        >
-          {toast.type === 'success' ? (
-            <Check className="w-4 h-4" />
-          ) : (
-            <AlertCircle className="w-4 h-4" />
-          )}
-          {toast.message}
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-serif text-[#1a1a1a]">Settings</h1>
-        <p className="text-[#1a1a1a]/50 text-sm sm:text-base">Manage your venue and generate QR codes</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        {/* Venue Info */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5 shadow-sm">
-          <h3 className="font-semibold text-[#1a1a1a] mb-4 sm:mb-6">Venue Information</h3>
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/60 mb-2">
-                Venue Name
-              </label>
-              <input
-                type="text"
-                value={venueName}
-                onChange={(e) => setVenueName(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/60 mb-2">
-                Address
-              </label>
-              <input
-                type="text"
-                value={venueAddress}
-                onChange={(e) => setVenueAddress(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
-                placeholder="Enter your venue address"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/60 mb-2">
-                Venue URL
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="text-[#1a1a1a]/50">{baseUrl}/v/</span>
-                <span className="px-4 py-3 rounded-xl bg-[#FDFBF7] border border-[#1a1a1a]/10 text-[#1a1a1a] flex-1">
-                  {venue.slug}
-                </span>
-              </div>
-              <p className="text-xs text-[#1a1a1a]/40 mt-1">
-                This is your unique venue URL. Share it with guests!
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/60 mb-2">
-                Logo (optional)
-              </label>
-              <div className="border-2 border-dashed border-[#1a1a1a]/10 rounded-xl p-6 text-center hover:border-[#722F37] transition-colors cursor-pointer">
-                <Upload className="w-6 h-6 text-[#1a1a1a]/40 mx-auto mb-2" />
-                <p className="text-sm text-[#1a1a1a]/50">Click to upload logo</p>
-                <p className="text-xs text-[#1a1a1a]/30 mt-1">PNG, JPG up to 2MB</p>
-              </div>
-            </div>
-
-            <Button onClick={handleSave} disabled={isSaving} className="w-full bg-[#722F37] hover:bg-[#5a252c] text-white">
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </div>
-
-        {/* QR Code Generator */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#1a1a1a]/5 shadow-sm">
-          <h3 className="font-semibold text-[#1a1a1a] mb-4 sm:mb-6">QR Code Generator</h3>
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a]/60 mb-2">
-                Table Number (optional)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  max="99"
-                  value={tableNumber}
-                  onChange={(e) => setTableNumber(e.target.value)}
-                  placeholder="Leave empty for general QR"
-                  className="flex-1 px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] placeholder:text-[#1a1a1a]/30 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
-                />
-                <select
-                  value={tableNumber}
-                  onChange={(e) => setTableNumber(e.target.value)}
-                  className="px-4 py-3 rounded-xl border border-[#1a1a1a]/10 bg-white text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f] transition"
-                >
-                  <option value="">No table</option>
-                  {Array.from({ length: 50 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      Table {n}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p className="text-xs text-[#1a1a1a]/40 mt-1">
-                Adding a table number helps track which tables are most active
-              </p>
-            </div>
-
-            {/* QR Preview */}
-            <div className="flex flex-col items-center py-4">
-              <div ref={qrRef} className="bg-white p-4 rounded-xl border border-[#1a1a1a]/10">
-                <QRCode
-                  value={qrUrl}
-                  size={180}
-                  fgColor="#722F37"
-                  bgColor="#ffffff"
-                  ecLevel="M"
-                  quietZone={0}
-                />
-              </div>
-              <p className="text-xs text-[#1a1a1a]/40 mt-4 text-center break-all max-w-[250px]">
-                {qrUrl}
-              </p>
-            </div>
-
-            {/* Download Buttons */}
-            <div className="space-y-3">
-              <button
-                onClick={downloadQR}
-                className="w-full px-6 py-3 border-2 border-[#722F37] text-[#722F37] rounded-xl hover:bg-[#722F37] hover:text-white transition flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Download PNG
-              </button>
-              <button
-                onClick={downloadAllTables}
-                className="w-full px-6 py-3 border-2 border-[#1a1a1a]/20 text-[#1a1a1a]/60 rounded-xl hover:border-[#1a1a1a]/40 transition flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Download tables 1-20 (ZIP)
-              </button>
-            </div>
-
-            {/* Instructions */}
-            <div className="p-4 bg-[#FDFBF7] rounded-xl">
-              <h4 className="font-medium text-[#1a1a1a] mb-2">How to use</h4>
-              <ol className="text-sm text-[#1a1a1a]/60 space-y-1 list-decimal list-inside">
-                <li>Download the QR code for each table</li>
-                <li>Print and place on table tents or stickers</li>
-                <li>Guests scan to get personalized recommendations</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Subscription Section */}
-      <div className="mt-8">
-        <div className="bg-white rounded-2xl p-6 border border-[#1a1a1a]/5 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-[#722F37]/10 flex items-center justify-center">
-              <CreditCard className="w-5 h-5 text-[#722F37]" />
-            </div>
-            <h3 className="font-semibold text-[#1a1a1a]">Subscription</h3>
-          </div>
-
-          {subscription ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-[#FDFBF7]">
-                  <p className="text-sm text-[#1a1a1a]/50 mb-1">Current Plan</p>
-                  <p className="text-lg font-semibold text-[#1a1a1a] capitalize">{subscription.plan}</p>
-                </div>
-                <div className="p-4 rounded-xl bg-[#FDFBF7]">
-                  <p className="text-sm text-[#1a1a1a]/50 mb-1">Status</p>
-                  <span className={`inline-flex px-2 py-1 rounded text-sm font-medium ${
-                    subscription.status === 'active' ? 'bg-green-100 text-green-700' :
-                    subscription.status === 'trialing' ? 'bg-amber-100 text-amber-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {subscription.status === 'trialing' ? 'Free Trial' : subscription.status}
-                  </span>
-                </div>
-              </div>
-
-              {subscription.status === 'trialing' && subscription.trial_ends_at && (
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-                  <p className="text-sm text-amber-700">
-                    Trial ends on {new Date(subscription.trial_ends_at).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </p>
-                </div>
+    <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Toast */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 ${
+                toast.type === 'success'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-red-500 text-white'
+              }`}
+            >
+              {toast.type === 'success' ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <AlertCircle className="w-4 h-4" />
               )}
-
-              <div className="pt-4 border-t border-[#1a1a1a]/10">
-                <p className="text-sm text-[#1a1a1a]/50 mb-3">Plan Details</p>
-                {subscription.plan === 'monthly' ? (
-                  <p className="text-[#1a1a1a]">€295/month • Cancel anytime</p>
-                ) : (
-                  <p className="text-[#1a1a1a]">€249/month • Billed yearly (€2,988)</p>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                {subscription.plan === 'monthly' && subscription.status === 'active' && (
-                  <button className="flex-1 px-6 py-3 border-2 border-[#722F37] text-[#722F37] rounded-xl hover:bg-[#722F37] hover:text-white transition">
-                    Upgrade to Annual (Save €552)
-                  </button>
-                )}
-                <button className="text-[#1a1a1a]/50 hover:text-[#1a1a1a] px-4 py-2 transition">
-                  Manage Billing
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-[#1a1a1a]/50 mb-4">No subscription found</p>
-              <Button className="bg-[#722F37] hover:bg-[#5a252c] text-white">Start Free Trial</Button>
-            </div>
+              {toast.message}
+            </motion.div>
           )}
+        </AnimatePresence>
+
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-2xl font-serif text-mesa-charcoal">Settings</h1>
+          <p className="text-sm text-mesa-charcoal/50 mt-1">
+            Manage your account and venue settings
+          </p>
+        </motion.div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition ${
+                  activeTab === tab.id
+                    ? 'bg-mesa-burgundy text-white'
+                    : 'glass text-mesa-charcoal/70 hover:text-mesa-charcoal'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
+
+        {/* Tab Content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Profile Tab */}
+            {activeTab === 'profile' && (
+              <div className="space-y-6">
+                <ScrollReveal>
+                  <div className="glass rounded-2xl p-6">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-2xl bg-mesa-burgundy/10 flex items-center justify-center">
+                          <User className="w-10 h-10 text-mesa-burgundy/50" />
+                        </div>
+                        <button className="absolute -bottom-1 -right-1 p-2 bg-mesa-burgundy text-white rounded-full shadow-lg hover:bg-mesa-burgundy/90 transition">
+                          <Camera className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-mesa-charcoal">{profile.name || 'Your Name'}</h2>
+                        <p className="text-sm text-mesa-charcoal/50">{profile.role}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Full Name
+                        </label>
+                        <div className="relative">
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="text"
+                            value={profile.name}
+                            onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Email
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="email"
+                            value={profile.email}
+                            disabled
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal/50 bg-mesa-charcoal/5 cursor-not-allowed"
+                          />
+                        </div>
+                        <p className="text-xs text-mesa-charcoal/40 mt-1">Contact support to change email</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Phone
+                        </label>
+                        <div className="relative">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="tel"
+                            value={profile.phone}
+                            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                            placeholder="+1 (555) 000-0000"
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end mt-6">
+                      <button
+                        onClick={handleSaveProfile}
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-mesa-burgundy text-white rounded-xl font-medium hover:bg-mesa-burgundy/90 disabled:opacity-50 transition"
+                      >
+                        <Save className="w-4 h-4" />
+                        {saving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              </div>
+            )}
+
+            {/* Venue Tab */}
+            {activeTab === 'venue' && (
+              <div className="space-y-6">
+                <ScrollReveal>
+                  <div className="glass rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-xl bg-mesa-burgundy/10 flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-mesa-burgundy" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-mesa-charcoal">Venue Details</h2>
+                        <p className="text-sm text-mesa-charcoal/50">Basic information about your restaurant</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Venue Name
+                        </label>
+                        <div className="relative">
+                          <Utensils className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="text"
+                            value={venue.name}
+                            onChange={(e) => setVenue({ ...venue, name: e.target.value })}
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          URL Slug
+                        </label>
+                        <div className="relative">
+                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="text"
+                            value={venue.slug}
+                            disabled
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal/50 bg-mesa-charcoal/5 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Address
+                        </label>
+                        <div className="relative">
+                          <MapPin className="absolute left-4 top-3 w-4 h-4 text-mesa-charcoal/30" />
+                          <textarea
+                            value={venue.address}
+                            onChange={(e) => setVenue({ ...venue, address: e.target.value })}
+                            rows={2}
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20 resize-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Phone
+                        </label>
+                        <div className="relative">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="tel"
+                            value={venue.phone}
+                            onChange={(e) => setVenue({ ...venue, phone: e.target.value })}
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Website
+                        </label>
+                        <div className="relative">
+                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="url"
+                            value={venue.website}
+                            onChange={(e) => setVenue({ ...venue, website: e.target.value })}
+                            placeholder="https://"
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Cuisine Type
+                        </label>
+                        <div className="relative">
+                          <ChefHat className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="text"
+                            value={venue.cuisine_type}
+                            onChange={(e) => setVenue({ ...venue, cuisine_type: e.target.value })}
+                            placeholder="e.g., Italian, Modern European"
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Opening Hours
+                        </label>
+                        <div className="relative">
+                          <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mesa-charcoal/30" />
+                          <input
+                            type="text"
+                            value={venue.opening_hours}
+                            onChange={(e) => setVenue({ ...venue, opening_hours: e.target.value })}
+                            placeholder="e.g., Tue-Sun 12:00-22:00"
+                            className="w-full pl-11 pr-4 py-3 glass rounded-xl text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end mt-6">
+                      <button
+                        onClick={handleSaveVenue}
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-mesa-burgundy text-white rounded-xl font-medium hover:bg-mesa-burgundy/90 disabled:opacity-50 transition"
+                      >
+                        <Save className="w-4 h-4" />
+                        {saving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              </div>
+            )}
+
+            {/* Notifications Tab */}
+            {activeTab === 'notifications' && (
+              <div className="space-y-6">
+                <ScrollReveal>
+                  <div className="glass rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-xl bg-mesa-burgundy/10 flex items-center justify-center">
+                        <Mail className="w-6 h-6 text-mesa-burgundy" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-mesa-charcoal">Email Notifications</h2>
+                        <p className="text-sm text-mesa-charcoal/50">Manage what emails you receive</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="flex items-center justify-between p-4 glass rounded-xl cursor-pointer">
+                        <div>
+                          <p className="text-sm font-medium text-mesa-charcoal">Order notifications</p>
+                          <p className="text-xs text-mesa-charcoal/50">Receive emails for new orders</p>
+                        </div>
+                        <div
+                          onClick={() => setNotifications({ ...notifications, email_orders: !notifications.email_orders })}
+                          className={`relative w-11 h-6 rounded-full transition cursor-pointer ${
+                            notifications.email_orders ? 'bg-mesa-burgundy' : 'bg-mesa-charcoal/20'
+                          }`}
+                        >
+                          <motion.div
+                            animate={{ x: notifications.email_orders ? 20 : 2 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
+                          />
+                        </div>
+                      </label>
+
+                      <label className="flex items-center justify-between p-4 glass rounded-xl cursor-pointer">
+                        <div>
+                          <p className="text-sm font-medium text-mesa-charcoal">Weekly reports</p>
+                          <p className="text-xs text-mesa-charcoal/50">Summary of weekly analytics</p>
+                        </div>
+                        <div
+                          onClick={() => setNotifications({ ...notifications, email_reports: !notifications.email_reports })}
+                          className={`relative w-11 h-6 rounded-full transition cursor-pointer ${
+                            notifications.email_reports ? 'bg-mesa-burgundy' : 'bg-mesa-charcoal/20'
+                          }`}
+                        >
+                          <motion.div
+                            animate={{ x: notifications.email_reports ? 20 : 2 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </ScrollReveal>
+
+                <ScrollReveal delay={0.1}>
+                  <div className="glass rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-xl bg-mesa-burgundy/10 flex items-center justify-center">
+                        <Smartphone className="w-6 h-6 text-mesa-burgundy" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-mesa-charcoal">Push Notifications</h2>
+                        <p className="text-sm text-mesa-charcoal/50">Real-time alerts on your device</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="flex items-center justify-between p-4 glass rounded-xl cursor-pointer">
+                        <div>
+                          <p className="text-sm font-medium text-mesa-charcoal">New orders</p>
+                          <p className="text-xs text-mesa-charcoal/50">Instant alerts for incoming orders</p>
+                        </div>
+                        <div
+                          onClick={() => setNotifications({ ...notifications, push_orders: !notifications.push_orders })}
+                          className={`relative w-11 h-6 rounded-full transition cursor-pointer ${
+                            notifications.push_orders ? 'bg-mesa-burgundy' : 'bg-mesa-charcoal/20'
+                          }`}
+                        >
+                          <motion.div
+                            animate={{ x: notifications.push_orders ? 20 : 2 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
+                          />
+                        </div>
+                      </label>
+
+                      <label className="flex items-center justify-between p-4 glass rounded-xl cursor-pointer">
+                        <div>
+                          <p className="text-sm font-medium text-mesa-charcoal">Stock alerts</p>
+                          <p className="text-xs text-mesa-charcoal/50">Notifications when items run low</p>
+                        </div>
+                        <div
+                          onClick={() => setNotifications({ ...notifications, push_stock: !notifications.push_stock })}
+                          className={`relative w-11 h-6 rounded-full transition cursor-pointer ${
+                            notifications.push_stock ? 'bg-mesa-burgundy' : 'bg-mesa-charcoal/20'
+                          }`}
+                        >
+                          <motion.div
+                            animate={{ x: notifications.push_stock ? 20 : 2 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              </div>
+            )}
+
+            {/* Billing Tab */}
+            {activeTab === 'billing' && (
+              <div className="space-y-6">
+                <ScrollReveal>
+                  <div className="glass rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-xl bg-mesa-burgundy/10 flex items-center justify-center">
+                        <CreditCard className="w-6 h-6 text-mesa-burgundy" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-mesa-charcoal">Current Plan</h2>
+                        <p className="text-sm text-mesa-charcoal/50">Manage your subscription</p>
+                      </div>
+                    </div>
+
+                    <div className="glass-warm rounded-xl p-6 mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <span className="text-xs font-medium text-mesa-burgundy uppercase tracking-wider">Current Plan</span>
+                          <h3 className="text-2xl font-serif text-mesa-charcoal mt-1">Professional</h3>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-3xl font-semibold text-mesa-charcoal">€79</span>
+                          <span className="text-mesa-charcoal/50">/month</span>
+                        </div>
+                      </div>
+                      <ul className="space-y-2 text-sm text-mesa-charcoal/70">
+                        <li className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-600" />
+                          Unlimited menu items
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-600" />
+                          Advanced analytics
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-600" />
+                          Priority support
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button className="flex-1 py-2.5 glass rounded-xl text-sm font-medium text-mesa-charcoal hover:bg-mesa-charcoal/5 transition">
+                        Change Plan
+                      </button>
+                      <button className="flex-1 py-2.5 glass rounded-xl text-sm font-medium text-mesa-charcoal hover:bg-mesa-charcoal/5 transition">
+                        View Invoices
+                      </button>
+                    </div>
+                  </div>
+                </ScrollReveal>
+
+                <ScrollReveal delay={0.1}>
+                  <div className="glass rounded-2xl p-6">
+                    <h3 className="font-semibold text-mesa-charcoal mb-4">Payment Method</h3>
+                    <div className="flex items-center gap-4 p-4 glass rounded-xl">
+                      <div className="w-12 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center text-white text-xs font-bold">
+                        VISA
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-mesa-charcoal">•••• •••• •••• 4242</p>
+                        <p className="text-xs text-mesa-charcoal/50">Expires 12/25</p>
+                      </div>
+                      <button className="text-sm text-mesa-burgundy hover:underline">
+                        Update
+                      </button>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              </div>
+            )}
+
+            {/* Security Tab */}
+            {activeTab === 'security' && (
+              <div className="space-y-6">
+                <ScrollReveal>
+                  <div className="glass rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-xl bg-mesa-burgundy/10 flex items-center justify-center">
+                        <Shield className="w-6 h-6 text-mesa-burgundy" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-mesa-charcoal">Change Password</h2>
+                        <p className="text-sm text-mesa-charcoal/50">Update your account password</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Current Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full px-4 py-3 pr-12 glass rounded-xl text-mesa-charcoal focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-mesa-charcoal/40 hover:text-mesa-charcoal"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          New Password
+                        </label>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 py-3 glass rounded-xl text-mesa-charcoal focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-mesa-charcoal mb-2">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full px-4 py-3 glass rounded-xl text-mesa-charcoal focus:outline-none focus:ring-2 focus:ring-mesa-burgundy/20"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleChangePassword}
+                        disabled={saving || !currentPassword || !newPassword || !confirmPassword}
+                        className="w-full py-3 bg-mesa-burgundy text-white rounded-xl font-medium hover:bg-mesa-burgundy/90 disabled:opacity-50 transition"
+                      >
+                        {saving ? 'Updating...' : 'Update Password'}
+                      </button>
+                    </div>
+                  </div>
+                </ScrollReveal>
+
+                <ScrollReveal delay={0.1}>
+                  <div className="glass rounded-2xl p-6">
+                    <h3 className="font-semibold text-mesa-charcoal mb-4">Active Sessions</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4 p-4 glass rounded-xl">
+                        <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                          <Smartphone className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-mesa-charcoal">Current session</p>
+                          <p className="text-xs text-mesa-charcoal/50">This device - Active now</p>
+                        </div>
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollReveal>
+
+                <ScrollReveal delay={0.2}>
+                  <div className="glass rounded-2xl p-6 border border-red-200">
+                    <h3 className="font-semibold text-red-600 mb-2">Danger Zone</h3>
+                    <p className="text-sm text-mesa-charcoal/50 mb-4">
+                      Permanently delete your account and all associated data.
+                    </p>
+                    <button className="px-4 py-2 border border-red-300 text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition">
+                      Delete Account
+                    </button>
+                  </div>
+                </ScrollReveal>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )
