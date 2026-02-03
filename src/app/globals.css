@@ -677,3 +677,72 @@ textarea:focus-visible {
 .input-eatsight::placeholder {
   color: #a3a3a3;
 }
+
+/* ========================================
+   MESA: Premium Guest Experience Design System
+   Warm, inviting, Apple-level polish
+   ======================================== */
+
+@layer components {
+  /* Mesa page background */
+  .mesa-bg {
+    background: linear-gradient(180deg, #FDFBF7 0%, #FBF7F0 100%);
+    min-height: 100vh;
+  }
+
+  /* Mesa warm glass */
+  .mesa-glass {
+    background: rgba(253, 251, 247, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(114, 47, 55, 0.08);
+  }
+
+  /* Mesa button primary */
+  .mesa-btn {
+    background: linear-gradient(135deg, #722F37 0%, #8B3D47 100%);
+    color: white;
+    border-radius: 9999px;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 14px rgba(114, 47, 55, 0.25);
+  }
+  .mesa-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(114, 47, 55, 0.35);
+  }
+  .mesa-btn:active {
+    transform: scale(0.98);
+  }
+
+  /* Mesa card */
+  .mesa-card {
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 4px 24px rgba(114, 47, 55, 0.08);
+    border: 1px solid rgba(114, 47, 55, 0.06);
+  }
+
+  /* Floating animation */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* Shimmer effect */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .mesa-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(114, 47, 55, 0.03) 0%,
+      rgba(114, 47, 55, 0.08) 50%,
+      rgba(114, 47, 55, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+}
