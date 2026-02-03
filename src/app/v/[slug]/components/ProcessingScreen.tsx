@@ -79,18 +79,18 @@ export function ProcessingScreen({ itemCount }: ProcessingScreenProps) {
       <div className="text-center w-full max-w-xs">
         {/* Icon with spinning ring */}
         <div className="relative w-24 h-24 mx-auto mb-8">
-          {/* Spinning ring */}
+          {/* Outer spinning ring */}
           <motion.div
             className="absolute inset-0 rounded-full border-2 border-mesa-burgundy/20 border-t-mesa-burgundy"
             animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
           />
 
-          {/* Inner glow */}
+          {/* Inner counter-rotating ring */}
           <motion.div
-            className="absolute inset-2 rounded-full bg-gradient-to-br from-mesa-burgundy/10 to-mesa-terracotta/10"
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute inset-2 rounded-full border-2 border-mesa-terracotta/20 border-b-mesa-terracotta"
+            animate={{ rotate: -360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
           />
 
           {/* Icon */}

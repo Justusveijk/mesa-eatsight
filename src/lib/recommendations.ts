@@ -312,10 +312,25 @@ function scoreItems(
       }
     })
 
-    // ── PORTION: +8 points ──
-    if (preferences.portion && item.tags.includes(preferences.portion)) {
-      score += 8
-      matchedTags.push(preferences.portion)
+    // ── PORTION: +8 exact, +4 adjacent ──
+    if (preferences.portion) {
+      if (item.tags.includes(preferences.portion)) {
+        score += 8
+        matchedTags.push(preferences.portion)
+      } else {
+        // Half-credit for adjacent portions
+        const adjacency: Record<string, string[]> = {
+          portion_light: ['portion_standard'],
+          portion_standard: ['portion_light', 'portion_hearty'],
+          portion_hearty: ['portion_standard'],
+        }
+        const adjacent = adjacency[preferences.portion] || []
+        const adjacentMatch = adjacent.find(p => item.tags.includes(p))
+        if (adjacentMatch) {
+          score += 4
+          matchedTags.push(adjacentMatch)
+        }
+      }
     }
 
     // ── PRICE: +2 points (optional) ──

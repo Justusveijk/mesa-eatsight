@@ -87,11 +87,11 @@ const FOOD_QUESTIONS: Question[] = [
     multiSelect: false,
     canSkip: false,
     options: [
-      { value: 'mood_comfort', label: 'Comfort & indulgent', icon: Heart, color: '#722F37' },
-      { value: 'mood_light', label: 'Fresh & light', icon: Salad, color: '#22c55e' },
-      { value: 'mood_protein', label: 'High-protein', icon: Dumbbell, color: '#C4654A' },
-      { value: 'mood_warm', label: 'Warm & cozy', icon: Coffee, color: '#f59e0b' },
-      { value: 'mood_treat', label: 'Sweet treat', icon: CakeSlice, color: '#8b5cf6' },
+      { value: 'mood_comfort', label: 'Comfort & indulgent', icon: Heart, color: '#722F37', subtitle: 'Rich, satisfying, soul food' },
+      { value: 'mood_light', label: 'Fresh & light', icon: Salad, color: '#22c55e', subtitle: 'Clean, healthy, refreshing' },
+      { value: 'mood_protein', label: 'High-protein', icon: Dumbbell, color: '#C4654A', subtitle: 'Filling, nutritious, power meal' },
+      { value: 'mood_warm', label: 'Warm & cozy', icon: Coffee, color: '#f59e0b', subtitle: 'Soups, stews, hot dishes' },
+      { value: 'mood_treat', label: 'Sweet treat', icon: CakeSlice, color: '#8b5cf6', subtitle: 'Desserts, indulgences' },
     ],
   },
   {
@@ -513,7 +513,7 @@ export function QuestionFlow({
                         ? handleMultiToggle(option.value)
                         : handleSingleSelect(option.value)
                     }
-                    className={`w-full p-4 rounded-2xl text-left transition-all duration-200 flex items-center gap-4 ${
+                    className={`w-full p-4 rounded-2xl text-left transition-all duration-200 flex items-center gap-4 relative overflow-hidden ${
                       isSelected
                         ? 'bg-mesa-burgundy text-white shadow-lg shadow-mesa-burgundy/20'
                         : 'mesa-card hover:shadow-md'
@@ -582,6 +582,16 @@ export function QuestionFlow({
                         </motion.div>
                       )}
                     </div>
+
+                    {/* Shimmer effect on selection */}
+                    {isSelected && (
+                      <motion.div
+                        initial={{ x: '-100%', opacity: 0.5 }}
+                        animate={{ x: '200%', opacity: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-2xl pointer-events-none"
+                      />
+                    )}
                   </motion.button>
                 )
               })}
