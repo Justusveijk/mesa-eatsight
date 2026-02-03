@@ -7,72 +7,59 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
   UtensilsCrossed,
-  QrCode,
   BarChart3,
+  QrCode,
   Settings,
+  LogOut,
   ChevronLeft,
-  ChevronRight,
   Menu,
   X,
-  LogOut,
-  User,
-  Bell,
+  ExternalLink,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const navItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/menu', label: 'Menu', icon: UtensilsCrossed },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dashboard/qr', label: 'QR Code', icon: QrCode },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 
-interface DashboardNavProps {
-  defaultCollapsed?: boolean
-}
-
-export function DashboardNav({ defaultCollapsed = false }: DashboardNavProps) {
+export function DashboardNav() {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [userName, setUserName] = useState('')
-  const [venueName, setVenueName] = useState('')
+  const [venue, setVenue] = useState<any>(null)
+
+  const supabase = createClient()
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const supabase = createClient()
+    async function fetchVenue() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data: operatorUser } = await supabase
+      const { data: operator } = await supabase
         .from('operator_users')
-        .select('name, venues(name)')
+        .select('venue_id')
         .eq('auth_user_id', user.id)
         .single()
 
-      if (operatorUser) {
-        setUserName(operatorUser.name || 'User')
-        if (operatorUser.venues && typeof operatorUser.venues === 'object' && 'name' in operatorUser.venues) {
-          setVenueName((operatorUser.venues as { name: string }).name || '')
-        }
+      if (operator?.venue_id) {
+        const { data } = await supabase
+          .from('venues')
+          .select('name, slug')
+          .eq('id', operator.venue_id)
+          .single()
+        setVenue(data)
       }
     }
-
-    fetchUserData()
+    fetchVenue()
   }, [])
 
-  const handleLogout = async () => {
-    const supabase = createClient()
+  async function handleLogout() {
     await supabase.auth.signOut()
     window.location.href = '/login'
-  }
-
-  const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return pathname === '/dashboard'
-    }
-    return pathname.startsWith(href)
   }
 
   return (
@@ -80,148 +67,94 @@ export function DashboardNav({ defaultCollapsed = false }: DashboardNavProps) {
       {/* Desktop Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: collapsed ? 72 : 240 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="hidden lg:flex flex-col fixed left-0 top-0 h-screen bg-white border-r border-neutral-200 z-40"
+        animate={{ width: collapsed ? 64 : 240 }}
+        className="hidden lg:flex flex-col h-screen bg-white border-r border-neutral-200 fixed left-0 top-0 z-40"
       >
         {/* Logo */}
-        <div className="p-4 border-b border-neutral-100">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-neutral-900 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-semibold text-sm">ES</span>
-            </div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="overflow-hidden"
-                >
-                  <span className="font-semibold text-neutral-900 whitespace-nowrap">Eatsight</span>
-                  {venueName && (
-                    <p className="text-xs text-neutral-500 truncate">{venueName}</p>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </Link>
+        <div className={`h-14 flex items-center border-b border-neutral-100 ${collapsed ? 'justify-center px-0' : 'justify-between px-4'}`}>
+          {!collapsed && (
+            <span className="text-base font-semibold text-neutral-900">Eatsight</span>
+          )}
+          {collapsed && (
+            <span className="text-base font-semibold text-neutral-900">E</span>
+          )}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={`p-1.5 rounded hover:bg-neutral-100 transition ${collapsed ? 'hidden' : ''}`}
+          >
+            <ChevronLeft className={`w-4 h-4 text-neutral-400 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+          </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+        {/* Venue */}
+        {venue && !collapsed && (
+          <div className="px-3 py-3 border-b border-neutral-100">
+            <div className="px-3 py-2 bg-neutral-50 rounded-md">
+              <p className="text-xs font-medium text-neutral-900 truncate">{venue.name}</p>
+              <p className="text-xs text-neutral-400 truncate">/{venue.slug}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Nav */}
+        <nav className="flex-1 p-3 space-y-1">
           {navItems.map((item) => {
-            const Icon = item.icon
-            const active = isActive(item.href)
+            const isActive = pathname === item.href ||
+              (item.href !== '/dashboard' && pathname.startsWith(item.href))
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-150 group relative ${
-                  active
-                    ? 'bg-neutral-100 text-neutral-900'
-                    : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700'
-                }`}
+                title={collapsed ? item.label : undefined}
+                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition ${
+                  isActive
+                    ? 'bg-neutral-900 text-white'
+                    : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
+                } ${collapsed ? 'justify-center' : ''}`}
               >
-                <Icon className={`w-[18px] h-[18px] flex-shrink-0 ${active ? 'text-neutral-900' : ''}`} />
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      className="text-sm font-medium whitespace-nowrap overflow-hidden"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-
-                {/* Tooltip for collapsed state */}
-                {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-neutral-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">
-                    {item.label}
-                  </div>
-                )}
+                <item.icon className="w-4 h-4 flex-shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
               </Link>
             )
           })}
+
+          {/* Preview Link */}
+          {venue && (
+            <a
+              href={`/v/${venue.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={collapsed ? 'Preview Guest View' : undefined}
+              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition ${collapsed ? 'justify-center' : ''}`}
+            >
+              <ExternalLink className="w-4 h-4 flex-shrink-0" />
+              {!collapsed && <span>Preview Guest View</span>}
+            </a>
+          )}
         </nav>
 
-        {/* User Section */}
-        <div className="p-2 border-t border-neutral-100">
-          <div className={`flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-neutral-50 transition cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
-            <div className="w-8 h-8 rounded-md bg-neutral-100 flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-neutral-600" />
-            </div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="flex-1 overflow-hidden"
-                >
-                  <p className="text-sm font-medium text-neutral-900 truncate">{userName}</p>
-                  <p className="text-xs text-neutral-500">Owner</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
+        {/* Logout */}
+        <div className="p-3 border-t border-neutral-100">
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-neutral-500 hover:bg-red-50 hover:text-red-600 transition w-full mt-0.5 ${collapsed ? 'justify-center' : ''}`}
+            title={collapsed ? 'Sign Out' : undefined}
+            className={`flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm text-neutral-600 hover:bg-red-50 hover:text-red-600 transition ${collapsed ? 'justify-center' : ''}`}
           >
-            <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="text-sm font-medium whitespace-nowrap overflow-hidden"
-                >
-                  Log out
-                </motion.span>
-              )}
-            </AnimatePresence>
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            {!collapsed && <span>Sign Out</span>}
           </button>
         </div>
-
-        {/* Collapse Toggle */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-400 hover:text-neutral-600 hover:border-neutral-300 transition"
-        >
-          {collapsed ? (
-            <ChevronRight className="w-3 h-3" />
-          ) : (
-            <ChevronLeft className="w-3 h-3" />
-          )}
-        </button>
       </motion.aside>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-neutral-200 z-40 flex items-center justify-between px-4">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md bg-neutral-900 flex items-center justify-center">
-            <span className="text-white font-semibold text-xs">ES</span>
-          </div>
-          <span className="font-semibold text-neutral-900">Eatsight</span>
-        </Link>
-
-        <div className="flex items-center gap-1">
-          <button className="p-2 rounded-md hover:bg-neutral-100 transition">
-            <Bell className="w-5 h-5 text-neutral-500" />
-          </button>
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-md hover:bg-neutral-100 transition"
-          >
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-neutral-200">
+        <div className="flex items-center justify-between px-4 h-14">
+          <button onClick={() => setMobileOpen(true)} className="p-2 -ml-2">
             <Menu className="w-5 h-5 text-neutral-700" />
           </button>
+          <span className="text-base font-semibold text-neutral-900">Eatsight</span>
+          <div className="w-9" />
         </div>
       </header>
 
@@ -233,77 +166,57 @@ export function DashboardNav({ defaultCollapsed = false }: DashboardNavProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-50 lg:hidden"
               onClick={() => setMobileOpen(false)}
-              className="lg:hidden fixed inset-0 bg-black/40 z-50"
             />
             <motion.aside
-              initial={{ x: '100%' }}
+              initial={{ x: '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="lg:hidden fixed right-0 top-0 h-screen w-72 bg-white border-l border-neutral-200 z-50 flex flex-col"
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.2 }}
+              className="fixed left-0 top-0 bottom-0 w-64 bg-white z-50 lg:hidden"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-neutral-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-md bg-neutral-100 flex items-center justify-center">
-                    <User className="w-4 h-4 text-neutral-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-neutral-900">{userName}</p>
-                    <p className="text-xs text-neutral-500">{venueName}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setMobileOpen(false)}
-                  className="p-2 rounded-md hover:bg-neutral-100 transition"
-                >
+              <div className="h-14 flex items-center justify-between px-4 border-b border-neutral-100">
+                <span className="text-base font-semibold text-neutral-900">Eatsight</span>
+                <button onClick={() => setMobileOpen(false)} className="p-2 -mr-2">
                   <X className="w-5 h-5 text-neutral-500" />
                 </button>
               </div>
 
-              {/* Navigation */}
-              <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+              <nav className="p-3 space-y-1">
                 {navItems.map((item) => {
-                  const Icon = item.icon
-                  const active = isActive(item.href)
-
+                  const isActive = pathname === item.href
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-md transition ${
-                        active
-                          ? 'bg-neutral-100 text-neutral-900'
-                          : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700'
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition ${
+                        isActive
+                          ? 'bg-neutral-900 text-white'
+                          : 'text-neutral-600 hover:bg-neutral-100'
                       }`}
                     >
-                      <Icon className="w-[18px] h-[18px]" />
-                      <span className="text-sm font-medium">{item.label}</span>
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.label}</span>
                     </Link>
                   )
                 })}
               </nav>
 
-              {/* Logout */}
-              <div className="p-2 border-t border-neutral-100">
+              <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-neutral-100">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-3 px-4 py-3 rounded-md text-neutral-500 hover:bg-red-50 hover:text-red-600 transition w-full"
+                  className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50 transition"
                 >
-                  <LogOut className="w-[18px] h-[18px]" />
-                  <span className="text-sm font-medium">Log out</span>
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             </motion.aside>
           </>
         )}
       </AnimatePresence>
-
-      {/* Spacer for fixed elements */}
-      <div className="hidden lg:block" style={{ width: collapsed ? 72 : 240 }} />
-      <div className="lg:hidden h-14" />
     </>
   )
 }

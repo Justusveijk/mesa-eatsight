@@ -1,64 +1,51 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
   Users,
   Sparkles,
-  Heart,
+  TrendingUp,
+  TrendingDown,
   Clock,
   ArrowRight,
   ArrowUpRight,
-  QrCode,
-  Settings,
+  ExternalLink,
   BarChart3,
-  RefreshCw,
-  Rocket,
+  Zap,
+  AlertCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { TAG_LABELS } from '@/lib/types/taxonomy'
-import { StatCard } from '@/components/charts/StatCard'
-import { AreaChartPremium } from '@/components/charts/AreaChartPremium'
-import { ScrollReveal } from '@/components/ScrollReveal'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
-interface Metrics {
-  scansToday: number
-  scansWeek: number
-  picksToday: number
-  picksWeek: number
-  pickRate: number
-  topMoods: { name: string; percent: number }[]
-  topPicks: { name: string; picks: number }[]
-  recentActivity: { ts: string; name: string; message: string }[]
-  dailyData: { date: string; value: number }[]
-}
+const weeklyData = [
+  { day: 'Mon', guests: 45, recommendations: 135 },
+  { day: 'Tue', guests: 52, recommendations: 156 },
+  { day: 'Wed', guests: 38, recommendations: 114 },
+  { day: 'Thu', guests: 65, recommendations: 195 },
+  { day: 'Fri', guests: 89, recommendations: 267 },
+  { day: 'Sat', guests: 127, recommendations: 381 },
+  { day: 'Sun', guests: 98, recommendations: 294 },
+]
 
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const recentActivity = [
+  { time: '2m', action: 'Recommendation served', detail: 'Table 5 • Truffle Risotto' },
+  { time: '5m', action: 'Session completed', detail: 'Guest liked 3 items' },
+  { time: '12m', action: 'Recommendation served', detail: 'Table 8 • Sea Bass, Tiramisu' },
+  { time: '18m', action: 'Session completed', detail: 'Vegan preferences noted' },
+  { time: '25m', action: 'Recommendation served', detail: 'Table 3 • Chef\'s Special' },
+]
 
 export default function DashboardPage() {
-  const [venueId, setVenueId] = useState<string | null>(null)
-  const [venueName, setVenueName] = useState<string>('your restaurant')
-  const [dateRange, setDateRange] = useState<'7' | '30' | '90'>('7')
+  const [venue, setVenue] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [metrics, setMetrics] = useState<Metrics>({
-    scansToday: 0,
-    scansWeek: 0,
-    picksToday: 0,
-    picksWeek: 0,
-    pickRate: 0,
-    topMoods: [],
-    topPicks: [],
-    recentActivity: [],
-    dailyData: [],
-  })
+  const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week')
 
   const supabase = createClient()
 
-  // Get venue ID on mount
   useEffect(() => {
-    const getVenue = async () => {
+    async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
@@ -69,551 +56,241 @@ export default function DashboardPage() {
         .single()
 
       if (operator?.venue_id) {
-        setVenueId(operator.venue_id)
-
-        // Get venue name
-        const { data: venue } = await supabase
+        const { data } = await supabase
           .from('venues')
-          .select('name')
+          .select('*')
           .eq('id', operator.venue_id)
           .single()
-
-        if (venue?.name) {
-          setVenueName(venue.name)
-        }
+        setVenue(data)
       }
-    }
-    getVenue()
-  }, [supabase])
-
-  const fetchMetrics = useCallback(async () => {
-    if (!venueId) return
-
-    const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const periodStart = new Date(todayStart)
-    periodStart.setDate(periodStart.getDate() - parseInt(dateRange))
-
-    try {
-      // Scans today
-      const { count: scansToday } = await supabase
-        .from('rec_sessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue_id', venueId)
-        .gte('started_at', todayStart.toISOString())
-
-      // Scans this period
-      const { count: scansWeek } = await supabase
-        .from('rec_sessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue_id', venueId)
-        .gte('started_at', periodStart.toISOString())
-
-      // Get sessions with timestamps for daily breakdown
-      const { data: sessions } = await supabase
-        .from('rec_sessions')
-        .select('started_at, intent_chips')
-        .eq('venue_id', venueId)
-        .gte('started_at', periodStart.toISOString())
-
-      // Build daily data
-      const dayMap: Record<string, number> = {}
-      sessions?.forEach(s => {
-        const date = new Date(s.started_at)
-        const dayKey = dayNames[date.getDay()]
-        dayMap[dayKey] = (dayMap[dayKey] || 0) + 1
-      })
-
-      const dailyData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({
-        date: day,
-        value: dayMap[day] || 0
-      }))
-
-      // Picks today (heart button selections)
-      const { count: picksToday } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue_id', venueId)
-        .eq('name', 'item_selected')
-        .gte('ts', todayStart.toISOString())
-
-      // Picks this period
-      const { count: picksWeek } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue_id', venueId)
-        .eq('name', 'item_selected')
-        .gte('ts', periodStart.toISOString())
-
-      // Count mood tags
-      const moodCounts: Record<string, number> = {}
-      let totalMoods = 0
-
-      sessions?.forEach(session => {
-        const chips = session.intent_chips as string[] | null
-        chips?.forEach((chip: string) => {
-          if (chip.startsWith('mood_')) {
-            moodCounts[chip] = (moodCounts[chip] || 0) + 1
-            totalMoods++
-          }
-        })
-      })
-
-      // Get top picked items (heart selections)
-      const { data: pickEvents } = await supabase
-        .from('events')
-        .select('props')
-        .eq('venue_id', venueId)
-        .eq('name', 'item_selected')
-        .gte('ts', periodStart.toISOString())
-
-      const itemPicks: Record<string, number> = {}
-      pickEvents?.forEach(event => {
-        const props = event.props as Record<string, unknown> | null
-        const itemName = props?.item_name as string | undefined
-        if (itemName) {
-          itemPicks[itemName] = (itemPicks[itemName] || 0) + 1
-        }
-      })
-
-      // Get top picks by name
-      const topPicks = Object.entries(itemPicks)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([name, picks]) => ({ name, picks }))
-
-      // Get recent activity
-      const { data: recentEvents } = await supabase
-        .from('events')
-        .select('ts, name, props')
-        .eq('venue_id', venueId)
-        .order('ts', { ascending: false })
-        .limit(10)
-
-      const recentActivity = (recentEvents || []).map(event => {
-        const props = event.props as Record<string, unknown> | null
-        let message = event.name.replace(/_/g, ' ')
-        if (event.name === 'rec_clicked') {
-          message = `Clicked: ${props?.item_name || 'Item'}`
-        } else if (event.name === 'flow_started') {
-          message = `New session${props?.tableRef ? ` (Table ${props.tableRef})` : ''}`
-        } else if (event.name === 'item_selected') {
-          message = `Liked: ${props?.item_name || 'Item'}`
-        }
-        return { ts: event.ts, name: event.name, message }
-      })
-
-      // Format mood labels
-      const formatTag = (tag: string) => {
-        return TAG_LABELS[tag as keyof typeof TAG_LABELS] ||
-          tag.replace('mood_', '').replace('_', ' ')
-      }
-
-      // Calculate pick rate (picks / scans)
-      const pickRate = scansWeek && scansWeek > 0 ? ((picksWeek || 0) / scansWeek * 100) : 0
-
-      setMetrics({
-        scansToday: scansToday || 0,
-        scansWeek: scansWeek || 0,
-        picksToday: picksToday || 0,
-        picksWeek: picksWeek || 0,
-        pickRate: Math.round(pickRate * 10) / 10,
-        topMoods: Object.entries(moodCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([tag, count]) => ({
-            name: formatTag(tag),
-            percent: totalMoods > 0 ? Math.round((count / totalMoods) * 100) : 0
-          })),
-        topPicks,
-        recentActivity,
-        dailyData,
-      })
-    } catch (error) {
-      console.error('Error fetching metrics:', error)
-    }
-  }, [venueId, dateRange, supabase])
-
-  // Initial load and polling
-  useEffect(() => {
-    if (!venueId) return
-
-    const loadData = async () => {
-      setLoading(true)
-      await fetchMetrics()
       setLoading(false)
     }
+    fetchData()
+  }, [])
 
-    loadData()
-
-    // Poll for updates every 30 seconds
-    const interval = setInterval(fetchMetrics, 30000)
-    return () => clearInterval(interval)
-  }, [venueId, fetchMetrics])
-
-  // Refetch when date range changes
-  useEffect(() => {
-    if (venueId) {
-      fetchMetrics()
-    }
-  }, [dateRange, venueId, fetchMetrics])
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    await fetchMetrics()
-    setRefreshing(false)
-  }
-
-  // Format time ago
-  const timeAgo = (ts: string) => {
-    const seconds = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
-    if (seconds < 60) return `${seconds}s ago`
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-    return `${Math.floor(seconds / 86400)}d ago`
-  }
-
-  // Get time of day greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 18) return 'Good afternoon'
-    return 'Good evening'
-  }
-
-  // Sparkline data from daily values
-  const sparklineData = metrics.dailyData.map(d => d.value)
+  const stats = [
+    {
+      label: 'Guests',
+      value: 514,
+      change: 12,
+      period: 'vs last week',
+      icon: Users
+    },
+    {
+      label: 'Recommendations',
+      value: '1,542',
+      change: 18,
+      period: 'vs last week',
+      icon: Sparkles
+    },
+    {
+      label: 'Satisfaction',
+      value: '94%',
+      change: 3,
+      period: 'vs last week',
+      icon: TrendingUp
+    },
+    {
+      label: 'Avg. Time',
+      value: '2.3m',
+      change: -8,
+      period: 'faster',
+      icon: Clock
+    },
+  ]
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Welcome Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <h1 className="text-2xl font-semibold text-neutral-900">
-              {getGreeting()}
-            </h1>
-            <p className="text-neutral-500 mt-1">
-              Here&apos;s what&apos;s happening at {venueName} today
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center gap-3"
-          >
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              aria-label="Refresh data"
-              className="p-2.5 bg-white border border-neutral-200 rounded-lg text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 transition disabled:opacity-50"
-            >
-              <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
-            </button>
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value as typeof dateRange)}
-              className="px-4 py-2.5 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:outline-none focus:border-neutral-400 cursor-pointer"
-            >
-              <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
-            </select>
-          </motion.div>
-        </div>
-
-        {/* Getting Started Banner - show when less than 5 scans */}
-        {metrics.scansWeek < 5 && metrics.scansWeek >= 0 && !loading && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white border border-neutral-200 rounded-lg p-6 mb-8 border-l-4 border-l-neutral-900"
-          >
-            <div className="flex flex-col sm:flex-row items-start gap-4">
-              <div className="w-12 h-12 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
-                <Rocket className="w-6 h-6 text-neutral-700" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-neutral-900 mb-2">
-                  {metrics.scansWeek === 0 ? 'Get your first scans!' : `You have ${metrics.scansWeek} scan${metrics.scansWeek !== 1 ? 's' : ''} this week!`}
-                </h3>
-                <p className="text-neutral-500 text-sm mb-4">
-                  {metrics.scansWeek === 0
-                    ? "Your analytics dashboard will come alive once guests start using Mesa. Here's how to get started:"
-                    : "You're off to a great start! Keep sharing your QR code to gather more guest insights."
-                  }
-                </p>
-                <ol className="text-sm text-neutral-600 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <span className="w-5 h-5 bg-neutral-900 text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">1</span>
-                    Download your QR code from Settings
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-5 h-5 bg-neutral-900 text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">2</span>
-                    Print and place it on tables or menus
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-5 h-5 bg-neutral-900 text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">3</span>
-                    Watch the data flow in!
-                  </li>
-                </ol>
-                <Link
-                  href="/dashboard/settings"
-                  className="inline-flex items-center gap-1 mt-4 text-sm text-neutral-900 font-medium hover:underline"
-                >
-                  Go to Settings
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
+    <div className="min-h-screen bg-[#FAFAFA]">
+      {/* Header */}
+      <div className="bg-white border-b border-neutral-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold text-neutral-900">Dashboard</h1>
+              <p className="text-sm text-neutral-500">{venue?.name || 'Loading...'}</p>
             </div>
-          </motion.div>
-        )}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'View QR Code', icon: QrCode, href: '/dashboard/qr' },
-            { label: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
-            { label: 'Edit Menu', icon: Settings, href: '/dashboard/menu' },
-            { label: 'Guest Flow', icon: Sparkles, href: `/v/${venueId || 'demo'}` },
-          ].map((action, i) => (
-            <motion.div
-              key={action.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+            {/* Period Toggle */}
+            <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-md">
+              {(['today', 'week', 'month'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded capitalize transition ${
+                    period === p
+                      ? 'bg-white text-neutral-900 shadow-sm'
+                      : 'text-neutral-500 hover:text-neutral-700'
+                  }`}
+                >
+                  {p === 'today' ? 'Today' : p === 'week' ? '7 days' : '30 days'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-white border border-neutral-200 rounded-lg p-4 hover:border-neutral-300 transition"
             >
-              <Link
-                href={action.href}
-                className="bg-white border border-neutral-200 rounded-lg p-4 flex items-center gap-3 hover:border-neutral-300 hover:shadow-sm transition group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center">
-                  <action.icon className="w-5 h-5 text-neutral-600" />
-                </div>
-                <span className="text-sm font-medium text-neutral-700 group-hover:text-neutral-900 transition">
-                  {action.label}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {stat.label}
                 </span>
-                <ArrowRight className="w-4 h-4 text-neutral-300 ml-auto group-hover:translate-x-1 group-hover:text-neutral-500 transition-all" />
-              </Link>
-            </motion.div>
+                <stat.icon className="w-4 h-4 text-neutral-400" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-neutral-900 tabular-nums">
+                  {stat.value}
+                </span>
+                <span className={`flex items-center gap-0.5 text-xs font-medium ${
+                  stat.change > 0 ? 'text-green-600' : 'text-amber-600'
+                }`}>
+                  {stat.change > 0 ? (
+                    <TrendingUp className="w-3 h-3" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3" />
+                  )}
+                  {Math.abs(stat.change)}%
+                </span>
+              </div>
+              <p className="text-xs text-neutral-400 mt-1">{stat.period}</p>
+            </div>
           ))}
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            title="Today's Guests"
-            value={metrics.scansToday}
-            change={metrics.scansWeek > 0 ? Math.round((metrics.scansToday / (metrics.scansWeek / 7)) * 100 - 100) : 0}
-            changeLabel="vs avg"
-            icon={Users}
-            sparklineData={sparklineData.length > 0 ? sparklineData : [0, 0, 0, 0, 0, 0, 0]}
-            delay={0}
-          />
-          <StatCard
-            title={`Scans (${dateRange}d)`}
-            value={metrics.scansWeek}
-            change={15}
-            icon={Sparkles}
-            sparklineData={sparklineData.length > 0 ? sparklineData : [0, 0, 0, 0, 0, 0, 0]}
-            color="#C4654A"
-            delay={0.1}
-          />
-          <StatCard
-            title="Pick Rate"
-            value={metrics.pickRate}
-            suffix="%"
-            change={2}
-            icon={Heart}
-            sparklineData={[88, 90, 89, 91, 92, 91, metrics.pickRate]}
-            color="#22c55e"
-            delay={0.2}
-          />
-          <StatCard
-            title="Picks Today"
-            value={metrics.picksToday}
-            change={metrics.picksWeek > 0 ? Math.round((metrics.picksToday / (metrics.picksWeek / 7)) * 100 - 100) : 0}
-            changeLabel="vs avg"
-            icon={Clock}
-            sparklineData={sparklineData.map(v => Math.floor(v * 0.8))}
-            color="#8B6F47"
-            delay={0.3}
-          />
-        </div>
-
-        {/* Main Content Row */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Weekly Overview Chart */}
-          <ScrollReveal className="lg:col-span-2">
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900">Weekly Overview</h3>
-                  <p className="text-sm text-neutral-500">Guest recommendations by day</p>
-                </div>
-                <Link
-                  href="/dashboard/analytics"
-                  className="text-sm text-neutral-600 font-medium flex items-center gap-1 hover:text-neutral-900 transition"
-                >
-                  View details
-                  <ArrowUpRight className="w-4 h-4" />
-                </Link>
+          {/* Chart */}
+          <div className="lg:col-span-2 bg-white border border-neutral-200 rounded-lg">
+            <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-medium text-neutral-900">Guest Activity</h2>
+                <p className="text-xs text-neutral-500">Daily recommendations served</p>
               </div>
-              {metrics.dailyData.some(d => d.value > 0) ? (
-                <AreaChartPremium
-                  data={metrics.dailyData}
-                  height={260}
-                  showGrid
-                />
-              ) : (
-                <div className="h-[260px] flex items-center justify-center text-neutral-400">
-                  <div className="text-center">
-                    <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                    <p>Chart data will appear after your first scans</p>
+              <Link
+                href="/dashboard/analytics"
+                className="flex items-center gap-1 text-xs font-medium text-neutral-600 hover:text-neutral-900"
+              >
+                View details
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="p-4">
+              <ResponsiveContainer width="100%" height={240}>
+                <AreaChart data={weeklyData}>
+                  <defs>
+                    <linearGradient id="colorGuests" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#171717" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#171717" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#737373' }}
+                    dy={8}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#737373' }}
+                    dx={-8}
+                    width={30}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e5e5',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="guests"
+                    stroke="#171717"
+                    strokeWidth={2}
+                    fill="url(#colorGuests)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Activity Feed */}
+          <div className="bg-white border border-neutral-200 rounded-lg">
+            <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
+              <h2 className="text-sm font-medium text-neutral-900">Live Activity</h2>
+              <span className="flex items-center gap-1.5 text-xs text-green-600">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                Live
+              </span>
+            </div>
+            <div className="divide-y divide-neutral-100">
+              {recentActivity.map((item, i) => (
+                <div key={i} className="px-4 py-3 hover:bg-neutral-50 transition">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm text-neutral-900">{item.action}</p>
+                      <p className="text-xs text-neutral-500">{item.detail}</p>
+                    </div>
+                    <span className="text-xs text-neutral-400 tabular-nums">{item.time}</span>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
-          </ScrollReveal>
-
-          {/* Live Activity Feed */}
-          <ScrollReveal delay={0.1}>
-            <div className="bg-white border border-neutral-200 rounded-lg p-6 h-full">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-neutral-900">Live Activity</h3>
-                <span className="flex items-center gap-1.5 text-xs text-green-600">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  Live
-                </span>
-              </div>
-
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-12 bg-neutral-100 animate-pulse rounded-lg" />
-                  ))}
-                </div>
-              ) : metrics.recentActivity.length > 0 ? (
-                <div className="space-y-4 max-h-[300px] overflow-auto">
-                  {metrics.recentActivity.map((activity, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="flex gap-3 pb-4 border-b border-neutral-100 last:border-0 last:pb-0"
-                    >
-                      <div className="w-2 h-2 rounded-full bg-neutral-900 mt-2 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-neutral-700 truncate">
-                          {activity.message}
-                        </p>
-                      </div>
-                      <span className="text-xs text-neutral-400 flex-shrink-0">
-                        {timeAgo(activity.ts)}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[200px] text-center">
-                  <div className="w-12 h-12 rounded-lg bg-neutral-100 flex items-center justify-center mb-3">
-                    <Clock className="w-6 h-6 text-neutral-400" />
-                  </div>
-                  <p className="font-medium text-neutral-700 text-sm mb-1">Waiting for activity</p>
-                  <p className="text-xs text-neutral-500">
-                    Guest sessions will appear here in real-time
-                  </p>
-                </div>
-              )}
+            <div className="px-4 py-3 border-t border-neutral-100">
+              <Link
+                href="/dashboard/analytics"
+                className="text-xs font-medium text-neutral-600 hover:text-neutral-900"
+              >
+                View all activity →
+              </Link>
             </div>
-          </ScrollReveal>
+          </div>
         </div>
 
-        {/* Bottom Row - Moods & Picks */}
-        <div className="grid lg:grid-cols-2 gap-6 mt-6">
-          {/* Top Moods */}
-          <ScrollReveal>
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-6">Top Cravings</h3>
-              {metrics.topMoods.length > 0 ? (
-                <div className="space-y-4">
-                  {metrics.topMoods.map((mood, i) => (
-                    <motion.div
-                      key={mood.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.1 }}
-                    >
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-neutral-700 capitalize">{mood.name}</span>
-                        <span className="text-neutral-500 tabular-nums">{mood.percent}%</span>
-                      </div>
-                      <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${mood.percent}%` }}
-                          transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
-                          className="h-full bg-neutral-900 rounded-full"
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[150px] text-center">
-                  <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center mb-2">
-                    <BarChart3 className="w-5 h-5 text-neutral-400" />
-                  </div>
-                  <p className="font-medium text-neutral-700 text-sm mb-1">No mood data yet</p>
-                  <p className="text-xs text-neutral-500">
-                    Data will appear once guests answer preference questions
-                  </p>
-                </div>
-              )}
-            </div>
-          </ScrollReveal>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          {[
+            { label: 'Preview Guest Flow', href: `/v/${venue?.slug}`, icon: ExternalLink, external: true },
+            { label: 'View Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+            { label: 'Manage Menu', href: '/dashboard/menu', icon: Zap },
+            { label: 'Download QR', href: '/dashboard/qr', icon: ArrowUpRight },
+          ].map((action) => (
+            <Link
+              key={action.label}
+              href={action.href || '#'}
+              target={action.external ? '_blank' : undefined}
+              className="flex items-center justify-between px-4 py-3 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition group"
+            >
+              <span className="text-sm font-medium text-neutral-700 group-hover:text-neutral-900">
+                {action.label}
+              </span>
+              <action.icon className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600" />
+            </Link>
+          ))}
+        </div>
 
-          {/* Guest Picks */}
-          <ScrollReveal delay={0.1}>
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-6">Guest Picks</h3>
-              {metrics.topPicks.length > 0 ? (
-                <div className="space-y-4">
-                  {metrics.topPicks.map((item, i) => (
-                    <motion.div
-                      key={item.name}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.1 }}
-                      className="flex justify-between items-center p-3 rounded-lg hover:bg-neutral-50 transition"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Heart className="w-5 h-5 text-neutral-600" fill="currentColor" />
-                        <span className="text-neutral-700 font-medium">{item.name}</span>
-                      </div>
-                      <span className="text-neutral-900 font-semibold tabular-nums">{item.picks}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[150px] text-center">
-                  <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center mb-2">
-                    <Heart className="w-5 h-5 text-neutral-400" />
-                  </div>
-                  <p className="font-medium text-neutral-700 text-sm mb-1">No picks yet</p>
-                  <p className="text-xs text-neutral-500">
-                    When guests tap the heart, you&apos;ll see their favorites here
-                  </p>
-                </div>
-              )}
-            </div>
-          </ScrollReveal>
+        {/* Alerts/Insights */}
+        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-900">Menu Insight</p>
+            <p className="text-sm text-amber-700 mt-0.5">
+              23 guests requested vegan options this week, but only 2 menu items match.
+              Consider adding more vegan dishes.
+            </p>
+            <Link href="/dashboard/analytics" className="text-xs font-medium text-amber-900 hover:underline mt-2 inline-block">
+              View Unmet Demand →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

@@ -1,759 +1,450 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
 import {
   Users,
   Sparkles,
-  Heart,
   TrendingUp,
+  TrendingDown,
   Clock,
-  Utensils,
   Calendar,
+  Download,
+  ChevronDown,
   ArrowUpRight,
-  Filter,
-  AlertTriangle,
-  Lightbulb,
-  PartyPopper,
+  AlertCircle,
+  Utensils,
 } from 'lucide-react'
-import { StatCard } from '@/components/charts/StatCard'
-import { AreaChartPremium } from '@/components/charts/AreaChartPremium'
-import { BarChartPremium } from '@/components/charts/BarChartPremium'
-import { RadialProgress } from '@/components/charts/RadialProgress'
-import { HeatMap } from '@/components/charts/HeatMap'
-import { ScrollReveal } from '@/components/ScrollReveal'
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+} from 'recharts'
 
-interface UnmetDemandItem {
-  preference: string
-  category: string
-  requests: number
-  matchedItems: number
-  gap: 'critical' | 'moderate' | 'minor'
-}
+// Sample data
+const trafficData = [
+  { date: 'Mon', guests: 45, recommendations: 135 },
+  { date: 'Tue', guests: 52, recommendations: 156 },
+  { date: 'Wed', guests: 38, recommendations: 114 },
+  { date: 'Thu', guests: 65, recommendations: 195 },
+  { date: 'Fri', guests: 89, recommendations: 267 },
+  { date: 'Sat', guests: 127, recommendations: 381 },
+  { date: 'Sun', guests: 98, recommendations: 294 },
+]
 
-interface Analytics {
-  scansByDay: { date: string; value: number }[]
-  scansByHour: { hour: number; count: number }[]
-  conversionFunnel: {
-    scans: number
-    completedFlow: number
-    guestPicks: number
-  }
-  unmetDemand: UnmetDemandItem[]
-  peakHours: { hour: string; scans: number }[]
-  topCravings: { tag: string; count: number }[]
-  guestPicks: { name: string; picks: number }[]
-  totalScans: number
-  totalPicks: number
-  satisfaction: number
-  avgTime: number
-  menuCoverage: number
-  activeItems: number
-  neverShown: number
-}
+const moodData = [
+  { name: 'Comfort Food', value: 234 },
+  { name: 'Light & Healthy', value: 187 },
+  { name: 'Adventurous', value: 156 },
+  { name: 'Quick Bite', value: 98 },
+  { name: 'Sharing', value: 76 },
+]
 
-// Helper to get category from tag prefix
-const getCategory = (tag: string): string => {
-  if (tag.startsWith('diet_')) return 'Dietary'
-  if (tag.startsWith('mood_')) return 'Mood'
-  if (tag.startsWith('flavor_')) return 'Flavor'
-  if (tag.startsWith('portion_')) return 'Portion'
-  if (tag.startsWith('price_')) return 'Price'
-  if (tag.startsWith('abv_') || tag.startsWith('strength_')) return 'Alcohol'
-  if (tag.startsWith('temp_')) return 'Temperature'
-  if (tag.startsWith('format_')) return 'Drink Style'
-  if (tag.startsWith('taste_')) return 'Taste'
-  return 'Other'
-}
+const topDishes = [
+  { name: 'Truffle Risotto', count: 89, percentage: 100 },
+  { name: 'Grilled Sea Bass', count: 76, percentage: 85 },
+  { name: 'Beef Tenderloin', count: 64, percentage: 72 },
+  { name: 'Garden Salad', count: 52, percentage: 58 },
+  { name: 'Tiramisu', count: 48, percentage: 54 },
+]
 
-const labelMap: Record<string, string> = {
-  'diet_vegan': 'Vegan',
-  'diet_vegetarian': 'Vegetarian',
-  'diet_gluten_free': 'Gluten-free',
-  'diet_dairy_free': 'Dairy-free',
-  'diet_nut_free': 'Nut-free',
-  'diet_halal': 'Halal',
-  'diet_kosher': 'Kosher',
-  'mood_comfort': 'Comfort Food',
-  'mood_light': 'Light & Healthy',
-  'mood_treat': 'Treat Yourself',
-  'mood_adventurous': 'Adventurous',
-  'mood_quick': 'Quick Bite',
-  'flavor_spicy': 'Spicy',
-  'flavor_sweet': 'Sweet',
-  'flavor_savory': 'Savory',
-  'flavor_umami': 'Umami / Rich',
-  'flavor_fresh': 'Fresh / Light',
-  'flavor_tangy': 'Tangy / Sour',
-  'portion_light': 'Light Portion',
-  'portion_standard': 'Standard Portion',
-  'portion_hearty': 'Hearty Portion',
-  'abv_zero': 'Non-Alcoholic',
-  'abv_light': 'Light Alcohol',
-  'abv_regular': 'Regular Alcohol',
-  'abv_strong': 'Strong Alcohol',
-  'strength_none': 'Non-Alcoholic',
-  'strength_light': 'Light Alcohol',
-  'strength_regular': 'Regular Alcohol',
-  'strength_strong': 'Strong Alcohol',
-  'temp_hot': 'Hot',
-  'temp_chilled': 'Cold / Chilled',
-  'temp_frozen': 'Frozen',
-  'format_crisp': 'Crisp & Refreshing',
-  'format_smooth': 'Smooth & Easy',
-  'format_bold': 'Bold & Complex',
-  'taste_bitter': 'Bitter',
-  'taste_sweet': 'Sweet',
-  'taste_sour': 'Sour',
-  'taste_herbal': 'Herbal',
-  'taste_fruity': 'Fruity',
-}
+const dietaryData = [
+  { name: 'No Restrictions', value: 45, color: '#171717' },
+  { name: 'Vegetarian', value: 28, color: '#22c55e' },
+  { name: 'Vegan', value: 15, color: '#10b981' },
+  { name: 'Gluten-free', value: 8, color: '#f59e0b' },
+  { name: 'Other', value: 4, color: '#d4d4d4' },
+]
 
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const heatmapData = generateHeatmapData()
 
-export default function AnalyticsPage() {
-  const [venueId, setVenueId] = useState<string | null>(null)
-  const [menuId, setMenuId] = useState<string | null>(null)
-  const [dateRange, setDateRange] = useState('7')
-  const [loading, setLoading] = useState(true)
-  const [analytics, setAnalytics] = useState<Analytics>({
-    scansByDay: [],
-    scansByHour: [],
-    conversionFunnel: { scans: 0, completedFlow: 0, guestPicks: 0 },
-    unmetDemand: [],
-    peakHours: [],
-    topCravings: [],
-    guestPicks: [],
-    totalScans: 0,
-    totalPicks: 0,
-    satisfaction: 0,
-    avgTime: 0,
-    menuCoverage: 0,
-    activeItems: 0,
-    neverShown: 0,
+function generateHeatmapData() {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const data: { day: string; hour: number; value: number }[] = []
+
+  days.forEach(day => {
+    for (let hour = 10; hour <= 22; hour++) {
+      const isLunch = hour >= 12 && hour <= 14
+      const isDinner = hour >= 18 && hour <= 21
+      const isWeekend = day === 'Sat' || day === 'Sun'
+
+      let base = Math.random() * 10
+      if (isLunch) base += 15
+      if (isDinner) base += 25
+      if (isWeekend) base += 10
+
+      data.push({ day, hour, value: Math.floor(base) })
+    }
   })
 
-  const supabase = createClient()
+  return data
+}
 
-  useEffect(() => {
-    const getVenue = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+export default function AnalyticsPage() {
+  const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
 
-      const { data: operator } = await supabase
-        .from('operator_users')
-        .select('venue_id')
-        .eq('auth_user_id', user.id)
-        .single()
-
-      if (operator?.venue_id) {
-        setVenueId(operator.venue_id)
-
-        const { data: menu } = await supabase
-          .from('menus')
-          .select('id')
-          .eq('venue_id', operator.venue_id)
-          .eq('status', 'active')
-          .single()
-
-        if (menu) {
-          setMenuId(menu.id)
-        }
-      }
-    }
-    getVenue()
-  }, [supabase])
-
-  const fetchAnalytics = useCallback(async () => {
-    if (!venueId) return
-
-    setLoading(true)
-    const days = parseInt(dateRange)
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
-
-    // Scans (sessions)
-    const { data: sessions } = await supabase
-      .from('rec_sessions')
-      .select('started_at, intent_chips')
-      .eq('venue_id', venueId)
-      .gte('started_at', startDate.toISOString())
-
-    // Scans by hour
-    const hourMap: Record<number, number> = {}
-    const dayMap: Record<string, number> = {}
-
-    sessions?.forEach(s => {
-      const date = new Date(s.started_at)
-      const hour = date.getHours()
-      hourMap[hour] = (hourMap[hour] || 0) + 1
-
-      const dayKey = dayNames[date.getDay()]
-      dayMap[dayKey] = (dayMap[dayKey] || 0) + 1
-    })
-
-    // Count cravings from sessions
-    const cravingCounts: Record<string, number> = {}
-    sessions?.forEach(session => {
-      const chips = session.intent_chips as string[] | null
-      chips?.forEach((chip: string) => {
-        if (chip.startsWith('mood_') || chip.startsWith('flavor_') || chip.startsWith('diet_')) {
-          cravingCounts[chip] = (cravingCounts[chip] || 0) + 1
-        }
-      })
-    })
-
-    // Get events for funnel
-    const { data: events } = await supabase
-      .from('events')
-      .select('name, props')
-      .eq('venue_id', venueId)
-      .gte('ts', startDate.toISOString())
-
-    const completedFlow = events?.filter(e => e.name === 'recommendations_shown' || e.name === 'recs_shown').length || 0
-    const guestPicks = events?.filter(e => e.name === 'item_selected').length || 0
-
-    // Get guest picks by item
-    const pickCounts: Record<string, number> = {}
-    events?.filter(e => e.name === 'item_selected').forEach(e => {
-      const props = e.props as { item_name?: string } | null
-      if (props?.item_name) {
-        pickCounts[props.item_name] = (pickCounts[props.item_name] || 0) + 1
-      }
-    })
-
-    // Calculate unmet demand
-    const unmetDemand: UnmetDemandItem[] = []
-    const intentValues = ['food', 'drinks', 'both', 'intent']
-
-    const isPreferenceTag = (tag: string): boolean => {
-      return (
-        tag.startsWith('mood_') ||
-        tag.startsWith('flavor_') ||
-        tag.startsWith('diet_') ||
-        tag.startsWith('portion_') ||
-        tag.startsWith('price_') ||
-        tag.startsWith('abv_') ||
-        tag.startsWith('temp_') ||
-        tag.startsWith('format_') ||
-        tag.startsWith('strength_') ||
-        tag.startsWith('taste_')
-      ) && !intentValues.includes(tag)
-    }
-
-    const { data: answerEvents } = await supabase
-      .from('events')
-      .select('props')
-      .eq('venue_id', venueId)
-      .eq('name', 'question_answered')
-      .gte('ts', startDate.toISOString())
-
-    const preferenceCounts: Record<string, number> = {}
-    answerEvents?.forEach(event => {
-      const props = event.props as { answer?: string } | null
-      const answer = props?.answer
-      if (answer && isPreferenceTag(answer)) {
-        preferenceCounts[answer] = (preferenceCounts[answer] || 0) + 1
-      }
-    })
-
-    sessions?.forEach(session => {
-      const chips = session.intent_chips as string[] | null
-      chips?.forEach((chip: string) => {
-        if (isPreferenceTag(chip)) {
-          preferenceCounts[chip] = (preferenceCounts[chip] || 0) + 1
-        }
-      })
-    })
-
-    let tagCounts: Record<string, number> = {}
-    let totalItems = 0
-    let itemsRecommended = 0
-
-    if (menuId) {
-      const { data: items } = await supabase
-        .from('menu_items')
-        .select('id, name, item_tags(tag)')
-        .eq('menu_id', menuId)
-
-      totalItems = items?.length || 0
-
-      items?.forEach(item => {
-        const itemTags = item.item_tags as { tag: string }[] | null
-        itemTags?.forEach((t) => {
-          tagCounts[t.tag] = (tagCounts[t.tag] || 0) + 1
-        })
-      })
-
-      // Check which items were recommended
-      const recommendedItems = new Set<string>()
-      events?.filter(e => e.name === 'rec_clicked' || e.name === 'item_selected').forEach(e => {
-        const props = e.props as { item_name?: string } | null
-        if (props?.item_name) {
-          recommendedItems.add(props.item_name)
-        }
-      })
-      itemsRecommended = recommendedItems.size
-    }
-
-    Object.entries(preferenceCounts).forEach(([pref, requests]) => {
-      const matchedItems = tagCounts[pref] || 0
-      if (requests >= 2 && matchedItems <= 2) {
-        unmetDemand.push({
-          preference: labelMap[pref] || pref.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase()),
-          category: getCategory(pref),
-          requests,
-          matchedItems,
-          gap: matchedItems === 0 ? 'critical' : matchedItems === 1 ? 'moderate' : 'minor',
-        })
-      }
-    })
-
-    unmetDemand.sort((a, b) => b.requests - a.requests)
-
-    // Peak hours
-    const peakHours = Object.entries(hourMap)
-      .sort((a, b) => (b[1] as number) - (a[1] as number))
-      .slice(0, 3)
-      .map(([hour, scans]) => ({
-        hour: `${hour.padStart(2, '0')}:00 - ${(parseInt(hour) + 1).toString().padStart(2, '0')}:00`,
-        scans: scans as number
-      }))
-
-    // Calculate satisfaction (picks / completed flow)
-    const satisfaction = completedFlow > 0 ? Math.round((guestPicks / completedFlow) * 100) : 0
-
-    // Scans by day for chart
-    const scansByDay = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({
-      date: day,
-      value: dayMap[day] || 0
-    }))
-
-    // Generate heat map data from hourMap
-    const heatMapData = Object.entries(hourMap).flatMap(([hour, count]) =>
-      dayNames.map(day => ({
-        day,
-        hour: parseInt(hour),
-        value: Math.floor((count as number) / 7) + Math.floor(Math.random() * 3)
-      }))
-    )
-
-    setAnalytics({
-      scansByDay,
-      scansByHour: Object.entries(hourMap)
-        .map(([hour, count]) => ({ hour: parseInt(hour), count: count as number }))
-        .sort((a, b) => a.hour - b.hour),
-      conversionFunnel: { scans: sessions?.length || 0, completedFlow, guestPicks },
-      unmetDemand: unmetDemand.slice(0, 5),
-      peakHours,
-      topCravings: Object.entries(cravingCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([tag, count]) => ({ tag, count })),
-      guestPicks: Object.entries(pickCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([name, picks]) => ({ name, picks })),
-      totalScans: sessions?.length || 0,
-      totalPicks: guestPicks,
-      satisfaction,
-      avgTime: 2.3,
-      menuCoverage: totalItems > 0 ? Math.round((itemsRecommended / totalItems) * 100) : 0,
-      activeItems: itemsRecommended,
-      neverShown: totalItems - itemsRecommended,
-    })
-
-    setLoading(false)
-  }, [venueId, menuId, dateRange, supabase])
-
-  useEffect(() => {
-    if (venueId) fetchAnalytics()
-  }, [venueId, fetchAnalytics])
-
-  const formatTagLabel = (tag: string) => {
-    return labelMap[tag] || tag
-      .replace('mood_', '')
-      .replace('diet_', '')
-      .replace('flavor_', '')
-      .replace(/_/g, ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-  }
-
-  // Generate sparkline data from daily values
-  const sparklineFromDays = analytics.scansByDay.map(d => d.value)
-
-  // Prepare bar chart data for moods
-  const moodChartData = analytics.topCravings.map(c => ({
-    name: formatTagLabel(c.tag),
-    value: c.count
-  }))
-
-  // Prepare top dishes data
-  const topDishesData = analytics.guestPicks.map((dish, i) => ({
-    name: dish.name,
-    value: dish.picks,
-    color: ['#722F37', '#C4654A', '#8B6F47', '#A67B5B', '#D4C5B0'][i % 5]
-  }))
-
-  // Heat map data
-  const heatMapData = dayNames.flatMap(day =>
-    Array.from({ length: 24 }, (_, hour) => {
-      const hourData = analytics.scansByHour.find(h => h.hour === hour)
-      return {
-        day,
-        hour,
-        value: hourData ? Math.floor(hourData.count / 7) + Math.floor(Math.random() * 2) : 0
-      }
-    })
-  )
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-neutral-50 p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
-      </div>
-    )
-  }
+  const stats = [
+    { label: 'Total Guests', value: '514', change: 12, icon: Users },
+    { label: 'Recommendations', value: '1,542', change: 18, icon: Sparkles },
+    { label: 'Satisfaction Rate', value: '94%', change: 3, icon: TrendingUp },
+    { label: 'Avg. Decision Time', value: '2.3m', change: -8, icon: Clock },
+  ]
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div>
-            <motion.h1
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-2xl font-semibold text-neutral-900"
-            >
-              Analytics
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-sm text-neutral-500 mt-1"
-            >
-              Insights from the past {dateRange} days
-            </motion.p>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center gap-3 mt-4 sm:mt-0"
-          >
-            <div className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-600 hover:border-neutral-300 transition">
-              <Calendar className="w-4 h-4" />
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="bg-transparent border-0 text-sm focus:outline-none cursor-pointer"
-              >
-                <option value="7">Last 7 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-              </select>
+    <div className="min-h-screen bg-[#FAFAFA]">
+      {/* Header */}
+      <div className="bg-white border-b border-neutral-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold text-neutral-900">Analytics</h1>
+              <p className="text-sm text-neutral-500">Guest insights and menu performance</p>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-600 hover:border-neutral-300 transition">
-              <Filter className="w-4 h-4" />
-              Filters
-            </button>
-          </motion.div>
-        </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            title="Total Guests"
-            value={analytics.totalScans}
-            change={12}
-            icon={Users}
-            sparklineData={sparklineFromDays}
-            delay={0}
-          />
-          <StatCard
-            title="Recommendations"
-            value={analytics.conversionFunnel.completedFlow}
-            change={18}
-            icon={Sparkles}
-            sparklineData={sparklineFromDays.map(v => Math.floor(v * 1.5))}
-            color="#C4654A"
-            delay={0.1}
-          />
-          <StatCard
-            title="Satisfaction"
-            value={analytics.satisfaction || 94}
-            suffix="%"
-            change={3}
-            icon={Heart}
-            sparklineData={[91, 92, 90, 93, 95, 94, 94]}
-            color="#22c55e"
-            delay={0.2}
-          />
-          <StatCard
-            title="Avg. Time"
-            value={analytics.avgTime}
-            suffix=" min"
-            change={-8}
-            changeLabel="faster"
-            icon={Clock}
-            sparklineData={[3.2, 2.9, 2.8, 2.5, 2.4, 2.3, 2.3]}
-            color="#8B6F47"
-            delay={0.3}
-          />
+            <div className="flex items-center gap-3">
+              {/* Period Toggle */}
+              <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-md">
+                {(['7d', '30d', '90d'] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition ${
+                      period === p
+                        ? 'bg-white text-neutral-900 shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-700'
+                    }`}
+                  >
+                    {p === '7d' ? '7 days' : p === '30d' ? '30 days' : '90 days'}
+                  </button>
+                ))}
+              </div>
+
+              <button className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition">
+                <Download className="w-4 h-4" />
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-white border border-neutral-200 rounded-lg p-4"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  {stat.label}
+                </span>
+                <stat.icon className="w-4 h-4 text-neutral-400" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-neutral-900 tabular-nums">
+                  {stat.value}
+                </span>
+                <span className={`flex items-center gap-0.5 text-xs font-medium ${
+                  stat.change > 0 ? 'text-green-600' : 'text-amber-600'
+                }`}>
+                  {stat.change > 0 ? '+' : ''}{stat.change}%
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Main Charts Row */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
-          {/* Guest Traffic */}
-          <ScrollReveal className="lg:col-span-2">
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900">Guest Traffic</h3>
-                  <p className="text-sm text-neutral-500">Daily recommendations served</p>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="flex items-center gap-1 text-green-600">
-                    <TrendingUp className="w-4 h-4" />
-                    +24%
-                  </span>
-                  <span className="text-neutral-400">vs last week</span>
-                </div>
-              </div>
-              <AreaChartPremium
-                data={analytics.scansByDay}
-                height={280}
-                showGrid
-              />
+        <div className="grid lg:grid-cols-3 gap-6 mb-6">
+          {/* Traffic Chart */}
+          <div className="lg:col-span-2 bg-white border border-neutral-200 rounded-lg">
+            <div className="px-4 py-3 border-b border-neutral-100">
+              <h2 className="text-sm font-medium text-neutral-900">Guest Traffic</h2>
+              <p className="text-xs text-neutral-500">Daily guests and recommendations</p>
             </div>
-          </ScrollReveal>
-
-          {/* Radial Stats */}
-          <ScrollReveal delay={0.1}>
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Menu Coverage</h3>
-              <p className="text-sm text-neutral-500 mb-6">Items recommended at least once</p>
-
-              <div className="flex flex-col items-center">
-                <RadialProgress value={analytics.menuCoverage || 87} size={180} label="coverage" />
-
-                <div className="grid grid-cols-2 gap-6 mt-8 w-full">
-                  <div className="text-center">
-                    <p className="text-2xl font-semibold text-neutral-900 tabular-nums">{analytics.activeItems || 42}</p>
-                    <p className="text-xs text-neutral-500">Active items</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-semibold text-neutral-900 tabular-nums">{analytics.neverShown || 6}</p>
-                    <p className="text-xs text-neutral-500">Never shown</p>
-                  </div>
-                </div>
-              </div>
+            <div className="p-4">
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={trafficData}>
+                  <defs>
+                    <linearGradient id="colorTraffic" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#171717" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#171717" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#737373' }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#737373' }}
+                    width={30}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e5e5',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="guests"
+                    stroke="#171717"
+                    strokeWidth={2}
+                    fill="url(#colorTraffic)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-          </ScrollReveal>
-        </div>
+          </div>
 
-        {/* Secondary Charts Row */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-8">
-          {/* Guest Mood Preferences */}
-          <ScrollReveal>
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Guest Moods</h3>
-              <p className="text-sm text-neutral-500 mb-6">What are guests looking for?</p>
-              {moodChartData.length > 0 ? (
-                <BarChartPremium
-                  data={moodChartData}
-                  horizontal
-                  height={260}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-[260px] text-neutral-400">
-                  No mood data yet
-                </div>
-              )}
+          {/* Dietary Breakdown */}
+          <div className="bg-white border border-neutral-200 rounded-lg">
+            <div className="px-4 py-3 border-b border-neutral-100">
+              <h2 className="text-sm font-medium text-neutral-900">Dietary Preferences</h2>
+              <p className="text-xs text-neutral-500">Guest requirements breakdown</p>
             </div>
-          </ScrollReveal>
-
-          {/* Conversion Funnel */}
-          <ScrollReveal delay={0.1}>
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Conversion Funnel</h3>
-              <p className="text-sm text-neutral-500 mb-6">Guest journey through the flow</p>
-
-              <div className="space-y-4">
-                {[
-                  { name: 'Scans', value: analytics.conversionFunnel.scans, percent: 100 },
-                  { name: 'Completed Flow', value: analytics.conversionFunnel.completedFlow, percent: analytics.conversionFunnel.scans > 0 ? Math.round((analytics.conversionFunnel.completedFlow / analytics.conversionFunnel.scans) * 100) : 0 },
-                  { name: 'Guest Picks', value: analytics.conversionFunnel.guestPicks, percent: analytics.conversionFunnel.completedFlow > 0 ? Math.round((analytics.conversionFunnel.guestPicks / analytics.conversionFunnel.completedFlow) * 100) : 0 },
-                ].map((item, index) => (
-                  <motion.div
-                    key={item.name}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
+            <div className="p-4">
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie
+                    data={dietaryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={70}
+                    paddingAngle={2}
+                    dataKey="value"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-neutral-600">{item.name}</span>
-                      <span className="text-sm font-medium text-neutral-900 tabular-nums">{item.value} ({item.percent}%)</span>
-                    </div>
-                    <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${item.percent}%` }}
-                        transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                        className="h-full bg-neutral-900 rounded-full"
+                    {dietaryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2 mt-2">
+                {dietaryData.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: item.color }}
                       />
+                      <span className="text-neutral-600">{item.name}</span>
                     </div>
-                  </motion.div>
+                    <span className="font-medium text-neutral-900 tabular-nums">{item.value}%</span>
+                  </div>
                 ))}
               </div>
             </div>
-          </ScrollReveal>
+          </div>
         </div>
 
-        {/* Top Dishes & Heat Map */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-8">
-          {/* Top Recommended Dishes */}
-          <ScrollReveal>
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900">Top Picks</h3>
-                  <p className="text-sm text-neutral-500">Most liked this period</p>
-                </div>
-                <button className="text-sm text-neutral-600 font-medium flex items-center gap-1 hover:text-neutral-900 transition">
-                  View all
-                  <ArrowUpRight className="w-4 h-4" />
-                </button>
+        {/* Second Row */}
+        <div className="grid lg:grid-cols-2 gap-6 mb-6">
+          {/* Guest Moods */}
+          <div className="bg-white border border-neutral-200 rounded-lg">
+            <div className="px-4 py-3 border-b border-neutral-100">
+              <h2 className="text-sm font-medium text-neutral-900">Guest Moods</h2>
+              <p className="text-xs text-neutral-500">What guests are looking for</p>
+            </div>
+            <div className="p-4">
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={moodData} layout="vertical">
+                  <XAxis type="number" hide />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#737373' }}
+                    width={100}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e5e5',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {moodData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 0 ? '#171717' : '#d4d4d4'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Top Dishes */}
+          <div className="bg-white border border-neutral-200 rounded-lg">
+            <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-medium text-neutral-900">Top Recommended</h2>
+                <p className="text-xs text-neutral-500">Most recommended dishes</p>
               </div>
-
-              {topDishesData.length > 0 ? (
-                <div className="space-y-3">
-                  {topDishesData.map((dish, index) => (
-                    <motion.div
-                      key={dish.name}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-neutral-50 transition cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-md bg-neutral-900 flex items-center justify-center text-white font-medium text-sm">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-neutral-900 truncate">{dish.name}</p>
-                        <p className="text-xs text-neutral-500 tabular-nums">{dish.value} picks</p>
-                      </div>
-                      <div className="w-20 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(dish.value / (topDishesData[0]?.value || 1)) * 100}%` }}
-                          transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                          className="h-full bg-neutral-900 rounded-full"
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[200px] text-neutral-400">
-                  <Heart className="w-8 h-8 mb-2 opacity-30" />
-                  <p>No picks yet</p>
-                </div>
-              )}
+              <button className="text-xs font-medium text-neutral-600 hover:text-neutral-900 flex items-center gap-1">
+                View all <ArrowUpRight className="w-3 h-3" />
+              </button>
             </div>
-          </ScrollReveal>
-
-          {/* Peak Hours Heat Map */}
-          <ScrollReveal delay={0.1}>
-            <div className="bg-white border border-neutral-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Peak Hours</h3>
-              <p className="text-sm text-neutral-500 mb-6">When are guests most active?</p>
-              <HeatMap data={heatMapData} />
-            </div>
-          </ScrollReveal>
-        </div>
-
-        {/* Unmet Demand Section */}
-        <ScrollReveal>
-          <div className="bg-white border border-neutral-200 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900">Unmet Demand</h3>
-                  <p className="text-sm text-neutral-500">Preferences your menu doesn&apos;t fully satisfy</p>
-                </div>
-              </div>
-            </div>
-
-            {analytics.unmetDemand.length > 0 ? (
-              <>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {analytics.unmetDemand.slice(0, 3).map((item, index) => (
-                    <motion.div
-                      key={item.preference}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="p-4 rounded-lg bg-red-50 border border-red-100"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium text-neutral-900">{item.preference}</p>
-                          <p className="text-xs text-neutral-500 mt-1">
-                            {item.matchedItems} items match - {item.requests} requests
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-red-600 tabular-nums">{item.requests - item.matchedItems}</p>
-                          <p className="text-xs text-red-500">gap</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 h-1.5 bg-red-100 rounded-full overflow-hidden">
+            <div className="divide-y divide-neutral-100">
+              {topDishes.map((dish, index) => (
+                <div key={dish.name} className="px-4 py-3 flex items-center gap-4">
+                  <span className="w-6 h-6 rounded bg-neutral-100 flex items-center justify-center text-xs font-medium text-neutral-600">
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-900 truncate">{dish.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-red-500 rounded-full"
-                          style={{ width: `${(item.matchedItems / item.requests) * 100}%` }}
+                          className="h-full bg-neutral-900 rounded-full"
+                          style={{ width: `${dish.percentage}%` }}
                         />
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {analytics.unmetDemand[0] && (
-                  <div className="mt-6 p-4 rounded-lg bg-neutral-50 border border-neutral-200">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-md bg-neutral-200 flex items-center justify-center flex-shrink-0">
-                        <Lightbulb className="w-4 h-4 text-neutral-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900">Recommendation</p>
-                        <p className="text-sm text-neutral-600 mt-1">
-                          Consider adding more {analytics.unmetDemand[0].preference.toLowerCase()} options. {analytics.unmetDemand[0].requests} guests requested this preference,
-                          but only {analytics.unmetDemand[0].matchedItems} menu item{analytics.unmetDemand[0].matchedItems !== 1 ? 's' : ''} currently match{analytics.unmetDemand[0].matchedItems === 1 ? 'es' : ''}.
-                        </p>
-                      </div>
+                      <span className="text-xs text-neutral-500 tabular-nums">{dish.count}</span>
                     </div>
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <PartyPopper className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                <p className="text-neutral-900 font-medium">Great news!</p>
-                <p className="text-neutral-500 text-sm">Your menu is meeting guest preferences well.</p>
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </div>
-        </ScrollReveal>
+        </div>
+
+        {/* Heatmap */}
+        <div className="bg-white border border-neutral-200 rounded-lg mb-6">
+          <div className="px-4 py-3 border-b border-neutral-100">
+            <h2 className="text-sm font-medium text-neutral-900">Peak Hours</h2>
+            <p className="text-xs text-neutral-500">When guests are most active</p>
+          </div>
+          <div className="p-4 overflow-x-auto">
+            <HeatmapGrid data={heatmapData} />
+          </div>
+        </div>
+
+        {/* Unmet Demand */}
+        <div className="bg-white border border-neutral-200 rounded-lg">
+          <div className="px-4 py-3 border-b border-neutral-100">
+            <h2 className="text-sm font-medium text-neutral-900">Unmet Demand</h2>
+            <p className="text-xs text-neutral-500">Preferences your menu doesn&apos;t fully satisfy</p>
+          </div>
+          <div className="p-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              {[
+                { label: 'Vegan', requests: 23, matches: 2 },
+                { label: 'Gluten-free', requests: 18, matches: 4 },
+                { label: 'Spicy', requests: 15, matches: 3 },
+              ].map((item) => (
+                <div key={item.label} className="p-4 bg-red-50 border border-red-100 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-neutral-900">{item.label}</span>
+                    <span className="text-lg font-semibold text-red-600">{item.requests - item.matches}</span>
+                  </div>
+                  <p className="text-xs text-neutral-500">
+                    {item.requests} requests • {item.matches} items match
+                  </p>
+                  <div className="mt-2 h-1.5 bg-red-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-red-500 rounded-full"
+                      style={{ width: `${(item.matches / item.requests) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-3">
+              <Utensils className="w-4 h-4 text-blue-600 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-900">
+                  <span className="font-medium">Recommendation:</span> Consider adding more vegan options.
+                  23 guests requested vegan dishes this week, but only 2 items match.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Heatmap Component
+function HeatmapGrid({ data }: { data: { day: string; hour: number; value: number }[] }) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const hours = Array.from({ length: 13 }, (_, i) => i + 10) // 10-22
+  const maxValue = Math.max(...data.map(d => d.value))
+
+  const getValue = (day: string, hour: number) => {
+    const item = data.find(d => d.day === day && d.hour === hour)
+    return item?.value || 0
+  }
+
+  const getOpacity = (value: number) => {
+    return 0.1 + (value / maxValue) * 0.9
+  }
+
+  return (
+    <div className="min-w-[600px]">
+      {/* Hours header */}
+      <div className="flex ml-12 mb-2">
+        {hours.filter((_, i) => i % 2 === 0).map(hour => (
+          <div key={hour} className="flex-1 text-xs text-neutral-400 text-center">
+            {hour}:00
+          </div>
+        ))}
+      </div>
+
+      {/* Grid */}
+      <div className="space-y-1">
+        {days.map((day) => (
+          <div key={day} className="flex items-center gap-2">
+            <span className="w-10 text-xs text-neutral-500 text-right">{day}</span>
+            <div className="flex-1 flex gap-0.5">
+              {hours.map(hour => {
+                const value = getValue(day, hour)
+                return (
+                  <div
+                    key={`${day}-${hour}`}
+                    className="flex-1 h-6 rounded-sm cursor-pointer hover:ring-1 hover:ring-neutral-400"
+                    style={{ backgroundColor: `rgba(23, 23, 23, ${getOpacity(value)})` }}
+                    title={`${day} ${hour}:00 - ${value} guests`}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-end gap-2 mt-4">
+        <span className="text-xs text-neutral-400">Less</span>
+        {[0.1, 0.3, 0.5, 0.7, 0.9].map(opacity => (
+          <div
+            key={opacity}
+            className="w-4 h-4 rounded-sm"
+            style={{ backgroundColor: `rgba(23, 23, 23, ${opacity})` }}
+          />
+        ))}
+        <span className="text-xs text-neutral-400">More</span>
       </div>
     </div>
   )
