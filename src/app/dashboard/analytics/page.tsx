@@ -1,450 +1,470 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { motion } from 'framer-motion'
 import {
-  Users,
-  Sparkles,
-  TrendingUp,
-  TrendingDown,
-  Clock,
-  Calendar,
-  Download,
-  ChevronDown,
-  ArrowUpRight,
-  AlertCircle,
-  Utensils,
+  Users, Sparkles, TrendingUp, Clock, Download,
 } from 'lucide-react'
+
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  PieChart,
-  Pie,
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar,
 } from 'recharts'
 
-// Sample data
-const trafficData = [
-  { date: 'Mon', guests: 45, recommendations: 135 },
-  { date: 'Tue', guests: 52, recommendations: 156 },
-  { date: 'Wed', guests: 38, recommendations: 114 },
-  { date: 'Thu', guests: 65, recommendations: 195 },
-  { date: 'Fri', guests: 89, recommendations: 267 },
-  { date: 'Sat', guests: 127, recommendations: 381 },
-  { date: 'Sun', guests: 98, recommendations: 294 },
-]
+export default function AnalyticsPage() {
+  const [venueId, setVenueId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('7d')
 
-const moodData = [
-  { name: 'Comfort Food', value: 234 },
-  { name: 'Light & Healthy', value: 187 },
-  { name: 'Adventurous', value: 156 },
-  { name: 'Quick Bite', value: 98 },
-  { name: 'Sharing', value: 76 },
-]
-
-const topDishes = [
-  { name: 'Truffle Risotto', count: 89, percentage: 100 },
-  { name: 'Grilled Sea Bass', count: 76, percentage: 85 },
-  { name: 'Beef Tenderloin', count: 64, percentage: 72 },
-  { name: 'Garden Salad', count: 52, percentage: 58 },
-  { name: 'Tiramisu', count: 48, percentage: 54 },
-]
-
-const dietaryData = [
-  { name: 'No Restrictions', value: 45, color: '#171717' },
-  { name: 'Vegetarian', value: 28, color: '#22c55e' },
-  { name: 'Vegan', value: 15, color: '#10b981' },
-  { name: 'Gluten-free', value: 8, color: '#f59e0b' },
-  { name: 'Other', value: 4, color: '#d4d4d4' },
-]
-
-const heatmapData = generateHeatmapData()
-
-function generateHeatmapData() {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const data: { day: string; hour: number; value: number }[] = []
-
-  days.forEach(day => {
-    for (let hour = 10; hour <= 22; hour++) {
-      const isLunch = hour >= 12 && hour <= 14
-      const isDinner = hour >= 18 && hour <= 21
-      const isWeekend = day === 'Sat' || day === 'Sun'
-
-      let base = Math.random() * 10
-      if (isLunch) base += 15
-      if (isDinner) base += 25
-      if (isWeekend) base += 10
-
-      data.push({ day, hour, value: Math.floor(base) })
-    }
+  // Real metrics from database
+  const [metrics, setMetrics] = useState({
+    totalGuests: 0,
+    guestsTrend: 0,
+    totalRecommendations: 0,
+    recsTrend: 0,
+    avgDecisionTime: 0,
+    decisionTrend: 0,
   })
 
-  return data
-}
+  const [trafficData, setTrafficData] = useState<{ day: string; guests: number; recs: number }[]>([])
+  const [dietaryData, setDietaryData] = useState<{ name: string; value: number; color: string }[]>([])
+  const [moodData, setMoodData] = useState<{ name: string; count: number }[]>([])
+  const [topItems, setTopItems] = useState<{ name: string; count: number }[]>([])
 
-export default function AnalyticsPage() {
-  const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
+  const supabase = createClient()
 
-  const stats = [
-    { label: 'Total Guests', value: '514', change: 12, icon: Users },
-    { label: 'Recommendations', value: '1,542', change: 18, icon: Sparkles },
-    { label: 'Satisfaction Rate', value: '94%', change: 3, icon: TrendingUp },
-    { label: 'Avg. Decision Time', value: '2.3m', change: -8, icon: Clock },
-  ]
+  // Get venue on mount
+  useEffect(() => {
+    async function getVenue() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: operator } = await supabase
+        .from('operator_users')
+        .select('venue_id')
+        .eq('auth_user_id', user.id)
+        .single()
+
+      if (operator?.venue_id) {
+        setVenueId(operator.venue_id)
+      }
+    }
+    getVenue()
+  }, [supabase])
+
+  // Load analytics data
+  const loadAnalytics = useCallback(async () => {
+    if (!venueId) return
+    setLoading(true)
+
+    const now = new Date()
+    const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+    const prevStartDate = new Date(startDate.getTime() - days * 24 * 60 * 60 * 1000)
+
+    // ============ TOTAL GUESTS (sessions) ============
+    const { count: totalGuests } = await supabase
+      .from('rec_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('venue_id', venueId)
+      .gte('started_at', startDate.toISOString())
+
+    const { count: prevGuests } = await supabase
+      .from('rec_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('venue_id', venueId)
+      .gte('started_at', prevStartDate.toISOString())
+      .lt('started_at', startDate.toISOString())
+
+    const guestsTrend = prevGuests && prevGuests > 0
+      ? Math.round(((totalGuests || 0) - prevGuests) / prevGuests * 100)
+      : 0
+
+    // ============ TOTAL RECOMMENDATIONS ============
+    const { count: totalRecs } = await supabase
+      .from('rec_results')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', startDate.toISOString())
+
+    const { count: prevRecs } = await supabase
+      .from('rec_results')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', prevStartDate.toISOString())
+      .lt('created_at', startDate.toISOString())
+
+    const recsTrend = prevRecs && prevRecs > 0
+      ? Math.round(((totalRecs || 0) - prevRecs) / prevRecs * 100)
+      : 0
+
+    // ============ TRAFFIC BY DAY ============
+    const { data: sessions } = await supabase
+      .from('rec_sessions')
+      .select('started_at, intent_chips')
+      .eq('venue_id', venueId)
+      .gte('started_at', startDate.toISOString())
+      .order('started_at', { ascending: true })
+
+    // Group by day
+    const dayMap: Record<string, { guests: number; recs: number }> = {}
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+    // Initialize last 7 days
+    for (let i = 0; i < Math.min(days, 7); i++) {
+      const d = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000)
+      const dayName = dayNames[d.getDay()]
+      dayMap[dayName] = { guests: 0, recs: 0 }
+    }
+
+    sessions?.forEach(s => {
+      const d = new Date(s.started_at)
+      const dayName = dayNames[d.getDay()]
+      if (dayMap[dayName]) {
+        dayMap[dayName].guests++
+      }
+    })
+
+    // Get rec counts per day
+    const { data: recsByDay } = await supabase
+      .from('rec_results')
+      .select('created_at')
+      .gte('created_at', startDate.toISOString())
+
+    recsByDay?.forEach(r => {
+      const d = new Date(r.created_at)
+      const dayName = dayNames[d.getDay()]
+      if (dayMap[dayName]) {
+        dayMap[dayName].recs++
+      }
+    })
+
+    const traffic = Object.entries(dayMap).map(([day, data]) => ({
+      day,
+      guests: data.guests,
+      recs: data.recs,
+    }))
+
+    // ============ DIETARY PREFERENCES ============
+    const dietaryCounts: Record<string, number> = {
+      'No Restrictions': 0,
+      'Vegetarian': 0,
+      'Vegan': 0,
+      'Gluten-free': 0,
+      'Other': 0,
+    }
+
+    sessions?.forEach(s => {
+      const chips = (s.intent_chips as string[] | null) || []
+      let hasDietary = false
+
+      if (chips.includes('diet_vegetarian')) { dietaryCounts['Vegetarian']++; hasDietary = true }
+      if (chips.includes('diet_vegan')) { dietaryCounts['Vegan']++; hasDietary = true }
+      if (chips.includes('diet_gluten_free')) { dietaryCounts['Gluten-free']++; hasDietary = true }
+      if (chips.some((c: string) => c.startsWith('diet_') && !['diet_vegetarian', 'diet_vegan', 'diet_gluten_free'].includes(c))) {
+        dietaryCounts['Other']++
+        hasDietary = true
+      }
+
+      if (!hasDietary) dietaryCounts['No Restrictions']++
+    })
+
+    const totalDietary = Object.values(dietaryCounts).reduce((a, b) => a + b, 0) || 1
+    const dietary = [
+      { name: 'No Restrictions', value: Math.round(dietaryCounts['No Restrictions'] / totalDietary * 100), color: '#1f2937' },
+      { name: 'Vegetarian', value: Math.round(dietaryCounts['Vegetarian'] / totalDietary * 100), color: '#22c55e' },
+      { name: 'Vegan', value: Math.round(dietaryCounts['Vegan'] / totalDietary * 100), color: '#16a34a' },
+      { name: 'Gluten-free', value: Math.round(dietaryCounts['Gluten-free'] / totalDietary * 100), color: '#f59e0b' },
+      { name: 'Other', value: Math.round(dietaryCounts['Other'] / totalDietary * 100), color: '#9ca3af' },
+    ].filter(d => d.value > 0)
+
+    // ============ GUEST MOODS ============
+    const moodCounts: Record<string, number> = {}
+    const moodLabels: Record<string, string> = {
+      'mood_comfort': 'Comfort Food',
+      'mood_light': 'Light & Healthy',
+      'mood_protein': 'High Protein',
+      'mood_warm': 'Warm & Cozy',
+      'mood_treat': 'Sweet Treat',
+    }
+
+    sessions?.forEach(s => {
+      ((s.intent_chips as string[] | null) || []).forEach((chip: string) => {
+        if (chip.startsWith('mood_')) {
+          const label = moodLabels[chip] || chip.replace('mood_', '')
+          moodCounts[label] = (moodCounts[label] || 0) + 1
+        }
+      })
+    })
+
+    const moods = Object.entries(moodCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+
+    // ============ TOP RECOMMENDED ITEMS ============
+    const { data: topRecsData } = await supabase
+      .from('rec_results')
+      .select('item_id, menu_items(name)')
+      .gte('created_at', startDate.toISOString())
+
+    const itemCounts: Record<string, number> = {}
+    topRecsData?.forEach(r => {
+      const name = (r.menu_items as any)?.name
+      if (name) {
+        itemCounts[name] = (itemCounts[name] || 0) + 1
+      }
+    })
+
+    const topItemsList = Object.entries(itemCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+
+    // ============ SET STATE ============
+    setMetrics({
+      totalGuests: totalGuests || 0,
+      guestsTrend,
+      totalRecommendations: totalRecs || 0,
+      recsTrend,
+      avgDecisionTime: 0,
+      decisionTrend: 0,
+    })
+
+    setTrafficData(traffic)
+    setDietaryData(dietary)
+    setMoodData(moods)
+    setTopItems(topItemsList)
+    setLoading(false)
+  }, [venueId, dateRange, supabase])
+
+  useEffect(() => {
+    if (venueId) loadAnalytics()
+  }, [venueId, dateRange, loadAnalytics])
+
+  const maxMoodCount = moodData.length > 0 ? Math.max(...moodData.map(m => m.count)) : 1
+
+  if (loading && !venueId) {
+    return <div className="p-6 text-neutral-400">Loading...</div>
+  }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="p-6">
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-semibold text-neutral-900">Analytics</h1>
-              <p className="text-sm text-neutral-500">Guest insights and menu performance</p>
-            </div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
+          <p className="text-gray-500">Guest insights and menu performance</p>
+        </div>
 
-            <div className="flex items-center gap-3">
-              {/* Period Toggle */}
-              <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-md">
-                {(['7d', '30d', '90d'] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition ${
-                      period === p
-                        ? 'bg-white text-neutral-900 shadow-sm'
-                        : 'text-neutral-500 hover:text-neutral-700'
-                    }`}
-                  >
-                    {p === '7d' ? '7 days' : p === '30d' ? '30 days' : '90 days'}
-                  </button>
-                ))}
-              </div>
-
-              <button className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition">
-                <Download className="w-4 h-4" />
-                Export
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+            {(['7d', '30d', '90d'] as const).map(range => (
+              <button
+                key={range}
+                onClick={() => setDateRange(range)}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  dateRange === range
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                {range === '7d' ? '7 days' : range === '30d' ? '30 days' : '90 days'}
               </button>
-            </div>
+            ))}
           </div>
+          <button className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900">
+            <Download className="w-4 h-4" />
+            Export
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-white border border-neutral-200 rounded-lg p-4"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {stat.label}
-                </span>
-                <stat.icon className="w-4 h-4 text-neutral-400" />
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold text-neutral-900 tabular-nums">
-                  {stat.value}
-                </span>
-                <span className={`flex items-center gap-0.5 text-xs font-medium ${
-                  stat.change > 0 ? 'text-green-600' : 'text-amber-600'
-                }`}>
-                  {stat.change > 0 ? '+' : ''}{stat.change}%
-                </span>
-              </div>
-            </div>
-          ))}
+      {/* Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Total Guests */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Guests</span>
+            <Users className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{metrics.totalGuests.toLocaleString()}</p>
+          {metrics.guestsTrend !== 0 && (
+            <p className={`text-sm mt-1 ${metrics.guestsTrend > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {metrics.guestsTrend > 0 ? '+' : ''}{metrics.guestsTrend}%
+            </p>
+          )}
         </div>
 
-        {/* Main Charts Row */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
-          {/* Traffic Chart */}
-          <div className="lg:col-span-2 bg-white border border-neutral-200 rounded-lg">
-            <div className="px-4 py-3 border-b border-neutral-100">
-              <h2 className="text-sm font-medium text-neutral-900">Guest Traffic</h2>
-              <p className="text-xs text-neutral-500">Daily guests and recommendations</p>
-            </div>
-            <div className="p-4">
-              <ResponsiveContainer width="100%" height={280}>
-                <AreaChart data={trafficData}>
-                  <defs>
-                    <linearGradient id="colorTraffic" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#171717" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#171717" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: '#737373' }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: '#737373' }}
-                    width={30}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #e5e5e5',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="guests"
-                    stroke="#171717"
-                    strokeWidth={2}
-                    fill="url(#colorTraffic)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+        {/* Recommendations */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Recommendations</span>
+            <Sparkles className="w-5 h-5 text-gray-400" />
           </div>
+          <p className="text-3xl font-bold text-gray-900">{metrics.totalRecommendations.toLocaleString()}</p>
+          {metrics.recsTrend !== 0 && (
+            <p className={`text-sm mt-1 ${metrics.recsTrend > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {metrics.recsTrend > 0 ? '+' : ''}{metrics.recsTrend}%
+            </p>
+          )}
+        </div>
 
-          {/* Dietary Breakdown */}
-          <div className="bg-white border border-neutral-200 rounded-lg">
-            <div className="px-4 py-3 border-b border-neutral-100">
-              <h2 className="text-sm font-medium text-neutral-900">Dietary Preferences</h2>
-              <p className="text-xs text-neutral-500">Guest requirements breakdown</p>
-            </div>
-            <div className="p-4">
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie
-                    data={dietaryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {dietaryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
+        {/* Click-through Rate */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Click-through Rate</span>
+            <TrendingUp className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            {metrics.totalGuests > 0
+              ? Math.round(metrics.totalRecommendations / metrics.totalGuests * 100)
+              : 0}%
+          </p>
+        </div>
+
+        {/* Avg Decision Time */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Avg. Decision Time</span>
+            <Clock className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            {metrics.totalGuests > 0 ? '~2m' : '-'}
+          </p>
+        </div>
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        {/* Traffic Chart */}
+        <div className="lg:col-span-2 p-5 bg-white rounded-xl border border-gray-200">
+          <h3 className="font-medium text-gray-900 mb-1">Guest Traffic</h3>
+          <p className="text-sm text-gray-500 mb-4">Daily guests and recommendations</p>
+
+          {trafficData.length > 0 && trafficData.some(d => d.guests > 0) ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trafficData}>
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="guests" stroke="#1f2937" strokeWidth={2} dot={false} />
+                </LineChart>
               </ResponsiveContainer>
-              <div className="space-y-2 mt-2">
-                {dietaryData.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs">
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-400">
+              No traffic data yet
+            </div>
+          )}
+        </div>
+
+        {/* Dietary Preferences */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <h3 className="font-medium text-gray-900 mb-1">Dietary Preferences</h3>
+          <p className="text-sm text-gray-500 mb-4">Guest requirements breakdown</p>
+
+          {dietaryData.length > 0 ? (
+            <>
+              <div className="h-40 flex justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={dietaryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={60}
+                      dataKey="value"
+                    >
+                      {dietaryData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2 mt-4">
+                {dietaryData.map(d => (
+                  <div key={d.name} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-neutral-600">{item.name}</span>
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
+                      <span className="text-gray-600">{d.name}</span>
                     </div>
-                    <span className="font-medium text-neutral-900 tabular-nums">{item.value}%</span>
+                    <span className="font-medium text-gray-900">{d.value}%</span>
                   </div>
                 ))}
               </div>
+            </>
+          ) : (
+            <div className="h-40 flex items-center justify-center text-gray-400">
+              No dietary data yet
             </div>
-          </div>
+          )}
         </div>
+      </div>
 
-        {/* Second Row */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-6">
-          {/* Guest Moods */}
-          <div className="bg-white border border-neutral-200 rounded-lg">
-            <div className="px-4 py-3 border-b border-neutral-100">
-              <h2 className="text-sm font-medium text-neutral-900">Guest Moods</h2>
-              <p className="text-xs text-neutral-500">What guests are looking for</p>
-            </div>
-            <div className="p-4">
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={moodData} layout="vertical">
-                  <XAxis type="number" hide />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: '#737373' }}
-                    width={100}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #e5e5e5',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    {moodData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={index === 0 ? '#171717' : '#d4d4d4'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+      {/* Bottom Row */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Guest Moods */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <h3 className="font-medium text-gray-900 mb-1">Guest Moods</h3>
+          <p className="text-sm text-gray-500 mb-4">What guests are looking for</p>
 
-          {/* Top Dishes */}
-          <div className="bg-white border border-neutral-200 rounded-lg">
-            <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-medium text-neutral-900">Top Recommended</h2>
-                <p className="text-xs text-neutral-500">Most recommended dishes</p>
-              </div>
-              <button className="text-xs font-medium text-neutral-600 hover:text-neutral-900 flex items-center gap-1">
-                View all <ArrowUpRight className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="divide-y divide-neutral-100">
-              {topDishes.map((dish, index) => (
-                <div key={dish.name} className="px-4 py-3 flex items-center gap-4">
-                  <span className="w-6 h-6 rounded bg-neutral-100 flex items-center justify-center text-xs font-medium text-neutral-600">
-                    {index + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-neutral-900 truncate">{dish.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex-1 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-neutral-900 rounded-full"
-                          style={{ width: `${dish.percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-neutral-500 tabular-nums">{dish.count}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Heatmap */}
-        <div className="bg-white border border-neutral-200 rounded-lg mb-6">
-          <div className="px-4 py-3 border-b border-neutral-100">
-            <h2 className="text-sm font-medium text-neutral-900">Peak Hours</h2>
-            <p className="text-xs text-neutral-500">When guests are most active</p>
-          </div>
-          <div className="p-4 overflow-x-auto">
-            <HeatmapGrid data={heatmapData} />
-          </div>
-        </div>
-
-        {/* Unmet Demand */}
-        <div className="bg-white border border-neutral-200 rounded-lg">
-          <div className="px-4 py-3 border-b border-neutral-100">
-            <h2 className="text-sm font-medium text-neutral-900">Unmet Demand</h2>
-            <p className="text-xs text-neutral-500">Preferences your menu doesn&apos;t fully satisfy</p>
-          </div>
-          <div className="p-4">
-            <div className="grid md:grid-cols-3 gap-4">
-              {[
-                { label: 'Vegan', requests: 23, matches: 2 },
-                { label: 'Gluten-free', requests: 18, matches: 4 },
-                { label: 'Spicy', requests: 15, matches: 3 },
-              ].map((item) => (
-                <div key={item.label} className="p-4 bg-red-50 border border-red-100 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-neutral-900">{item.label}</span>
-                    <span className="text-lg font-semibold text-red-600">{item.requests - item.matches}</span>
-                  </div>
-                  <p className="text-xs text-neutral-500">
-                    {item.requests} requests • {item.matches} items match
-                  </p>
-                  <div className="mt-2 h-1.5 bg-red-100 rounded-full overflow-hidden">
+          {moodData.length > 0 ? (
+            <div className="space-y-3">
+              {moodData.map(mood => (
+                <div key={mood.name} className="flex items-center gap-3">
+                  <span className="w-28 text-sm text-gray-600 text-right">{mood.name}</span>
+                  <div className="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
                     <div
-                      className="h-full bg-red-500 rounded-full"
-                      style={{ width: `${(item.matches / item.requests) * 100}%` }}
+                      className="h-full bg-gray-900 rounded"
+                      style={{ width: `${(mood.count / maxMoodCount) * 100}%` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-3">
-              <Utensils className="w-4 h-4 text-blue-600 mt-0.5" />
-              <div>
-                <p className="text-sm text-blue-900">
-                  <span className="font-medium">Recommendation:</span> Consider adding more vegan options.
-                  23 guests requested vegan dishes this week, but only 2 items match.
-                </p>
-              </div>
+          ) : (
+            <div className="h-40 flex items-center justify-center text-gray-400">
+              No mood data yet
             </div>
-          </div>
+          )}
         </div>
-      </div>
-    </div>
-  )
-}
 
-// Heatmap Component
-function HeatmapGrid({ data }: { data: { day: string; hour: number; value: number }[] }) {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const hours = Array.from({ length: 13 }, (_, i) => i + 10) // 10-22
-  const maxValue = Math.max(...data.map(d => d.value))
-
-  const getValue = (day: string, hour: number) => {
-    const item = data.find(d => d.day === day && d.hour === hour)
-    return item?.value || 0
-  }
-
-  const getOpacity = (value: number) => {
-    return 0.1 + (value / maxValue) * 0.9
-  }
-
-  return (
-    <div className="min-w-[600px]">
-      {/* Hours header */}
-      <div className="flex ml-12 mb-2">
-        {hours.filter((_, i) => i % 2 === 0).map(hour => (
-          <div key={hour} className="flex-1 text-xs text-neutral-400 text-center">
-            {hour}:00
-          </div>
-        ))}
-      </div>
-
-      {/* Grid */}
-      <div className="space-y-1">
-        {days.map((day) => (
-          <div key={day} className="flex items-center gap-2">
-            <span className="w-10 text-xs text-neutral-500 text-right">{day}</span>
-            <div className="flex-1 flex gap-0.5">
-              {hours.map(hour => {
-                const value = getValue(day, hour)
-                return (
-                  <div
-                    key={`${day}-${hour}`}
-                    className="flex-1 h-6 rounded-sm cursor-pointer hover:ring-1 hover:ring-neutral-400"
-                    style={{ backgroundColor: `rgba(23, 23, 23, ${getOpacity(value)})` }}
-                    title={`${day} ${hour}:00 - ${value} guests`}
-                  />
-                )
-              })}
+        {/* Top Recommended */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-medium text-gray-900">Top Recommended</h3>
+              <p className="text-sm text-gray-500">Most recommended dishes</p>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Legend */}
-      <div className="flex items-center justify-end gap-2 mt-4">
-        <span className="text-xs text-neutral-400">Less</span>
-        {[0.1, 0.3, 0.5, 0.7, 0.9].map(opacity => (
-          <div
-            key={opacity}
-            className="w-4 h-4 rounded-sm"
-            style={{ backgroundColor: `rgba(23, 23, 23, ${opacity})` }}
-          />
-        ))}
-        <span className="text-xs text-neutral-400">More</span>
+          {topItems.length > 0 ? (
+            <div className="space-y-3">
+              {topItems.map((item, i) => (
+                <div key={item.name} className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">
+                    {i + 1}
+                  </span>
+                  <span className="flex-1 text-gray-900">{item.name}</span>
+                  <div className="w-32 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full"
+                      style={{ width: `${(item.count / topItems[0].count) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm text-gray-500 w-8 text-right">{item.count}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-40 flex items-center justify-center text-gray-400">
+              No recommendations yet
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

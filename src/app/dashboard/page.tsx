@@ -1,38 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  QrCode,
-  MousePointer,
-  TrendingUp,
-  TrendingDown,
-  Clock,
-  ArrowRight,
-  ArrowUpRight,
-  ExternalLink,
-  BarChart3,
-  Zap,
-  AlertCircle,
-  Bell,
-  Heart,
-  Wifi,
-  WifiOff,
-  RefreshCw,
-} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
+import {
+  QrCode, MousePointer, TrendingUp, Clock, ExternalLink,
+  BarChart3, Utensils, Download, Wifi, WifiOff, Settings, RefreshCw,
+} from 'lucide-react'
 
 type DateRange = '7d' | '30d' | 'all'
-
-interface Metrics {
-  totalScans: number
-  totalClicks: number
-  clickRate: number
-  unmetCount: number
-  topMoods: { name: string; count: number }[]
-  topItems: { name: string; clicks: number }[]
-}
 
 interface LiveEvent {
   id: string
@@ -51,9 +28,8 @@ function timeAgo(date: Date): string {
 
 function getEventColor(type: string): string {
   switch (type) {
-    case 'scan': return 'bg-blue-500'
-    case 'click': return 'bg-emerald-500'
-    case 'like': return 'bg-pink-500'
+    case 'scan': return 'bg-emerald-500'
+    case 'click': return 'bg-purple-500'
     case 'upsell': return 'bg-purple-500'
     case 'unmet': return 'bg-amber-500'
     default: return 'bg-neutral-400'
@@ -68,157 +44,18 @@ export default function DashboardPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [dateRange, setDateRange] = useState<DateRange>('7d')
 
-  const [metrics, setMetrics] = useState<Metrics>({
+  const [metrics, setMetrics] = useState({
     totalScans: 0,
     totalClicks: 0,
     clickRate: 0,
-    unmetCount: 0,
-    topMoods: [],
-    topItems: [],
+    unmetDemand: 0,
   })
 
+  const [topMoods, setTopMoods] = useState<{ name: string; count: number }[]>([])
+  const [topItems, setTopItems] = useState<{ name: string; clicks: number }[]>([])
   const [liveActivity, setLiveActivity] = useState<LiveEvent[]>([])
 
   const supabase = createClient()
-
-  // Load initial data
-  const loadData = useCallback(async () => {
-    if (!venueId) return
-
-    const now = new Date()
-    let startDate = new Date()
-    if (dateRange === '7d') startDate.setDate(now.getDate() - 7)
-    else if (dateRange === '30d') startDate.setDate(now.getDate() - 30)
-    else startDate = new Date(0)
-
-    const startISO = startDate.toISOString()
-
-    // Parallel fetch all metrics
-    const [
-      { count: totalScans },
-      { count: totalClicks },
-      { data: sessions },
-      { data: clickEvents },
-      { count: unmetCount },
-    ] = await Promise.all([
-      supabase
-        .from('rec_sessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue_id', venueId)
-        .gte('started_at', startISO),
-      supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue_id', venueId)
-        .eq('name', 'rec_clicked')
-        .gte('ts', startISO),
-      supabase
-        .from('rec_sessions')
-        .select('intent_chips')
-        .eq('venue_id', venueId)
-        .gte('started_at', startISO),
-      supabase
-        .from('events')
-        .select('props')
-        .eq('venue_id', venueId)
-        .eq('name', 'rec_clicked')
-        .gte('ts', startISO),
-      supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue_id', venueId)
-        .eq('name', 'unmet_demand')
-        .gte('ts', startISO),
-    ])
-
-    // Calculate moods from intent_chips
-    const moodCounts: Record<string, number> = {}
-    sessions?.forEach(s => {
-      (s.intent_chips as string[] | null)?.forEach((chip: string) => {
-        if (chip.startsWith('mood_')) {
-          moodCounts[chip] = (moodCounts[chip] || 0) + 1
-        }
-      })
-    })
-
-    const topMoods = Object.entries(moodCounts)
-      .map(([name, count]) => ({ name: name.replace('mood_', '').replace(/_/g, ' '), count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-
-    // Calculate top clicked items
-    const itemClicks: Record<string, number> = {}
-    clickEvents?.forEach(e => {
-      const props = e.props as Record<string, any> | null
-      const name = props?.item_name
-      if (name) itemClicks[name] = (itemClicks[name] || 0) + 1
-    })
-
-    const topItems = Object.entries(itemClicks)
-      .map(([name, clicks]) => ({ name, clicks }))
-      .sort((a, b) => b.clicks - a.clicks)
-      .slice(0, 5)
-
-    const scans = totalScans || 0
-    const clicks = totalClicks || 0
-    const clickRate = scans > 0 ? Math.round((clicks / scans) * 100) : 0
-
-    setMetrics({
-      totalScans: scans,
-      totalClicks: clicks,
-      clickRate,
-      unmetCount: unmetCount || 0,
-      topMoods,
-      topItems,
-    })
-
-    // Load recent activity
-    const { data: recentEvents } = await supabase
-      .from('events')
-      .select('id, name, ts, props')
-      .eq('venue_id', venueId)
-      .order('ts', { ascending: false })
-      .limit(10)
-
-    const eventLabels: Record<string, string> = {
-      scan: 'QR code scanned',
-      flow_started: 'Flow started',
-      flow_completed: 'Session completed',
-      recommendations_shown: 'Recommendations served',
-      item_selected: 'Item liked',
-      rec_clicked: 'Recommendation clicked',
-      upsell_liked: 'Upsell saved',
-      upsell_clicked: 'Upsell added',
-      unmet_demand: 'Unmet demand logged',
-    }
-
-    const activityItems: LiveEvent[] = (recentEvents || []).map(e => {
-      const props = (e.props || {}) as Record<string, any>
-      const detail = props.item_name
-        || (props.item_names ? (props.item_names as string[]).slice(0, 2).join(', ') : '')
-        || (props.table_ref ? `Table ${props.table_ref}` : '')
-        || ''
-
-      const eventType =
-        e.name === 'scan' ? 'scan' :
-        e.name === 'rec_clicked' || e.name === 'item_selected' ? 'click' :
-        e.name === 'upsell_liked' || e.name === 'upsell_clicked' ? 'upsell' :
-        e.name === 'unmet_demand' ? 'unmet' : 'click'
-
-      return {
-        id: e.id,
-        type: eventType,
-        message: detail
-          ? `${eventLabels[e.name] || e.name}: ${detail}`
-          : eventLabels[e.name] || e.name,
-        time: new Date(e.ts),
-      }
-    })
-
-    setLiveActivity(activityItems)
-    setLastUpdate(new Date())
-    setLoading(false)
-  }, [venueId, dateRange, supabase])
 
   // Get venue on mount
   useEffect(() => {
@@ -249,108 +86,139 @@ export default function DashboardPage() {
     getVenue()
   }, [supabase])
 
-  // Load data when venue or date range changes
+  // Load data
+  const loadData = useCallback(async () => {
+    if (!venueId) return
+
+    const now = new Date()
+    let startDate = new Date()
+    if (dateRange === '7d') startDate.setDate(now.getDate() - 7)
+    else if (dateRange === '30d') startDate.setDate(now.getDate() - 30)
+    else startDate = new Date(0)
+
+    const startISO = startDate.toISOString()
+
+    const [
+      { count: totalScans },
+      { count: totalClicks },
+      { data: sessions },
+      { data: clickEvents },
+      { count: unmetCount },
+    ] = await Promise.all([
+      supabase.from('rec_sessions').select('*', { count: 'exact', head: true }).eq('venue_id', venueId).gte('started_at', startISO),
+      supabase.from('events').select('*', { count: 'exact', head: true }).eq('venue_id', venueId).eq('name', 'recommendation_clicked').gte('ts', startISO),
+      supabase.from('rec_sessions').select('intent_chips').eq('venue_id', venueId).gte('started_at', startISO),
+      supabase.from('events').select('props').eq('venue_id', venueId).eq('name', 'recommendation_clicked').gte('ts', startISO),
+      supabase.from('events').select('*', { count: 'exact', head: true }).eq('venue_id', venueId).eq('name', 'no_match_found').gte('ts', startISO),
+    ])
+
+    // Calculate moods
+    const moodCounts: Record<string, number> = {}
+    const moodLabels: Record<string, string> = {
+      'mood_comfort': 'Comfort',
+      'mood_light': 'Light',
+      'mood_protein': 'Protein',
+      'mood_warm': 'Warm',
+      'mood_treat': 'Treat',
+    }
+    sessions?.forEach(s => {
+      ((s.intent_chips as string[] | null) || []).forEach((chip: string) => {
+        if (chip.startsWith('mood_')) {
+          const label = moodLabels[chip] || chip
+          moodCounts[label] = (moodCounts[label] || 0) + 1
+        }
+      })
+    })
+    const moods = Object.entries(moodCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+
+    // Calculate top items
+    const itemCounts: Record<string, number> = {}
+    clickEvents?.forEach(e => {
+      const name = (e.props as any)?.item_name
+      if (name) itemCounts[name] = (itemCounts[name] || 0) + 1
+    })
+    const items = Object.entries(itemCounts)
+      .map(([name, clicks]) => ({ name, clicks }))
+      .sort((a, b) => b.clicks - a.clicks)
+      .slice(0, 5)
+
+    setMetrics({
+      totalScans: totalScans || 0,
+      totalClicks: totalClicks || 0,
+      clickRate: totalScans && totalScans > 0 ? Math.round((totalClicks || 0) / totalScans * 100) : 0,
+      unmetDemand: unmetCount || 0,
+    })
+    setTopMoods(moods)
+    setTopItems(items)
+    setLastUpdate(new Date())
+    setLoading(false)
+  }, [venueId, dateRange, supabase])
+
   useEffect(() => {
     if (venueId) loadData()
   }, [venueId, dateRange, loadData])
 
-  // ── REAL-TIME SUBSCRIPTIONS ──
+  // Real-time subscriptions
   useEffect(() => {
     if (!venueId) return
 
-    // Subscribe to new sessions (scans)
     const sessionsChannel = supabase
       .channel('realtime-sessions')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'rec_sessions',
-          filter: `venue_id=eq.${venueId}`,
-        },
-        (payload) => {
-          setMetrics(prev => ({
-            ...prev,
-            totalScans: prev.totalScans + 1,
-          }))
-
-          const newSession = payload.new as any
-          setLiveActivity(prev => [{
-            id: newSession.id,
-            type: 'scan',
-            message: newSession.table_ref
-              ? `Table ${newSession.table_ref} scanned`
-              : 'New scan started',
-            time: new Date(),
-          }, ...prev].slice(0, 20))
-
-          setLastUpdate(new Date())
-        }
-      )
-      .subscribe((status) => {
-        setIsLive(status === 'SUBSCRIBED')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'rec_sessions',
+        filter: `venue_id=eq.${venueId}`,
+      }, (payload) => {
+        setMetrics(prev => ({ ...prev, totalScans: prev.totalScans + 1 }))
+        setLiveActivity(prev => [{
+          id: (payload.new as any).id,
+          type: 'scan',
+          message: (payload.new as any).table_ref ? `Table ${(payload.new as any).table_ref} scanned` : 'New scan',
+          time: new Date(),
+        }, ...prev].slice(0, 10))
+        setLastUpdate(new Date())
       })
+      .subscribe((status) => setIsLive(status === 'SUBSCRIBED'))
 
-    // Subscribe to new events
     const eventsChannel = supabase
       .channel('realtime-events')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'events',
-          filter: `venue_id=eq.${venueId}`,
-        },
-        (payload) => {
-          const event = payload.new as any
-
-          if (event.name === 'rec_clicked' || event.name === 'item_selected') {
-            setMetrics(prev => ({
-              ...prev,
-              totalClicks: prev.totalClicks + 1,
-              clickRate: prev.totalScans > 0
-                ? Math.round((prev.totalClicks + 1) / prev.totalScans * 100)
-                : 0,
-            }))
-
-            setLiveActivity(prev => [{
-              id: event.id,
-              type: 'click',
-              message: event.name === 'item_selected'
-                ? `Liked: ${event.props?.item_name || 'item'}`
-                : `Clicked: ${event.props?.item_name || 'item'}`,
-              time: new Date(),
-            }, ...prev].slice(0, 20))
-          }
-
-          if (event.name === 'upsell_liked' || event.name === 'upsell_clicked') {
-            setLiveActivity(prev => [{
-              id: event.id,
-              type: 'upsell',
-              message: `Upsell ${event.name === 'upsell_liked' ? 'saved' : 'added'}: ${event.props?.item_name || 'drink'}`,
-              time: new Date(),
-            }, ...prev].slice(0, 20))
-          }
-
-          if (event.name === 'unmet_demand') {
-            setMetrics(prev => ({
-              ...prev,
-              unmetCount: prev.unmetCount + 1,
-            }))
-
-            setLiveActivity(prev => [{
-              id: event.id,
-              type: 'unmet',
-              message: 'Unmet demand logged',
-              time: new Date(),
-            }, ...prev].slice(0, 20))
-          }
-
-          setLastUpdate(new Date())
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'events',
+        filter: `venue_id=eq.${venueId}`,
+      }, (payload) => {
+        const event = payload.new as any
+        if (event.name === 'recommendation_clicked') {
+          setMetrics(prev => ({
+            ...prev,
+            totalClicks: prev.totalClicks + 1,
+            clickRate: prev.totalScans > 0 ? Math.round((prev.totalClicks + 1) / prev.totalScans * 100) : 0,
+          }))
+          setLiveActivity(prev => [{
+            id: event.id,
+            type: 'click',
+            message: `Clicked: ${event.props?.item_name || 'item'}`,
+            time: new Date(),
+          }, ...prev].slice(0, 10))
         }
-      )
+        if (event.name === 'upsell_liked' || event.name === 'upsell_clicked') {
+          setLiveActivity(prev => [{
+            id: event.id,
+            type: 'upsell',
+            message: `Upsell ${event.name === 'upsell_liked' ? 'saved' : 'added'}: ${event.props?.item_name || 'drink'}`,
+            time: new Date(),
+          }, ...prev].slice(0, 10))
+        }
+        if (event.name === 'no_match_found') {
+          setMetrics(prev => ({ ...prev, unmetDemand: prev.unmetDemand + 1 }))
+        }
+        setLastUpdate(new Date())
+      })
       .subscribe()
 
     return () => {
@@ -359,7 +227,7 @@ export default function DashboardPage() {
     }
   }, [venueId, supabase])
 
-  if (loading) {
+  if (loading && !venue) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <RefreshCw className="w-6 h-6 text-neutral-400 animate-spin" />
@@ -367,150 +235,132 @@ export default function DashboardPage() {
     )
   }
 
+  const maxMood = topMoods.length > 0 ? topMoods[0].count : 1
+
   return (
-    <div>
+    <div className="p-6 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">{venue?.name || 'Dashboard'}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{venue?.name || 'Dashboard'}</h1>
           <div className="flex items-center gap-3 mt-1">
-            {/* Live indicator */}
-            <div className={`flex items-center gap-1.5 ${isLive ? 'text-emerald-600' : 'text-neutral-400'}`}>
+            <div className={`flex items-center gap-1.5 text-sm ${isLive ? 'text-emerald-600' : 'text-gray-400'}`}>
               {isLive ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-              <span className="text-sm">{isLive ? 'Live' : 'Connecting...'}</span>
+              <span>{isLive ? 'Live' : 'Connecting...'}</span>
               {isLive && <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
             </div>
-            {lastUpdate && (
-              <span className="text-neutral-400 text-sm">
-                Updated {timeAgo(lastUpdate)}
-              </span>
-            )}
+            {lastUpdate && <span className="text-gray-400 text-sm">Updated {timeAgo(lastUpdate)}</span>}
           </div>
         </div>
 
-        {/* Date range & refresh */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={loadData}
-            className="p-2 text-neutral-400 hover:text-neutral-700 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-700 transition-colors"
             title="Refresh"
           >
             <RefreshCw className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-lg">
-            {(['7d', '30d', 'all'] as const).map(range => (
-              <button
-                key={range}
-                onClick={() => setDateRange(range)}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  dateRange === range
-                    ? 'bg-white text-neutral-900 shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-700'
-                }`}
-              >
-                {range === '7d' ? '7 days' : range === '30d' ? '30 days' : 'All'}
-              </button>
-            ))}
-          </div>
+          {(['7d', '30d', 'all'] as const).map(range => (
+            <button
+              key={range}
+              onClick={() => setDateRange(range)}
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                dateRange === range ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {range === '7d' ? '7 days' : range === '30d' ? '30 days' : 'All'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Total Scans */}
+      {/* Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <motion.div
           key={`scans-${metrics.totalScans}`}
           initial={{ scale: 1 }}
           animate={{ scale: [1, 1.02, 1] }}
           transition={{ duration: 0.3 }}
-          className="p-5 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 transition"
+          className="p-5 bg-white rounded-xl border border-gray-200"
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-              <QrCode className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <QrCode className="w-5 h-5 text-emerald-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-neutral-900 mb-1 tabular-nums">{metrics.totalScans}</p>
-          <p className="text-neutral-500 text-sm">Total scans</p>
+          <p className="text-3xl font-bold text-gray-900">{metrics.totalScans}</p>
+          <p className="text-gray-500 text-sm">Total scans</p>
         </motion.div>
 
-        {/* Total Clicks */}
         <motion.div
           key={`clicks-${metrics.totalClicks}`}
           initial={{ scale: 1 }}
           animate={{ scale: [1, 1.02, 1] }}
           transition={{ duration: 0.3 }}
-          className="p-5 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 transition"
+          className="p-5 bg-white rounded-xl border border-gray-200"
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
               <MousePointer className="w-5 h-5 text-purple-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-neutral-900 mb-1 tabular-nums">{metrics.totalClicks}</p>
-          <p className="text-neutral-500 text-sm">Clicks</p>
+          <p className="text-3xl font-bold text-gray-900">{metrics.totalClicks}</p>
+          <p className="text-gray-500 text-sm">Clicks</p>
         </motion.div>
 
-        {/* Click Rate */}
         <motion.div
           key={`rate-${metrics.clickRate}`}
           initial={{ scale: 1 }}
           animate={{ scale: [1, 1.02, 1] }}
           transition={{ duration: 0.3 }}
-          className="p-5 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 transition"
+          className="p-5 bg-white rounded-xl border border-gray-200"
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-neutral-900 mb-1 tabular-nums">{metrics.clickRate}%</p>
-          <p className="text-neutral-500 text-sm">Click-through</p>
+          <p className="text-3xl font-bold text-gray-900">{metrics.clickRate}%</p>
+          <p className="text-gray-500 text-sm">Click-through</p>
         </motion.div>
 
-        {/* Unmet Demand Count */}
-        <div className={`p-5 rounded-xl border transition ${
-          metrics.unmetCount > 0
-            ? 'bg-amber-50 border-amber-200'
-            : 'bg-white border-neutral-200'
-        }`}>
+        <motion.div
+          key={`unmet-${metrics.unmetDemand}`}
+          initial={{ scale: 1 }}
+          animate={{ scale: [1, 1.02, 1] }}
+          transition={{ duration: 0.3 }}
+          className={`p-5 rounded-xl border ${metrics.unmetDemand > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'}`}
+        >
           <div className="flex items-center justify-between mb-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-              metrics.unmetCount > 0 ? 'bg-amber-100' : 'bg-neutral-100'
-            }`}>
-              <Bell className={`w-5 h-5 ${
-                metrics.unmetCount > 0 ? 'text-amber-600' : 'text-neutral-400'
-              }`} />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${metrics.unmetDemand > 0 ? 'bg-amber-100' : 'bg-gray-50'}`}>
+              <Clock className={`w-5 h-5 ${metrics.unmetDemand > 0 ? 'text-amber-600' : 'text-gray-400'}`} />
             </div>
           </div>
-          <p className="text-3xl font-bold text-neutral-900 mb-1 tabular-nums">{metrics.unmetCount}</p>
-          <p className="text-neutral-500 text-sm">Unmet requests</p>
-        </div>
+          <p className="text-3xl font-bold text-gray-900">{metrics.unmetDemand}</p>
+          <p className="text-gray-500 text-sm">Unmet requests</p>
+        </motion.div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      {/* Data Row */}
+      <div className="grid lg:grid-cols-3 gap-4 mb-6">
         {/* Top Moods */}
-        <div className="p-5 rounded-xl bg-white border border-neutral-200">
-          <h3 className="text-neutral-900 font-medium mb-4">Top moods</h3>
-          {metrics.topMoods.length === 0 ? (
-            <p className="text-neutral-400 text-sm">No data yet</p>
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <h3 className="font-medium text-gray-900 mb-4">Top moods</h3>
+          {topMoods.length === 0 ? (
+            <p className="text-gray-400 text-sm">No data yet</p>
           ) : (
             <div className="space-y-3">
-              {metrics.topMoods.map((mood, i) => (
+              {topMoods.map((mood, i) => (
                 <div key={mood.name} className="flex items-center gap-3">
-                  <span className="w-6 text-neutral-400 text-sm tabular-nums">{i + 1}</span>
+                  <span className="w-5 text-gray-400 text-sm">{i + 1}</span>
                   <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-neutral-900 capitalize text-sm">{mood.name}</span>
-                      <span className="text-neutral-400 text-sm tabular-nums">{mood.count}</span>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-900 text-sm">{mood.name}</span>
+                      <span className="text-gray-400 text-sm">{mood.count}</span>
                     </div>
-                    <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-blue-500 rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(mood.count / metrics.topMoods[0].count) * 100}%` }}
-                        transition={{ duration: 0.5 }}
-                      />
+                    <div className="h-1.5 bg-gray-100 rounded-full">
+                      <div className="h-full bg-gray-900 rounded-full" style={{ width: `${(mood.count / maxMood) * 100}%` }} />
                     </div>
                   </div>
                 </div>
@@ -519,51 +369,47 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Top Items */}
-        <div className="p-5 rounded-xl bg-white border border-neutral-200">
-          <h3 className="text-neutral-900 font-medium mb-4">Most clicked</h3>
-          {metrics.topItems.length === 0 ? (
-            <p className="text-neutral-400 text-sm">No clicks yet</p>
+        {/* Most Clicked */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
+          <h3 className="font-medium text-gray-900 mb-4">Most clicked</h3>
+          {topItems.length === 0 ? (
+            <p className="text-gray-400 text-sm">No clicks yet</p>
           ) : (
             <div className="space-y-3">
-              {metrics.topItems.map((item, i) => (
+              {topItems.map((item, i) => (
                 <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-xs text-neutral-600 tabular-nums">
-                      {i + 1}
-                    </span>
-                    <span className="text-neutral-900 truncate max-w-[150px] text-sm">{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs text-gray-600">{i + 1}</span>
+                    <span className="text-gray-900 text-sm truncate max-w-[140px]">{item.name}</span>
                   </div>
-                  <span className="text-blue-600 font-medium tabular-nums text-sm">{item.clicks}</span>
+                  <span className="text-emerald-600 font-medium text-sm">{item.clicks}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Live Activity Feed */}
-        <div className="p-5 rounded-xl bg-white border border-neutral-200">
+        {/* Live Activity */}
+        <div className="p-5 bg-white rounded-xl border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-neutral-900 font-medium">Live activity</h3>
+            <h3 className="font-medium text-gray-900">Live activity</h3>
             {isLive && <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
           </div>
-
           {liveActivity.length === 0 ? (
-            <p className="text-neutral-400 text-sm">Waiting for activity...</p>
+            <p className="text-gray-400 text-sm">Waiting for activity...</p>
           ) : (
-            <div className="space-y-1 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-48 overflow-y-auto">
               <AnimatePresence mode="popLayout">
-                {liveActivity.map((event) => (
+                {liveActivity.map(e => (
                   <motion.div
-                    key={event.id}
-                    initial={{ opacity: 0, x: -20 }}
+                    key={e.id}
+                    initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="flex items-center gap-3 py-2 border-b border-neutral-100 last:border-0"
+                    className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0"
                   >
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getEventColor(event.type)}`} />
-                    <span className="text-neutral-700 text-sm flex-1 truncate">{event.message}</span>
-                    <span className="text-neutral-400 text-xs whitespace-nowrap">{timeAgo(event.time)}</span>
+                    <div className={`w-2 h-2 rounded-full ${getEventColor(e.type)}`} />
+                    <span className="text-gray-700 text-sm flex-1 truncate">{e.message}</span>
+                    <span className="text-gray-400 text-xs">{timeAgo(e.time)}</span>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -573,25 +419,23 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-        {[
-          { label: 'Preview Guest Flow', href: `/v/${venue?.slug}`, icon: ExternalLink, external: true },
-          { label: 'View Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-          { label: 'Manage Menu', href: '/dashboard/menu', icon: Zap },
-          { label: 'Download QR', href: '/dashboard/qr', icon: ArrowUpRight },
-        ].map((action) => (
-          <Link
-            key={action.label}
-            href={action.href || '#'}
-            target={action.external ? '_blank' : undefined}
-            className="flex items-center justify-between px-4 py-3 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition group"
-          >
-            <span className="text-sm font-medium text-neutral-700 group-hover:text-neutral-900">
-              {action.label}
-            </span>
-            <action.icon className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600" />
-          </Link>
-        ))}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Link href={`/v/${venue?.slug}`} target="_blank" className="p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-colors flex items-center justify-between">
+          <span className="text-gray-900 font-medium">Preview Guest Flow</span>
+          <ExternalLink className="w-4 h-4 text-gray-400" />
+        </Link>
+        <Link href="/dashboard/analytics" className="p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-colors flex items-center justify-between">
+          <span className="text-gray-900 font-medium">View Analytics</span>
+          <BarChart3 className="w-4 h-4 text-gray-400" />
+        </Link>
+        <Link href="/dashboard/menu" className="p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-colors flex items-center justify-between">
+          <span className="text-gray-900 font-medium">Manage Menu</span>
+          <Utensils className="w-4 h-4 text-gray-400" />
+        </Link>
+        <Link href="/dashboard/qr" className="p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-colors flex items-center justify-between">
+          <span className="text-gray-900 font-medium">Download QR</span>
+          <Download className="w-4 h-4 text-gray-400" />
+        </Link>
       </div>
     </div>
   )
