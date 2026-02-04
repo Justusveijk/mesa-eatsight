@@ -117,7 +117,7 @@ const FOOD_QUESTIONS: Question[] = [
     canSkip: false,
     options: [
       { value: 'portion_bite', label: 'Just a bite', icon: Coffee, color: '#8B6F47' },
-      { value: 'portion_standard', label: 'Normal hungry', icon: Sun, color: '#C4654A' },
+      { value: 'portion_standard', label: 'Normal appetite', icon: Sun, color: '#C4654A' },
       { value: 'portion_hearty', label: 'Very hungry', icon: Flame, color: '#722F37' },
     ],
   },
@@ -201,11 +201,14 @@ export function QuestionFlow({
   // Build question sequence based on selected type
   const questions = useMemo(() => {
     if (!selectedType) return [TYPE_QUESTION]
-    if (selectedType === 'food' || selectedType === 'both') {
+    if (selectedType === 'food') {
       return [TYPE_QUESTION, ...FOOD_QUESTIONS]
     }
     if (selectedType === 'drink') {
       return [TYPE_QUESTION, ...DRINK_QUESTIONS]
+    }
+    if (selectedType === 'both') {
+      return [TYPE_QUESTION, ...FOOD_QUESTIONS, ...DRINK_QUESTIONS]
     }
     return [TYPE_QUESTION]
   }, [selectedType])
@@ -235,7 +238,7 @@ export function QuestionFlow({
       answers.portion = singleAnswers.portion
       answers.dietary = multiAnswers.dietary || []
     }
-    if (type === 'drink') {
+    if (type === 'drink' || type === 'both') {
       answers.drinkMood = singleAnswers.drinkMood
       answers.drinkFlavors = multiAnswers.drinkFlavors || []
       answers.drinkPreferences = multiAnswers.drinkPreferences || []
@@ -293,7 +296,7 @@ export function QuestionFlow({
             result.portion = allSingle.portion
             result.dietary = allMulti.dietary || []
           }
-          if (type === 'drink') {
+          if (type === 'drink' || type === 'both') {
             result.drinkMood = allSingle.drinkMood
             result.drinkFlavors = allMulti.drinkFlavors || []
             result.drinkPreferences = allMulti.drinkPreferences || []
@@ -360,7 +363,7 @@ export function QuestionFlow({
           result.portion = singleAnswers.portion
           result.dietary = multiAnswers.dietary || []
         }
-        if (type === 'drink') {
+        if (type === 'drink' || type === 'both') {
           result.drinkMood = singleAnswers.drinkMood
           result.drinkFlavors = multiAnswers.drinkFlavors || []
           result.drinkPreferences = multiAnswers.drinkPreferences || []

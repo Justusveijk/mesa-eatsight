@@ -652,82 +652,6 @@ function PricingSection() {
   )
 }
 
-// Mesa App Waitlist
-function MesaWaitlistSection() {
-  const [email, setEmail] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email || submitting) return
-    setSubmitting(true)
-    try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      await supabase.from('app_waitlist').insert({ email })
-      setSubmitted(true)
-    } catch {
-      // Silently handle - still show success to user
-      setSubmitted(true)
-    }
-    setSubmitting(false)
-  }
-
-  return (
-    <section className="py-24 lg:py-32 bg-white">
-      <div className="max-w-2xl mx-auto px-6 text-center">
-        <ScrollReveal>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-warm mb-6">
-            <Star className="w-4 h-4 text-mesa-burgundy" />
-            <span className="text-sm font-medium text-mesa-burgundy">Coming soon</span>
-          </div>
-
-          <h2 className="text-4xl sm:text-5xl font-serif text-mesa-charcoal mb-4">
-            Mesa for guests
-          </h2>
-          <p className="text-lg text-mesa-charcoal/60 mb-10 max-w-lg mx-auto leading-relaxed">
-            A beautiful app for diners to discover restaurants, save favourites,
-            and get personalised recommendations everywhere they go.
-          </p>
-
-          {submitted ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-2xl glass-warm max-w-sm mx-auto"
-            >
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-                <Check className="w-6 h-6 text-green-600" />
-              </div>
-              <p className="font-medium text-mesa-charcoal">You&apos;re on the list!</p>
-              <p className="text-sm text-mesa-charcoal/50 mt-1">We&apos;ll notify you when Mesa launches.</p>
-            </motion.div>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-                className="flex-1 px-5 py-4 bg-white border-2 border-mesa-charcoal/10 rounded-2xl text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:border-mesa-burgundy/30 transition"
-              />
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-8 py-4 bg-mesa-burgundy text-white rounded-2xl font-medium hover:bg-mesa-burgundy/90 transition-all shadow-lg shadow-mesa-burgundy/25 whitespace-nowrap disabled:opacity-50"
-              >
-                {submitting ? 'Joining...' : 'Join waitlist'}
-              </button>
-            </form>
-          )}
-        </ScrollReveal>
-      </div>
-    </section>
-  )
-}
-
 // CTA section
 function CTASection() {
   return (
@@ -843,7 +767,6 @@ export default function LandingPage() {
       <FeaturesSection />
       <TestimonialsSection />
       <PricingSection />
-      <MesaWaitlistSection />
       <CTASection />
       <Footer />
     </main>

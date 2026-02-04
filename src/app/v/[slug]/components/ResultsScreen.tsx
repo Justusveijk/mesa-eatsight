@@ -10,7 +10,10 @@ import {
   Star,
   Utensils,
   Wine,
+  Check,
+  Mail,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { ShareButton } from './ShareButton'
 import type { RecommendedItem } from '@/lib/recommendations'
 
@@ -27,6 +30,7 @@ interface ResultsScreenProps {
   selectionType?: 'food' | 'drink' | 'both'
   drinkRecommendations?: RecommendedItem[]
   upsellDrink?: DrinkUpsell | null
+  hasFallbacks?: boolean
   onRestart: () => void
   onItemLike?: (item: RecommendedItem) => void
 }
@@ -37,6 +41,7 @@ export function ResultsScreen({
   selectionType = 'food',
   drinkRecommendations = [],
   upsellDrink,
+  hasFallbacks = false,
   onRestart,
   onItemLike,
 }: ResultsScreenProps) {
@@ -121,6 +126,20 @@ export function ResultsScreen({
           Curated just for you at {venue.name}
         </p>
       </motion.div>
+
+      {/* Fallback message when no exact matches */}
+      {hasFallbacks && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="mx-6 mb-6 p-4 bg-amber-50 border border-amber-200/60 rounded-xl"
+        >
+          <p className="text-sm text-amber-800">
+            We couldn&apos;t find an exact match for all your preferences, but here are some close alternatives we think you&apos;ll enjoy.
+          </p>
+        </motion.div>
+      )}
 
       {/* Food section label for "both" mode */}
       {selectionType === 'both' && foodRecs.length > 0 && (
@@ -409,6 +428,9 @@ export function ResultsScreen({
         </motion.div>
       )}
 
+      {/* Mesa App Waitlist */}
+      <MesaWaitlist />
+
       {/* Bottom Actions - Fixed */}
       <motion.div
         initial={{ opacity: 0, y: 50 }}
@@ -431,6 +453,76 @@ export function ResultsScreen({
           />
         </div>
       </motion.div>
+    </motion.div>
+  )
+}
+
+function MesaWaitlist() {
+  const [email, setEmail] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email || submitting) return
+    setSubmitting(true)
+    try {
+      const supabase = createClient()
+      await supabase.from('app_waitlist').insert({ email })
+      setSubmitted(true)
+    } catch {
+      setSubmitted(true)
+    }
+    setSubmitting(false)
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.1 }}
+      className="mx-6 mt-8 mb-4"
+    >
+      <div className="mesa-card p-5 text-center">
+        <div className="w-10 h-10 rounded-full bg-mesa-burgundy/10 flex items-center justify-center mx-auto mb-3">
+          <Mail className="w-5 h-5 text-mesa-burgundy" />
+        </div>
+        <h3 className="font-serif text-lg text-mesa-charcoal mb-1">
+          Love this experience?
+        </h3>
+        <p className="text-sm text-mesa-charcoal/50 mb-4">
+          Get the Mesa app when it launches &mdash; personalised picks at every restaurant.
+        </p>
+
+        {submitted ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center justify-center gap-2 py-3 bg-green-50 rounded-xl"
+          >
+            <Check className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-medium text-green-700">You&apos;re on the list!</span>
+          </motion.div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              required
+              className="flex-1 px-4 py-3 text-sm bg-white border border-mesa-charcoal/10 rounded-xl text-mesa-charcoal placeholder:text-mesa-charcoal/30 focus:outline-none focus:border-mesa-burgundy/30 transition"
+            />
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-3 text-sm font-medium bg-mesa-burgundy text-white rounded-xl hover:bg-mesa-burgundy/90 transition disabled:opacity-50 whitespace-nowrap"
+            >
+              {submitting ? '...' : 'Notify me'}
+            </button>
+          </form>
+        )}
+      </div>
     </motion.div>
   )
 }

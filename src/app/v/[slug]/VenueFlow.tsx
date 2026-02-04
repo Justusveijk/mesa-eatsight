@@ -9,6 +9,7 @@ import { trackEvent, createSession, saveRecResults, updateSessionIntents, EVENTS
 import {
   getRecommendationsWithFallback,
   getNewDrinkRecommendations,
+  trackUnmetDemand,
   type RecommendedItem,
 } from '@/lib/recommendations'
 import { getUpsellDrink } from '@/lib/upsells'
@@ -56,6 +57,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [drinkRecommendations, setDrinkRecommendations] = useState<RecommendedItem[]>([])
   const [upsellDrink, setUpsellDrink] = useState<DrinkUpsell | null>(null)
   const [selectionType, setSelectionType] = useState<'food' | 'drink' | 'both'>('food')
+  const [hasFallbacks, setHasFallbacks] = useState(false)
   const [filterProgress, setFilterProgress] = useState(0)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const sessionCreated = useRef(false)
@@ -171,6 +173,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
 
           const foodResult = await getRecommendationsWithFallback(venue.id, foodPrefs, 3)
           allResults.push(...foodResult.recommendations, ...foodResult.fallbackItems)
+          if (foodResult.showFallbackMessage) setHasFallbacks(true)
 
           // For food-only: get drink upsell
           if (answers.type === 'food') {
@@ -189,8 +192,12 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
         }
 
         if (answers.type === 'both') {
-          // Get dedicated drink recommendations for the "And to drink" section
-          drinkRecs = await getNewDrinkRecommendations(venue.id, {}, 3)
+          // Get dedicated drink recommendations using the user's drink answers
+          drinkRecs = await getNewDrinkRecommendations(venue.id, {
+            drinkMood: answers.drinkMood,
+            drinkFlavors: answers.drinkFlavors,
+            drinkPreferences: answers.drinkPreferences,
+          }, 3)
         }
       } catch (err) {
         console.error('Failed to get recommendations:', err)
@@ -204,6 +211,18 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
       setRecommendations(finalResults)
       setDrinkRecommendations(drinkRecs)
       setUpsellDrink(upsell)
+
+      // Log unmet demand if no good matches found
+      if (finalResults.length === 0 && (answers.type === 'food' || answers.type === 'both')) {
+        const foodPrefs: GuestPreferences = {
+          mood: (answers.mood as MoodTag) || null,
+          flavors: (answers.flavors || []) as FlavorTag[],
+          portion: (answers.portion as PortionTag) || null,
+          dietary: (answers.dietary || []) as DietTag[],
+          price: null,
+        }
+        await trackUnmetDemand(venue.id, sessionId, foodPrefs)
+      }
 
       // Save rec results to analytics
       if (sessionId && finalResults.length > 0) {
@@ -256,6 +275,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
     setRecommendations([])
     setDrinkRecommendations([])
     setUpsellDrink(null)
+    setHasFallbacks(false)
     setSelectionType('food')
     setFlowState('welcome')
   }, [])
@@ -394,6 +414,7 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
             selectionType={selectionType}
             drinkRecommendations={drinkRecommendations}
             upsellDrink={upsellDrink}
+            hasFallbacks={hasFallbacks}
             onRestart={handleRestart}
             onItemLike={handleItemLike}
           />
