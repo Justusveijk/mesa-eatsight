@@ -12,7 +12,7 @@ import {
   trackUnmetDemand,
   type RecommendedItem,
 } from '@/lib/recommendations'
-import { getUpsellDrink } from '@/lib/upsells'
+import { getUpsellDrink, type DrinkUpsell } from '@/lib/upsells'
 import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag } from '@/lib/types/taxonomy'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { QuestionFlow, type GuestAnswers } from './components/QuestionFlow'
@@ -39,13 +39,6 @@ interface MenuItem {
   category: string
   tags?: string[]
   type: 'food' | 'drink'
-}
-
-interface DrinkUpsell {
-  id: string
-  name: string
-  price: number
-  reason: string
 }
 
 type FlowState = 'loading' | 'empty' | 'welcome' | 'questions' | 'processing' | 'results'
@@ -410,6 +403,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
           <ResultsScreen
             key="results"
             venue={venue}
+            venueId={venue.id}
+            sessionId={sessionId}
             recommendations={recommendations}
             selectionType={selectionType}
             drinkRecommendations={drinkRecommendations}

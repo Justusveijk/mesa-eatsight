@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Users,
-  Sparkles,
+  QrCode,
+  MousePointer,
   TrendingUp,
   TrendingDown,
   Clock,
@@ -14,97 +15,214 @@ import {
   BarChart3,
   Zap,
   AlertCircle,
+  Bell,
   Heart,
+  Wifi,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
-type Period = 'today' | 'week' | 'month'
+type DateRange = '7d' | '30d' | 'all'
 
-interface DashStats {
-  sessions: number
-  recommendations: number
-  likeRate: number
-  avgDurationSec: number
-  prevSessions: number
-  prevRecommendations: number
-  prevLikeRate: number
-  prevAvgDurationSec: number
+interface Metrics {
+  totalScans: number
+  totalClicks: number
+  clickRate: number
+  unmetCount: number
+  topMoods: { name: string; count: number }[]
+  topItems: { name: string; clicks: number }[]
 }
 
-interface ChartPoint {
-  label: string
-  sessions: number
-  recs: number
+interface LiveEvent {
+  id: string
+  type: string
+  message: string
+  time: Date
 }
 
-interface ActivityItem {
-  time: string
-  action: string
-  detail: string
+function timeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 5) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  return `${Math.floor(seconds / 3600)}h ago`
 }
 
-function getDateRange(period: Period): { start: Date; end: Date; prevStart: Date; prevEnd: Date } {
-  const now = new Date()
-  const end = now
-
-  if (period === 'today') {
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const prevEnd = new Date(start.getTime() - 1)
-    const prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), prevEnd.getDate())
-    return { start, end, prevStart, prevEnd }
+function getEventColor(type: string): string {
+  switch (type) {
+    case 'scan': return 'bg-blue-500'
+    case 'click': return 'bg-emerald-500'
+    case 'like': return 'bg-pink-500'
+    case 'upsell': return 'bg-purple-500'
+    case 'unmet': return 'bg-amber-500'
+    default: return 'bg-neutral-400'
   }
-
-  if (period === 'week') {
-    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    const prevEnd = new Date(start.getTime() - 1)
-    const prevStart = new Date(prevEnd.getTime() - 7 * 24 * 60 * 60 * 1000)
-    return { start, end, prevStart, prevEnd }
-  }
-
-  // month
-  const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-  const prevEnd = new Date(start.getTime() - 1)
-  const prevStart = new Date(prevEnd.getTime() - 30 * 24 * 60 * 60 * 1000)
-  return { start, end, prevStart, prevEnd }
-}
-
-function pctChange(current: number, previous: number): number {
-  if (previous === 0) return current > 0 ? 100 : 0
-  return Math.round(((current - previous) / previous) * 100)
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`
-  return `${(seconds / 60).toFixed(1)}m`
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h`
-  return `${Math.floor(hours / 24)}d`
 }
 
 export default function DashboardPage() {
   const [venue, setVenue] = useState<any>(null)
   const [venueId, setVenueId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState<Period>('week')
-  const [stats, setStats] = useState<DashStats | null>(null)
-  const [chartData, setChartData] = useState<ChartPoint[]>([])
-  const [activity, setActivity] = useState<ActivityItem[]>([])
-  const [unmetDemandCount, setUnmetDemandCount] = useState(0)
-  const [topUnmetTag, setTopUnmetTag] = useState<string | null>(null)
+  const [isLive, setIsLive] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [dateRange, setDateRange] = useState<DateRange>('7d')
+
+  const [metrics, setMetrics] = useState<Metrics>({
+    totalScans: 0,
+    totalClicks: 0,
+    clickRate: 0,
+    unmetCount: 0,
+    topMoods: [],
+    topItems: [],
+  })
+
+  const [liveActivity, setLiveActivity] = useState<LiveEvent[]>([])
 
   const supabase = createClient()
 
-  // Fetch venue
+  // Load initial data
+  const loadData = useCallback(async () => {
+    if (!venueId) return
+
+    const now = new Date()
+    let startDate = new Date()
+    if (dateRange === '7d') startDate.setDate(now.getDate() - 7)
+    else if (dateRange === '30d') startDate.setDate(now.getDate() - 30)
+    else startDate = new Date(0)
+
+    const startISO = startDate.toISOString()
+
+    // Parallel fetch all metrics
+    const [
+      { count: totalScans },
+      { count: totalClicks },
+      { data: sessions },
+      { data: clickEvents },
+      { count: unmetCount },
+    ] = await Promise.all([
+      supabase
+        .from('rec_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('venue_id', venueId)
+        .gte('started_at', startISO),
+      supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('venue_id', venueId)
+        .eq('name', 'rec_clicked')
+        .gte('ts', startISO),
+      supabase
+        .from('rec_sessions')
+        .select('intent_chips')
+        .eq('venue_id', venueId)
+        .gte('started_at', startISO),
+      supabase
+        .from('events')
+        .select('props')
+        .eq('venue_id', venueId)
+        .eq('name', 'rec_clicked')
+        .gte('ts', startISO),
+      supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('venue_id', venueId)
+        .eq('name', 'unmet_demand')
+        .gte('ts', startISO),
+    ])
+
+    // Calculate moods from intent_chips
+    const moodCounts: Record<string, number> = {}
+    sessions?.forEach(s => {
+      (s.intent_chips as string[] | null)?.forEach((chip: string) => {
+        if (chip.startsWith('mood_')) {
+          moodCounts[chip] = (moodCounts[chip] || 0) + 1
+        }
+      })
+    })
+
+    const topMoods = Object.entries(moodCounts)
+      .map(([name, count]) => ({ name: name.replace('mood_', '').replace(/_/g, ' '), count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+
+    // Calculate top clicked items
+    const itemClicks: Record<string, number> = {}
+    clickEvents?.forEach(e => {
+      const props = e.props as Record<string, any> | null
+      const name = props?.item_name
+      if (name) itemClicks[name] = (itemClicks[name] || 0) + 1
+    })
+
+    const topItems = Object.entries(itemClicks)
+      .map(([name, clicks]) => ({ name, clicks }))
+      .sort((a, b) => b.clicks - a.clicks)
+      .slice(0, 5)
+
+    const scans = totalScans || 0
+    const clicks = totalClicks || 0
+    const clickRate = scans > 0 ? Math.round((clicks / scans) * 100) : 0
+
+    setMetrics({
+      totalScans: scans,
+      totalClicks: clicks,
+      clickRate,
+      unmetCount: unmetCount || 0,
+      topMoods,
+      topItems,
+    })
+
+    // Load recent activity
+    const { data: recentEvents } = await supabase
+      .from('events')
+      .select('id, name, ts, props')
+      .eq('venue_id', venueId)
+      .order('ts', { ascending: false })
+      .limit(10)
+
+    const eventLabels: Record<string, string> = {
+      scan: 'QR code scanned',
+      flow_started: 'Flow started',
+      flow_completed: 'Session completed',
+      recommendations_shown: 'Recommendations served',
+      item_selected: 'Item liked',
+      rec_clicked: 'Recommendation clicked',
+      upsell_liked: 'Upsell saved',
+      upsell_clicked: 'Upsell added',
+      unmet_demand: 'Unmet demand logged',
+    }
+
+    const activityItems: LiveEvent[] = (recentEvents || []).map(e => {
+      const props = (e.props || {}) as Record<string, any>
+      const detail = props.item_name
+        || (props.item_names ? (props.item_names as string[]).slice(0, 2).join(', ') : '')
+        || (props.table_ref ? `Table ${props.table_ref}` : '')
+        || ''
+
+      const eventType =
+        e.name === 'scan' ? 'scan' :
+        e.name === 'rec_clicked' || e.name === 'item_selected' ? 'click' :
+        e.name === 'upsell_liked' || e.name === 'upsell_clicked' ? 'upsell' :
+        e.name === 'unmet_demand' ? 'unmet' : 'click'
+
+      return {
+        id: e.id,
+        type: eventType,
+        message: detail
+          ? `${eventLabels[e.name] || e.name}: ${detail}`
+          : eventLabels[e.name] || e.name,
+        time: new Date(e.ts),
+      }
+    })
+
+    setLiveActivity(activityItems)
+    setLastUpdate(new Date())
+    setLoading(false)
+  }, [venueId, dateRange, supabase])
+
+  // Get venue on mount
   useEffect(() => {
-    async function fetchVenue() {
+    async function getVenue() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
@@ -115,490 +233,365 @@ export default function DashboardPage() {
         .single()
 
       if (operator?.venue_id) {
-        const { data } = await supabase
+        setVenueId(operator.venue_id)
+
+        const { data: venueData } = await supabase
           .from('venues')
           .select('*')
           .eq('id', operator.venue_id)
           .single()
-        setVenue(data)
-        setVenueId(operator.venue_id)
-      }
-      setLoading(false)
-    }
-    fetchVenue()
-  }, [])
 
-  // Fetch stats when venueId or period changes
-  const fetchStats = useCallback(async () => {
+        setVenue(venueData)
+      } else {
+        setLoading(false)
+      }
+    }
+    getVenue()
+  }, [supabase])
+
+  // Load data when venue or date range changes
+  useEffect(() => {
+    if (venueId) loadData()
+  }, [venueId, dateRange, loadData])
+
+  // ── REAL-TIME SUBSCRIPTIONS ──
+  useEffect(() => {
     if (!venueId) return
 
-    const { start, end, prevStart, prevEnd } = getDateRange(period)
-    const startStr = start.toISOString()
-    const endStr = end.toISOString()
-    const prevStartStr = prevStart.toISOString()
-    const prevEndStr = prevEnd.toISOString()
+    // Subscribe to new sessions (scans)
+    const sessionsChannel = supabase
+      .channel('realtime-sessions')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'rec_sessions',
+          filter: `venue_id=eq.${venueId}`,
+        },
+        (payload) => {
+          setMetrics(prev => ({
+            ...prev,
+            totalScans: prev.totalScans + 1,
+          }))
 
-    // Current period sessions
-    const { data: sessions } = await supabase
-      .from('rec_sessions')
-      .select('id, started_at')
-      .eq('venue_id', venueId)
-      .gte('started_at', startStr)
-      .lte('started_at', endStr)
+          const newSession = payload.new as any
+          setLiveActivity(prev => [{
+            id: newSession.id,
+            type: 'scan',
+            message: newSession.table_ref
+              ? `Table ${newSession.table_ref} scanned`
+              : 'New scan started',
+            time: new Date(),
+          }, ...prev].slice(0, 20))
 
-    // Previous period sessions
-    const { data: prevSessions } = await supabase
-      .from('rec_sessions')
-      .select('id')
-      .eq('venue_id', venueId)
-      .gte('started_at', prevStartStr)
-      .lte('started_at', prevEndStr)
-
-    // Current period recommendation results
-    const sessionIds = (sessions || []).map(s => s.id)
-    let recCount = 0
-    let prevRecCount = 0
-
-    if (sessionIds.length > 0) {
-      const { count } = await supabase
-        .from('rec_results')
-        .select('id', { count: 'exact', head: true })
-        .in('session_id', sessionIds)
-      recCount = count || 0
-    }
-
-    const prevSessionIds = (prevSessions || []).map(s => s.id)
-    if (prevSessionIds.length > 0) {
-      const { count } = await supabase
-        .from('rec_results')
-        .select('id', { count: 'exact', head: true })
-        .in('session_id', prevSessionIds)
-      prevRecCount = count || 0
-    }
-
-    // Like events (item_selected)
-    const { count: likeCount } = await supabase
-      .from('events')
-      .select('id', { count: 'exact', head: true })
-      .eq('venue_id', venueId)
-      .eq('name', 'item_selected')
-      .gte('ts', startStr)
-      .lte('ts', endStr)
-
-    const { count: prevLikeCount } = await supabase
-      .from('events')
-      .select('id', { count: 'exact', head: true })
-      .eq('venue_id', venueId)
-      .eq('name', 'item_selected')
-      .gte('ts', prevStartStr)
-      .lte('ts', prevEndStr)
-
-    // Flow completed events for avg duration
-    const { data: completedEvents } = await supabase
-      .from('events')
-      .select('ts, props')
-      .eq('venue_id', venueId)
-      .eq('name', 'flow_completed')
-      .gte('ts', startStr)
-      .lte('ts', endStr)
-
-    // Calculate average duration from session started_at to flow_completed ts
-    let avgDur = 0
-    if (completedEvents && completedEvents.length > 0 && sessions) {
-      const sessionStartMap = new Map(sessions.map(s => [s.id, new Date(s.started_at).getTime()]))
-      // Approximate: take avg of event timestamps - earliest session start
-      const durations: number[] = []
-      completedEvents.forEach(e => {
-        const ts = new Date(e.ts).getTime()
-        // Find closest session that started before this event
-        let closestStart = 0
-        sessionStartMap.forEach(startTime => {
-          if (startTime <= ts && startTime > closestStart) closestStart = startTime
-        })
-        if (closestStart > 0) durations.push((ts - closestStart) / 1000)
-      })
-      if (durations.length > 0) {
-        avgDur = durations.reduce((a, b) => a + b, 0) / durations.length
-      }
-    }
-
-    const currentSessions = sessions?.length || 0
-    const currentLikeRate = currentSessions > 0 ? Math.round(((likeCount || 0) / currentSessions) * 100) : 0
-    const previousSessions = prevSessions?.length || 0
-    const previousLikeRate = previousSessions > 0 ? Math.round(((prevLikeCount || 0) / previousSessions) * 100) : 0
-
-    setStats({
-      sessions: currentSessions,
-      recommendations: recCount,
-      likeRate: currentLikeRate,
-      avgDurationSec: avgDur,
-      prevSessions: previousSessions,
-      prevRecommendations: prevRecCount,
-      prevLikeRate: previousLikeRate,
-      prevAvgDurationSec: 0,
-    })
-
-    // Chart data - group sessions by day
-    const dayMap = new Map<string, { sessions: number; recs: number }>()
-    const days = period === 'today' ? 1 : period === 'week' ? 7 : 30
-
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(end.getTime() - i * 24 * 60 * 60 * 1000)
-      const key = d.toISOString().split('T')[0]
-      const label = period === 'today'
-        ? 'Today'
-        : d.toLocaleDateString('en-US', { weekday: 'short' })
-      dayMap.set(key, { sessions: 0, recs: 0 })
-    }
-
-    sessions?.forEach(s => {
-      const key = s.started_at.split('T')[0]
-      const entry = dayMap.get(key)
-      if (entry) entry.sessions++
-    })
-
-    const points: ChartPoint[] = []
-    dayMap.forEach((val, key) => {
-      const d = new Date(key)
-      points.push({
-        label: period === 'today'
-          ? 'Today'
-          : period === 'month'
-            ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-            : d.toLocaleDateString('en-US', { weekday: 'short' }),
-        sessions: val.sessions,
-        recs: val.recs,
-      })
-    })
-    setChartData(points)
-
-    // Recent activity from events
-    const { data: recentEvents } = await supabase
-      .from('events')
-      .select('name, ts, props')
-      .eq('venue_id', venueId)
-      .order('ts', { ascending: false })
-      .limit(5)
-
-    const activityItems: ActivityItem[] = (recentEvents || []).map(e => {
-      const eventLabels: Record<string, string> = {
-        scan: 'QR code scanned',
-        flow_started: 'Flow started',
-        flow_completed: 'Session completed',
-        recommendations_shown: 'Recommendations served',
-        item_selected: 'Item liked',
-        unmet_demand: 'Unmet demand logged',
-      }
-      const props = (e.props || {}) as Record<string, any>
-      const detail = props.item_name
-        || (props.item_names ? (props.item_names as string[]).slice(0, 2).join(', ') : '')
-        || (props.table_ref ? `Table ${props.table_ref}` : '')
-        || ''
-
-      return {
-        time: timeAgo(e.ts),
-        action: eventLabels[e.name] || e.name,
-        detail,
-      }
-    })
-    setActivity(activityItems)
-
-    // Unmet demand
-    const { data: unmetEvents, count: unmetCount } = await supabase
-      .from('events')
-      .select('props', { count: 'exact' })
-      .eq('venue_id', venueId)
-      .eq('name', 'unmet_demand')
-      .gte('ts', startStr)
-      .lte('ts', endStr)
-
-    setUnmetDemandCount(unmetCount || 0)
-
-    // Find most common unmet tag
-    if (unmetEvents && unmetEvents.length > 0) {
-      const tagCounts = new Map<string, number>()
-      unmetEvents.forEach(e => {
-        const props = (e.props || {}) as Record<string, any>
-        const dietary = props.requested_dietary as string[] | undefined
-        dietary?.forEach(t => tagCounts.set(t, (tagCounts.get(t) || 0) + 1))
-        if (props.requested_mood) {
-          tagCounts.set(props.requested_mood, (tagCounts.get(props.requested_mood) || 0) + 1)
+          setLastUpdate(new Date())
         }
+      )
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED')
       })
-      let topTag = ''
-      let topCount = 0
-      tagCounts.forEach((count, tag) => {
-        if (count > topCount) { topTag = tag; topCount = count }
-      })
-      setTopUnmetTag(topTag || null)
+
+    // Subscribe to new events
+    const eventsChannel = supabase
+      .channel('realtime-events')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'events',
+          filter: `venue_id=eq.${venueId}`,
+        },
+        (payload) => {
+          const event = payload.new as any
+
+          if (event.name === 'rec_clicked' || event.name === 'item_selected') {
+            setMetrics(prev => ({
+              ...prev,
+              totalClicks: prev.totalClicks + 1,
+              clickRate: prev.totalScans > 0
+                ? Math.round((prev.totalClicks + 1) / prev.totalScans * 100)
+                : 0,
+            }))
+
+            setLiveActivity(prev => [{
+              id: event.id,
+              type: 'click',
+              message: event.name === 'item_selected'
+                ? `Liked: ${event.props?.item_name || 'item'}`
+                : `Clicked: ${event.props?.item_name || 'item'}`,
+              time: new Date(),
+            }, ...prev].slice(0, 20))
+          }
+
+          if (event.name === 'upsell_liked' || event.name === 'upsell_clicked') {
+            setLiveActivity(prev => [{
+              id: event.id,
+              type: 'upsell',
+              message: `Upsell ${event.name === 'upsell_liked' ? 'saved' : 'added'}: ${event.props?.item_name || 'drink'}`,
+              time: new Date(),
+            }, ...prev].slice(0, 20))
+          }
+
+          if (event.name === 'unmet_demand') {
+            setMetrics(prev => ({
+              ...prev,
+              unmetCount: prev.unmetCount + 1,
+            }))
+
+            setLiveActivity(prev => [{
+              id: event.id,
+              type: 'unmet',
+              message: 'Unmet demand logged',
+              time: new Date(),
+            }, ...prev].slice(0, 20))
+          }
+
+          setLastUpdate(new Date())
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(sessionsChannel)
+      supabase.removeChannel(eventsChannel)
     }
-  }, [venueId, period, supabase])
+  }, [venueId, supabase])
 
-  useEffect(() => {
-    fetchStats()
-  }, [fetchStats])
-
-  const statCards = stats ? [
-    {
-      label: 'Sessions',
-      value: stats.sessions.toLocaleString(),
-      change: pctChange(stats.sessions, stats.prevSessions),
-      period: period === 'today' ? 'vs yesterday' : `vs prev ${period}`,
-      icon: Users,
-    },
-    {
-      label: 'Recs Served',
-      value: stats.recommendations.toLocaleString(),
-      change: pctChange(stats.recommendations, stats.prevRecommendations),
-      period: period === 'today' ? 'vs yesterday' : `vs prev ${period}`,
-      icon: Sparkles,
-    },
-    {
-      label: 'Like Rate',
-      value: `${stats.likeRate}%`,
-      change: stats.likeRate - stats.prevLikeRate,
-      period: period === 'today' ? 'vs yesterday' : `vs prev ${period}`,
-      icon: Heart,
-    },
-    {
-      label: 'Avg. Duration',
-      value: stats.avgDurationSec > 0 ? formatDuration(stats.avgDurationSec) : '--',
-      change: 0,
-      period: 'per session',
-      icon: Clock,
-    },
-  ] : []
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <RefreshCw className="w-6 h-6 text-neutral-400 animate-spin" />
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div>
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-semibold text-neutral-900">Dashboard</h1>
-              <p className="text-sm text-neutral-500">{venue?.name || 'Loading...'}</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-neutral-900">{venue?.name || 'Dashboard'}</h1>
+          <div className="flex items-center gap-3 mt-1">
+            {/* Live indicator */}
+            <div className={`flex items-center gap-1.5 ${isLive ? 'text-emerald-600' : 'text-neutral-400'}`}>
+              {isLive ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+              <span className="text-sm">{isLive ? 'Live' : 'Connecting...'}</span>
+              {isLive && <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
             </div>
-
-            {/* Period Toggle */}
-            <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-md">
-              {(['today', 'week', 'month'] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded capitalize transition ${
-                    period === p
-                      ? 'bg-white text-neutral-900 shadow-sm'
-                      : 'text-neutral-500 hover:text-neutral-700'
-                  }`}
-                >
-                  {p === 'today' ? 'Today' : p === 'week' ? '7 days' : '30 days'}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {loading || !stats ? (
-            // Skeleton
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white border border-neutral-200 rounded-lg p-4">
-                <div className="h-3 bg-neutral-100 rounded w-16 mb-3 animate-pulse" />
-                <div className="h-7 bg-neutral-100 rounded w-20 animate-pulse" />
-              </div>
-            ))
-          ) : (
-            statCards.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-white border border-neutral-200 rounded-lg p-4 hover:border-neutral-300 transition"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    {stat.label}
-                  </span>
-                  <stat.icon className="w-4 h-4 text-neutral-400" />
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold text-neutral-900 tabular-nums">
-                    {stat.value}
-                  </span>
-                  {stat.change !== 0 && (
-                    <span className={`flex items-center gap-0.5 text-xs font-medium ${
-                      stat.change > 0 ? 'text-green-600' : 'text-amber-600'
-                    }`}>
-                      {stat.change > 0 ? (
-                        <TrendingUp className="w-3 h-3" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3" />
-                      )}
-                      {Math.abs(stat.change)}%
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-neutral-400 mt-1">{stat.period}</p>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Chart */}
-          <div className="lg:col-span-2 bg-white border border-neutral-200 rounded-lg">
-            <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-medium text-neutral-900">Guest Activity</h2>
-                <p className="text-xs text-neutral-500">Sessions per day</p>
-              </div>
-              <Link
-                href="/dashboard/analytics"
-                className="flex items-center gap-1 text-xs font-medium text-neutral-600 hover:text-neutral-900"
-              >
-                View details
-                <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="p-4">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#171717" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#171717" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="label"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: '#737373' }}
-                      dy={8}
-                      interval={period === 'month' ? 4 : 0}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: '#737373' }}
-                      dx={-8}
-                      width={30}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="sessions"
-                      stroke="#171717"
-                      strokeWidth={2}
-                      fill="url(#colorSessions)"
-                      name="Sessions"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-60 flex items-center justify-center text-neutral-400 text-sm">
-                  No data yet for this period
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Activity Feed */}
-          <div className="bg-white border border-neutral-200 rounded-lg">
-            <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-neutral-900">Recent Activity</h2>
-              {activity.length > 0 && (
-                <span className="flex items-center gap-1.5 text-xs text-green-600">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                  Live
-                </span>
-              )}
-            </div>
-            <div className="divide-y divide-neutral-100">
-              {activity.length === 0 ? (
-                <div className="px-4 py-8 text-center text-neutral-400 text-sm">
-                  No activity yet. Share your QR code to start collecting data.
-                </div>
-              ) : (
-                activity.map((item, i) => (
-                  <div key={i} className="px-4 py-3 hover:bg-neutral-50 transition">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm text-neutral-900">{item.action}</p>
-                        {item.detail && (
-                          <p className="text-xs text-neutral-500">{item.detail}</p>
-                        )}
-                      </div>
-                      <span className="text-xs text-neutral-400 tabular-nums whitespace-nowrap">{item.time}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            {activity.length > 0 && (
-              <div className="px-4 py-3 border-t border-neutral-100">
-                <Link
-                  href="/dashboard/analytics"
-                  className="text-xs font-medium text-neutral-600 hover:text-neutral-900"
-                >
-                  View all activity →
-                </Link>
-              </div>
+            {lastUpdate && (
+              <span className="text-neutral-400 text-sm">
+                Updated {timeAgo(lastUpdate)}
+              </span>
             )}
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-          {[
-            { label: 'Preview Guest Flow', href: `/v/${venue?.slug}`, icon: ExternalLink, external: true },
-            { label: 'View Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-            { label: 'Manage Menu', href: '/dashboard/menu', icon: Zap },
-            { label: 'Download QR', href: '/dashboard/qr', icon: ArrowUpRight },
-          ].map((action) => (
-            <Link
-              key={action.label}
-              href={action.href || '#'}
-              target={action.external ? '_blank' : undefined}
-              className="flex items-center justify-between px-4 py-3 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition group"
-            >
-              <span className="text-sm font-medium text-neutral-700 group-hover:text-neutral-900">
-                {action.label}
-              </span>
-              <action.icon className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600" />
-            </Link>
-          ))}
+        {/* Date range & refresh */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadData}
+            className="p-2 text-neutral-400 hover:text-neutral-700 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-lg">
+            {(['7d', '30d', 'all'] as const).map(range => (
+              <button
+                key={range}
+                onClick={() => setDateRange(range)}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  dateRange === range
+                    ? 'bg-white text-neutral-900 shadow-sm'
+                    : 'text-neutral-500 hover:text-neutral-700'
+                }`}
+              >
+                {range === '7d' ? '7 days' : range === '30d' ? '30 days' : 'All'}
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* Unmet Demand Alert */}
-        {unmetDemandCount > 0 && (
-          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-900">Unmet Demand</p>
-              <p className="text-sm text-amber-700 mt-0.5">
-                {unmetDemandCount} guest{unmetDemandCount !== 1 ? 's' : ''} couldn&apos;t find a match for their preferences this {period === 'today' ? 'day' : period}.
-                {topUnmetTag && (
-                  <> Most requested: <span className="font-medium">{topUnmetTag.replace(/_/g, ' ')}</span>.</>
-                )}
-              </p>
-              <Link href="/dashboard/analytics" className="text-xs font-medium text-amber-900 hover:underline mt-2 inline-block">
-                View Details →
-              </Link>
+      {/* Metrics Grid */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Total Scans */}
+        <motion.div
+          key={`scans-${metrics.totalScans}`}
+          initial={{ scale: 1 }}
+          animate={{ scale: [1, 1.02, 1] }}
+          transition={{ duration: 0.3 }}
+          className="p-5 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 transition"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+              <QrCode className="w-5 h-5 text-blue-600" />
             </div>
           </div>
-        )}
+          <p className="text-3xl font-bold text-neutral-900 mb-1 tabular-nums">{metrics.totalScans}</p>
+          <p className="text-neutral-500 text-sm">Total scans</p>
+        </motion.div>
+
+        {/* Total Clicks */}
+        <motion.div
+          key={`clicks-${metrics.totalClicks}`}
+          initial={{ scale: 1 }}
+          animate={{ scale: [1, 1.02, 1] }}
+          transition={{ duration: 0.3 }}
+          className="p-5 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 transition"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+              <MousePointer className="w-5 h-5 text-purple-600" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-neutral-900 mb-1 tabular-nums">{metrics.totalClicks}</p>
+          <p className="text-neutral-500 text-sm">Clicks</p>
+        </motion.div>
+
+        {/* Click Rate */}
+        <motion.div
+          key={`rate-${metrics.clickRate}`}
+          initial={{ scale: 1 }}
+          animate={{ scale: [1, 1.02, 1] }}
+          transition={{ duration: 0.3 }}
+          className="p-5 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 transition"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-emerald-600" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-neutral-900 mb-1 tabular-nums">{metrics.clickRate}%</p>
+          <p className="text-neutral-500 text-sm">Click-through</p>
+        </motion.div>
+
+        {/* Unmet Demand Count */}
+        <div className={`p-5 rounded-xl border transition ${
+          metrics.unmetCount > 0
+            ? 'bg-amber-50 border-amber-200'
+            : 'bg-white border-neutral-200'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              metrics.unmetCount > 0 ? 'bg-amber-100' : 'bg-neutral-100'
+            }`}>
+              <Bell className={`w-5 h-5 ${
+                metrics.unmetCount > 0 ? 'text-amber-600' : 'text-neutral-400'
+              }`} />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-neutral-900 mb-1 tabular-nums">{metrics.unmetCount}</p>
+          <p className="text-neutral-500 text-sm">Unmet requests</p>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Top Moods */}
+        <div className="p-5 rounded-xl bg-white border border-neutral-200">
+          <h3 className="text-neutral-900 font-medium mb-4">Top moods</h3>
+          {metrics.topMoods.length === 0 ? (
+            <p className="text-neutral-400 text-sm">No data yet</p>
+          ) : (
+            <div className="space-y-3">
+              {metrics.topMoods.map((mood, i) => (
+                <div key={mood.name} className="flex items-center gap-3">
+                  <span className="w-6 text-neutral-400 text-sm tabular-nums">{i + 1}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-neutral-900 capitalize text-sm">{mood.name}</span>
+                      <span className="text-neutral-400 text-sm tabular-nums">{mood.count}</span>
+                    </div>
+                    <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-blue-500 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(mood.count / metrics.topMoods[0].count) * 100}%` }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top Items */}
+        <div className="p-5 rounded-xl bg-white border border-neutral-200">
+          <h3 className="text-neutral-900 font-medium mb-4">Most clicked</h3>
+          {metrics.topItems.length === 0 ? (
+            <p className="text-neutral-400 text-sm">No clicks yet</p>
+          ) : (
+            <div className="space-y-3">
+              {metrics.topItems.map((item, i) => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-xs text-neutral-600 tabular-nums">
+                      {i + 1}
+                    </span>
+                    <span className="text-neutral-900 truncate max-w-[150px] text-sm">{item.name}</span>
+                  </div>
+                  <span className="text-blue-600 font-medium tabular-nums text-sm">{item.clicks}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Live Activity Feed */}
+        <div className="p-5 rounded-xl bg-white border border-neutral-200">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-neutral-900 font-medium">Live activity</h3>
+            {isLive && <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
+          </div>
+
+          {liveActivity.length === 0 ? (
+            <p className="text-neutral-400 text-sm">Waiting for activity...</p>
+          ) : (
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              <AnimatePresence mode="popLayout">
+                {liveActivity.map((event) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="flex items-center gap-3 py-2 border-b border-neutral-100 last:border-0"
+                  >
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getEventColor(event.type)}`} />
+                    <span className="text-neutral-700 text-sm flex-1 truncate">{event.message}</span>
+                    <span className="text-neutral-400 text-xs whitespace-nowrap">{timeAgo(event.time)}</span>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        {[
+          { label: 'Preview Guest Flow', href: `/v/${venue?.slug}`, icon: ExternalLink, external: true },
+          { label: 'View Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+          { label: 'Manage Menu', href: '/dashboard/menu', icon: Zap },
+          { label: 'Download QR', href: '/dashboard/qr', icon: ArrowUpRight },
+        ].map((action) => (
+          <Link
+            key={action.label}
+            href={action.href || '#'}
+            target={action.external ? '_blank' : undefined}
+            className="flex items-center justify-between px-4 py-3 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition group"
+          >
+            <span className="text-sm font-medium text-neutral-700 group-hover:text-neutral-900">
+              {action.label}
+            </span>
+            <action.icon className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600" />
+          </Link>
+        ))}
       </div>
     </div>
   )

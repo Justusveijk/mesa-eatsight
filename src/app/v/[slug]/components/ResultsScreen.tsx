@@ -7,6 +7,7 @@ import {
   Heart,
   RefreshCw,
   ChevronDown,
+  ChevronRight,
   Star,
   Utensils,
   Wine,
@@ -14,18 +15,15 @@ import {
   Mail,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { trackEvent } from '@/lib/analytics'
 import { ShareButton } from './ShareButton'
 import type { RecommendedItem } from '@/lib/recommendations'
-
-interface DrinkUpsell {
-  id: string
-  name: string
-  price: number
-  reason: string
-}
+import type { DrinkUpsell } from '@/lib/upsells'
 
 interface ResultsScreenProps {
   venue: { name: string; slug?: string }
+  venueId?: string
+  sessionId?: string | null
   recommendations: RecommendedItem[]
   selectionType?: 'food' | 'drink' | 'both'
   drinkRecommendations?: RecommendedItem[]
@@ -37,6 +35,8 @@ interface ResultsScreenProps {
 
 export function ResultsScreen({
   venue,
+  venueId,
+  sessionId,
   recommendations,
   selectionType = 'food',
   drinkRecommendations = [],
@@ -47,6 +47,8 @@ export function ResultsScreen({
 }: ResultsScreenProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
+  const [upsellExpanded, setUpsellExpanded] = useState(false)
+  const [upsellLiked, setUpsellLiked] = useState(false)
 
   const toggleLike = (item: RecommendedItem) => {
     setLikedIds(prev => {
@@ -59,6 +61,27 @@ export function ResultsScreen({
       }
       return next
     })
+  }
+
+  const handleUpsellLike = async () => {
+    setUpsellLiked(!upsellLiked)
+    if (!upsellLiked && venueId && sessionId && upsellDrink) {
+      await trackEvent(venueId, sessionId, 'upsell_liked', {
+        item_id: upsellDrink.id,
+        item_name: upsellDrink.name,
+      })
+    }
+  }
+
+  const handleUpsellClick = async () => {
+    if (venueId && sessionId && upsellDrink) {
+      await trackEvent(venueId, sessionId, 'upsell_clicked', {
+        item_id: upsellDrink.id,
+        item_name: upsellDrink.name,
+        price: upsellDrink.price,
+      })
+    }
+    setUpsellExpanded(true)
   }
 
   // For "both" mode, filter food-only recommendations (exclude cross-sells)
@@ -209,7 +232,7 @@ export function ResultsScreen({
 
                 <div className="text-right ml-4 flex-shrink-0">
                   <p className="text-2xl font-semibold text-mesa-burgundy tabular-nums">
-                    €{topPick.price.toFixed(2)}
+                    &euro;{topPick.price.toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -288,7 +311,7 @@ export function ResultsScreen({
 
                     <div className="flex items-center gap-3 flex-shrink-0 ml-3">
                       <span className="font-semibold text-mesa-burgundy tabular-nums">
-                        €{item.price.toFixed(2)}
+                        &euro;{item.price.toFixed(2)}
                       </span>
                       <ChevronDown className={`w-5 h-5 text-mesa-charcoal/30 transition-transform ${
                         expandedId === item.id ? 'rotate-180' : ''
@@ -371,7 +394,7 @@ export function ResultsScreen({
                     <h4 className="font-medium text-mesa-charcoal truncate">{drink.name}</h4>
                     <p className="text-sm text-mesa-charcoal/50 truncate">{drink.reason || drink.category}</p>
                   </div>
-                  <p className="font-semibold text-purple-600 tabular-nums flex-shrink-0">€{drink.price.toFixed(2)}</p>
+                  <p className="font-semibold text-purple-600 tabular-nums flex-shrink-0">&euro;{drink.price.toFixed(2)}</p>
                 </div>
               </motion.div>
             ))}
@@ -379,7 +402,7 @@ export function ResultsScreen({
         </div>
       )}
 
-      {/* Drink Pairing Upsell - food-only mode */}
+      {/* Drink Pairing Upsell - food-only mode (Interactive) */}
       {selectionType === 'food' && upsellDrink && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -390,32 +413,114 @@ export function ResultsScreen({
           <p className="text-sm text-mesa-charcoal/40 uppercase tracking-wide mb-3">
             Perfect pairing
           </p>
-          <div className="relative">
-            <div className="absolute -top-2 right-4 z-10">
-              <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-medium rounded-full">
+
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            className="mesa-card p-4 border-2 border-purple-200/50 relative overflow-hidden cursor-pointer"
+            onClick={() => setUpsellExpanded(!upsellExpanded)}
+          >
+            {/* Suggested badge */}
+            <div className="absolute top-0 right-0">
+              <div className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-medium rounded-bl-lg">
                 SUGGESTED
-              </span>
+              </div>
             </div>
-            <div className="mesa-card p-4 border-2 border-purple-200/50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center flex-shrink-0">
-                  <Wine className="w-6 h-6 text-purple-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-mesa-charcoal truncate">{upsellDrink.name}</h4>
-                  <p className="text-sm text-mesa-charcoal/50 truncate">{upsellDrink.reason}</p>
-                </div>
-                <p className="text-lg font-semibold text-purple-600 tabular-nums flex-shrink-0">
-                  €{upsellDrink.price.toFixed(2)}
+
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center flex-shrink-0">
+                <Wine className="w-7 h-7 text-purple-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-mesa-charcoal text-lg">{upsellDrink.name}</h4>
+                <p className="text-sm text-mesa-charcoal/50">{upsellDrink.reason}</p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-xl font-semibold text-purple-600 tabular-nums">
+                  &euro;{upsellDrink.price.toFixed(2)}
                 </p>
               </div>
             </div>
-          </div>
+
+            {/* Expanded details */}
+            <AnimatePresence>
+              {upsellExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-4 mt-4 border-t border-purple-100">
+                    {upsellDrink.description && (
+                      <p className="text-sm text-mesa-charcoal/70 mb-4">
+                        {upsellDrink.description}
+                      </p>
+                    )}
+
+                    {upsellDrink.tags && upsellDrink.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {upsellDrink.tags.map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded-full"
+                          >
+                            {tag.replace(/_/g, ' ').replace('drink ', '')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUpsellLike()
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                          upsellLiked
+                            ? 'bg-pink-500 text-white'
+                            : 'bg-pink-50 text-pink-600 hover:bg-pink-100'
+                        }`}
+                      >
+                        <Heart className={`w-4 h-4 ${upsellLiked ? 'fill-current' : ''}`} />
+                        <span className="text-sm font-medium">
+                          {upsellLiked ? 'Saved!' : 'Save for later'}
+                        </span>
+                      </motion.button>
+
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUpsellClick()
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+                      >
+                        <span className="text-sm font-medium">Add to order</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Expand indicator */}
+            <div className="flex justify-center mt-2">
+              <motion.div
+                animate={{ rotate: upsellExpanded ? 180 : 0 }}
+                className="text-purple-400"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </motion.div>
+            </div>
+          </motion.div>
         </motion.div>
       )}
 
       {/* Liked items summary */}
-      {likedIds.size > 0 && (
+      {(likedIds.size > 0 || upsellLiked) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -423,7 +528,7 @@ export function ResultsScreen({
         >
           <p className="text-red-600 font-medium flex items-center justify-center gap-2">
             <Heart className="w-4 h-4 fill-current" />
-            {likedIds.size} item{likedIds.size !== 1 ? 's' : ''} saved
+            {likedIds.size + (upsellLiked ? 1 : 0)} item{(likedIds.size + (upsellLiked ? 1 : 0)) !== 1 ? 's' : ''} saved
           </p>
         </motion.div>
       )}

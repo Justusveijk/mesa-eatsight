@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/client'
 
-interface DrinkUpsell {
+export interface DrinkUpsell {
   id: string
   name: string
   price: number
+  description: string | null
   reason: string
+  tags: string[]
 }
 
 export async function getUpsellDrink(
@@ -79,6 +81,8 @@ export async function getUpsellDrink(
     id: top.id,
     name: top.name,
     price: top.price || 0,
+    description: top.description || null,
     reason,
+    tags: top.tags || [],
   }
 }
