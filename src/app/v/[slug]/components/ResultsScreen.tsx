@@ -14,14 +14,32 @@ import {
 import { ShareButton } from './ShareButton'
 import type { RecommendedItem } from '@/lib/recommendations'
 
+interface DrinkUpsell {
+  id: string
+  name: string
+  price: number
+  reason: string
+}
+
 interface ResultsScreenProps {
   venue: { name: string; slug?: string }
   recommendations: RecommendedItem[]
+  selectionType?: 'food' | 'drink' | 'both'
+  drinkRecommendations?: RecommendedItem[]
+  upsellDrink?: DrinkUpsell | null
   onRestart: () => void
   onItemLike?: (item: RecommendedItem) => void
 }
 
-export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }: ResultsScreenProps) {
+export function ResultsScreen({
+  venue,
+  recommendations,
+  selectionType = 'food',
+  drinkRecommendations = [],
+  upsellDrink,
+  onRestart,
+  onItemLike,
+}: ResultsScreenProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
 
@@ -38,8 +56,12 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
     })
   }
 
-  const topPick = recommendations[0]
-  const otherPicks = recommendations.slice(1)
+  // For "both" mode, filter food-only recommendations (exclude cross-sells)
+  const foodRecs = selectionType === 'both'
+    ? recommendations.filter(r => !r.isCrossSell)
+    : recommendations
+  const topPick = foodRecs[0]
+  const otherPicks = foodRecs.slice(1)
 
   // Infer type from tags
   const getItemType = (item: RecommendedItem): 'food' | 'drink' => {
@@ -100,6 +122,23 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
         </p>
       </motion.div>
 
+      {/* Food section label for "both" mode */}
+      {selectionType === 'both' && foodRecs.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          className="px-6 mb-3"
+        >
+          <div className="flex items-center gap-2">
+            <Utensils className="w-4 h-4 text-amber-600" />
+            <p className="text-sm text-mesa-charcoal/40 uppercase tracking-wide">
+              Your food picks
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Top Pick - Featured */}
       {topPick && (
         <motion.div
@@ -125,7 +164,7 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
             {/* Card */}
             <div className="mesa-card p-6 pt-8">
               <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`w-6 h-6 rounded-md flex items-center justify-center ${
                       getItemType(topPick) === 'food'
@@ -149,7 +188,7 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
                   </p>
                 </div>
 
-                <div className="text-right ml-4">
+                <div className="text-right ml-4 flex-shrink-0">
                   <p className="text-2xl font-semibold text-mesa-burgundy tabular-nums">
                     €{topPick.price.toFixed(2)}
                   </p>
@@ -184,7 +223,7 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
         </motion.div>
       )}
 
-      {/* Other Picks */}
+      {/* Other Food Picks */}
       {otherPicks.length > 0 && (
         <div className="px-6">
           <motion.p
@@ -209,8 +248,8 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
                   className="w-full mesa-card p-4 text-left"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         getItemType(item) === 'food'
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-purple-100 text-purple-700'
@@ -220,15 +259,15 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
                           : <Wine className="w-4 h-4" />
                         }
                       </span>
-                      <div>
-                        <h4 className="font-medium text-mesa-charcoal">{item.name}</h4>
-                        <p className="text-sm text-mesa-charcoal/40">
+                      <div className="min-w-0">
+                        <h4 className="font-medium text-mesa-charcoal truncate">{item.name}</h4>
+                        <p className="text-sm text-mesa-charcoal/40 truncate">
                           {item.reason || item.category}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-3">
                       <span className="font-semibold text-mesa-burgundy tabular-nums">
                         €{item.price.toFixed(2)}
                       </span>
@@ -282,6 +321,80 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
         </div>
       )}
 
+      {/* Drink Recommendations - "Both" mode */}
+      {selectionType === 'both' && drinkRecommendations.length > 0 && (
+        <div className="mt-8">
+          <div className="px-6 flex items-center gap-2 mb-4">
+            <Wine className="w-4 h-4 text-purple-500" />
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="text-sm text-mesa-charcoal/40 uppercase tracking-wide"
+            >
+              And to drink
+            </motion.p>
+          </div>
+          <div className="px-6 space-y-3">
+            {drinkRecommendations.map((drink, i) => (
+              <motion.div
+                key={drink.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9 + i * 0.1 }}
+                className="mesa-card p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                    <Wine className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-mesa-charcoal truncate">{drink.name}</h4>
+                    <p className="text-sm text-mesa-charcoal/50 truncate">{drink.reason || drink.category}</p>
+                  </div>
+                  <p className="font-semibold text-purple-600 tabular-nums flex-shrink-0">€{drink.price.toFixed(2)}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Drink Pairing Upsell - food-only mode */}
+      {selectionType === 'food' && upsellDrink && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="px-6 mt-8"
+        >
+          <p className="text-sm text-mesa-charcoal/40 uppercase tracking-wide mb-3">
+            Perfect pairing
+          </p>
+          <div className="relative">
+            <div className="absolute -top-2 right-4 z-10">
+              <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-medium rounded-full">
+                SUGGESTED
+              </span>
+            </div>
+            <div className="mesa-card p-4 border-2 border-purple-200/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center flex-shrink-0">
+                  <Wine className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-mesa-charcoal truncate">{upsellDrink.name}</h4>
+                  <p className="text-sm text-mesa-charcoal/50 truncate">{upsellDrink.reason}</p>
+                </div>
+                <p className="text-lg font-semibold text-purple-600 tabular-nums flex-shrink-0">
+                  €{upsellDrink.price.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Liked items summary */}
       {likedIds.size > 0 && (
         <motion.div
@@ -301,7 +414,7 @@ export function ResultsScreen({ venue, recommendations, onRestart, onItemLike }:
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1 }}
-        className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#FDFBF7] via-[#FDFBF7] to-transparent"
+        className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#FDFBF7] via-[#FDFBF7] to-transparent safe-area-inset-bottom"
       >
         <div className="max-w-md mx-auto flex gap-3">
           <button

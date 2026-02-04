@@ -745,4 +745,16 @@ textarea:focus-visible {
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
+
+  /* Prevent text overflow */
+  .no-overflow {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Safe area padding for mobile */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
 }

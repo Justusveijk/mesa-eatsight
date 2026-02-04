@@ -79,7 +79,7 @@ export async function createSession(
  */
 export async function saveRecResults(
   sessionId: string,
-  items: Array<{ id: string; score?: number }>
+  items: Array<{ id: string; score?: number; reason?: string }>
 ): Promise<void> {
   try {
     const supabase = createClient()
@@ -89,6 +89,7 @@ export async function saveRecResults(
       item_id: item.id,
       rank: index + 1,
       score: item.score || 0,
+      reason: item.reason || '',
     }))
 
     const { error } = await supabase

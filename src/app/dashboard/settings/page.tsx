@@ -9,7 +9,9 @@ import {
   Shield,
   Check,
   ExternalLink,
+  QrCode,
 } from 'lucide-react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 type Tab = 'profile' | 'venue' | 'notifications' | 'billing' | 'security'
@@ -88,6 +90,21 @@ export default function SettingsPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {/* QR Code Quick Access */}
+        <Link
+          href="/dashboard/qr"
+          className="group flex items-center gap-4 p-5 mb-6 rounded-xl bg-white border-2 border-neutral-900/10 hover:border-neutral-900/20 transition-all"
+        >
+          <div className="w-12 h-12 rounded-xl bg-neutral-900 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <QrCode className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-neutral-900">QR Codes & Tables</h3>
+            <p className="text-xs text-neutral-500">Generate and download QR codes for your venue</p>
+          </div>
+          <span className="text-neutral-400 group-hover:text-neutral-900 transition-colors text-lg">→</span>
+        </Link>
+
         {activeTab === 'profile' && <ProfileSection user={user} />}
         {activeTab === 'venue' && <VenueSection venue={venue} />}
         {activeTab === 'notifications' && <NotificationsSection />}

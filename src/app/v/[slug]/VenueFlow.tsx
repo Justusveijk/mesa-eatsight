@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { trackEvent, createSession, EVENTS } from '@/lib/analytics'
+import { trackEvent, createSession, saveRecResults, updateSessionIntents, EVENTS } from '@/lib/analytics'
 import {
   getRecommendationsWithFallback,
   getNewDrinkRecommendations,
   type RecommendedItem,
 } from '@/lib/recommendations'
+import { getUpsellDrink } from '@/lib/upsells'
 import { GuestPreferences, MoodTag, FlavorTag, PortionTag, DietTag } from '@/lib/types/taxonomy'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { QuestionFlow, type GuestAnswers } from './components/QuestionFlow'
@@ -39,12 +40,22 @@ interface MenuItem {
   type: 'food' | 'drink'
 }
 
+interface DrinkUpsell {
+  id: string
+  name: string
+  price: number
+  reason: string
+}
+
 type FlowState = 'loading' | 'empty' | 'welcome' | 'questions' | 'processing' | 'results'
 
 export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const [flowState, setFlowState] = useState<FlowState>('loading')
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
+  const [drinkRecommendations, setDrinkRecommendations] = useState<RecommendedItem[]>([])
+  const [upsellDrink, setUpsellDrink] = useState<DrinkUpsell | null>(null)
+  const [selectionType, setSelectionType] = useState<'food' | 'drink' | 'both'>('food')
   const [filterProgress, setFilterProgress] = useState(0)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const sessionCreated = useRef(false)
@@ -125,11 +136,27 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const handleComplete = useCallback(
     async (answers: GuestAnswers) => {
       setFlowState('processing')
+      setSelectionType(answers.type)
+
+      // Update session with intent chips
+      if (sessionId) {
+        const chips: string[] = []
+        if (answers.mood) chips.push(answers.mood)
+        if (answers.flavors) chips.push(...answers.flavors)
+        if (answers.portion) chips.push(answers.portion)
+        if (answers.dietary) chips.push(...answers.dietary)
+        if (answers.drinkMood) chips.push(answers.drinkMood)
+        if (answers.drinkFlavors) chips.push(...answers.drinkFlavors)
+        if (answers.drinkPreferences) chips.push(...answers.drinkPreferences)
+        await updateSessionIntents(sessionId, chips)
+      }
 
       // Processing animation duration
       const processingDelay = new Promise(resolve => setTimeout(resolve, 3000))
 
       let allResults: RecommendedItem[] = []
+      let drinkRecs: RecommendedItem[] = []
+      let upsell: DrinkUpsell | null = null
 
       try {
         if (answers.type === 'food' || answers.type === 'both') {
@@ -144,6 +171,11 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
 
           const foodResult = await getRecommendationsWithFallback(venue.id, foodPrefs, 3)
           allResults.push(...foodResult.recommendations, ...foodResult.fallbackItems)
+
+          // For food-only: get drink upsell
+          if (answers.type === 'food') {
+            upsell = await getUpsellDrink(venue.id, answers.mood)
+          }
         }
 
         if (answers.type === 'drink') {
@@ -157,11 +189,8 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
         }
 
         if (answers.type === 'both') {
-          // Also get 2 drink pairings (popular drinks)
-          const drinkPairings = await getNewDrinkRecommendations(venue.id, {}, 2)
-          allResults.push(
-            ...drinkPairings.map(d => ({ ...d, isCrossSell: true }))
-          )
+          // Get dedicated drink recommendations for the "And to drink" section
+          drinkRecs = await getNewDrinkRecommendations(venue.id, {}, 3)
         }
       } catch (err) {
         console.error('Failed to get recommendations:', err)
@@ -170,19 +199,36 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
       // Ensure processing animation completes
       await processingDelay
 
-      // Convert to the format ResultsScreen expects
-      setRecommendations(allResults.length > 0 ? allResults.slice(0, 5) : [])
+      // Set results
+      const finalResults = allResults.length > 0 ? allResults.slice(0, 5) : []
+      setRecommendations(finalResults)
+      setDrinkRecommendations(drinkRecs)
+      setUpsellDrink(upsell)
+
+      // Save rec results to analytics
+      if (sessionId && finalResults.length > 0) {
+        await saveRecResults(
+          sessionId,
+          finalResults.map(item => ({
+            id: item.id,
+            score: item.score,
+            reason: item.reason,
+          }))
+        )
+      }
 
       // Track analytics
       await trackEvent(venue.id, sessionId, EVENTS.RECOMMENDATIONS_SHOWN, {
-        item_count: allResults.length,
-        item_ids: allResults.map(i => i.id),
-        item_names: allResults.map(i => i.name),
+        item_count: finalResults.length,
+        drink_count: drinkRecs.length,
+        has_upsell: !!upsell,
+        item_ids: finalResults.map(i => i.id),
+        item_names: finalResults.map(i => i.name),
         type: answers.type,
       })
 
       await trackEvent(venue.id, sessionId, EVENTS.FLOW_COMPLETED, {
-        recommendation_count: allResults.length,
+        recommendation_count: finalResults.length,
         answers,
       })
 
@@ -208,6 +254,9 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const handleRestart = useCallback(() => {
     setFilterProgress(0)
     setRecommendations([])
+    setDrinkRecommendations([])
+    setUpsellDrink(null)
+    setSelectionType('food')
     setFlowState('welcome')
   }, [])
 
@@ -342,6 +391,9 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
             key="results"
             venue={venue}
             recommendations={recommendations}
+            selectionType={selectionType}
+            drinkRecommendations={drinkRecommendations}
+            upsellDrink={upsellDrink}
             onRestart={handleRestart}
             onItemLike={handleItemLike}
           />
