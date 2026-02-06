@@ -19,6 +19,8 @@ import { QuestionFlow, type GuestAnswers } from './components/QuestionFlow'
 import { ResultsScreen } from './components/ResultsScreen'
 import { MenuBackground } from './components/MenuBackground'
 import { ProcessingScreen } from './components/ProcessingScreen'
+import { CartProvider } from '@/contexts/CartContext'
+import { CartSheet, CartButton } from '@/components/ui/CartSheet'
 
 interface Venue {
   id: string
@@ -276,13 +278,14 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
   const isDemo = venue.slug === 'bella-taverna'
 
   return (
-    <div className="mesa-bg relative overflow-hidden">
-      {/* Animated menu background */}
-      <MenuBackground
-        items={menuItems}
-        filterProgress={filterProgress}
-        flowState={flowState}
-      />
+    <CartProvider>
+      <div className="mesa-bg relative overflow-hidden">
+        {/* Animated menu background */}
+        <MenuBackground
+          items={menuItems}
+          filterProgress={filterProgress}
+          flowState={flowState}
+        />
 
       {/* Header - minimal, only for demo venue */}
       {isDemo && (
@@ -415,6 +418,11 @@ export function VenueFlow({ venue, tableRef }: VenueFlowProps) {
           />
         )}
       </AnimatePresence>
+
+      {/* Cart components */}
+      <CartButton />
+      <CartSheet />
     </div>
+    </CartProvider>
   )
 }

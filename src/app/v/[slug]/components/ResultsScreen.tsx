@@ -13,10 +13,13 @@ import {
   Wine,
   Check,
   Mail,
+  Plus,
+  ShoppingBag,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { trackEvent } from '@/lib/analytics'
 import { ShareButton } from './ShareButton'
+import { useCart } from '@/contexts/CartContext'
 import type { RecommendedItem } from '@/lib/recommendations'
 import type { DrinkUpsell } from '@/lib/upsells'
 
@@ -49,6 +52,26 @@ export function ResultsScreen({
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
   const [upsellExpanded, setUpsellExpanded] = useState(false)
   const [upsellLiked, setUpsellLiked] = useState(false)
+  const { addItem, items: cartItems } = useCart()
+
+  const isInCart = (id: string) => cartItems.some(item => item.id === id)
+
+  const handleAddToOrder = async (item: RecommendedItem | DrinkUpsell, type: 'food' | 'drink') => {
+    addItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      type,
+    })
+    if (venueId && sessionId) {
+      await trackEvent(venueId, sessionId, 'item_added_to_order', {
+        item_id: item.id,
+        item_name: item.name,
+        item_price: item.price,
+        item_type: type,
+      })
+    }
+  }
 
   const toggleLike = (item: RecommendedItem) => {
     setLikedIds(prev => {
@@ -250,14 +273,34 @@ export function ResultsScreen({
               <div className="flex items-center gap-3 pt-4 border-t border-mesa-charcoal/5">
                 <button
                   onClick={() => toggleLike(topPick)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition ${
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition ${
                     likedIds.has(topPick.id)
                       ? 'bg-red-50 text-red-600'
                       : 'bg-mesa-charcoal/5 text-mesa-charcoal/60 hover:bg-mesa-charcoal/10'
                   }`}
                 >
                   <Heart className={`w-5 h-5 ${likedIds.has(topPick.id) ? 'fill-current' : ''}`} />
-                  {likedIds.has(topPick.id) ? 'Loved!' : 'Love this'}
+                </button>
+                <button
+                  onClick={() => handleAddToOrder(topPick, getItemType(topPick))}
+                  disabled={isInCart(topPick.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition ${
+                    isInCart(topPick.id)
+                      ? 'bg-green-50 text-green-600'
+                      : 'bg-mesa-burgundy text-white hover:bg-mesa-burgundy/90 shadow-lg shadow-mesa-burgundy/25'
+                  }`}
+                >
+                  {isInCart(topPick.id) ? (
+                    <>
+                      <Check className="w-5 h-5" />
+                      Added to order
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-5 h-5" />
+                      Add to order
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -338,20 +381,45 @@ export function ResultsScreen({
                             </span>
                           )}
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleLike(item)
-                            }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                              likedIds.has(item.id)
-                                ? 'bg-red-50 text-red-600'
-                                : 'bg-mesa-charcoal/5 text-mesa-charcoal/60'
-                            }`}
-                          >
-                            <Heart className={`w-4 h-4 ${likedIds.has(item.id) ? 'fill-current' : ''}`} />
-                            {likedIds.has(item.id) ? 'Loved!' : 'Love this'}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleLike(item)
+                              }}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
+                                likedIds.has(item.id)
+                                  ? 'bg-red-50 text-red-600'
+                                  : 'bg-mesa-charcoal/5 text-mesa-charcoal/60'
+                              }`}
+                            >
+                              <Heart className={`w-4 h-4 ${likedIds.has(item.id) ? 'fill-current' : ''}`} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleAddToOrder(item, getItemType(item))
+                              }}
+                              disabled={isInCart(item.id)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
+                                isInCart(item.id)
+                                  ? 'bg-green-50 text-green-600'
+                                  : 'bg-mesa-burgundy text-white hover:bg-mesa-burgundy/90'
+                              }`}
+                            >
+                              {isInCart(item.id) ? (
+                                <>
+                                  <Check className="w-4 h-4" />
+                                  Added
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4" />
+                                  Add to order
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -386,7 +454,7 @@ export function ResultsScreen({
                 transition={{ delay: 0.9 + i * 0.1 }}
                 className="mesa-card p-4"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
                     <Wine className="w-5 h-5 text-purple-600" />
                   </div>
@@ -396,6 +464,27 @@ export function ResultsScreen({
                   </div>
                   <p className="font-semibold text-purple-600 tabular-nums flex-shrink-0">&euro;{drink.price.toFixed(2)}</p>
                 </div>
+                <button
+                  onClick={() => handleAddToOrder(drink, 'drink')}
+                  disabled={isInCart(drink.id)}
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition ${
+                    isInCart(drink.id)
+                      ? 'bg-green-50 text-green-600'
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                  }`}
+                >
+                  {isInCart(drink.id) ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Added to order
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add to order
+                    </>
+                  )}
+                </button>
               </motion.div>
             ))}
           </div>
@@ -484,21 +573,34 @@ export function ResultsScreen({
                         }`}
                       >
                         <Heart className={`w-4 h-4 ${upsellLiked ? 'fill-current' : ''}`} />
-                        <span className="text-sm font-medium">
-                          {upsellLiked ? 'Saved!' : 'Save for later'}
-                        </span>
                       </motion.button>
 
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleUpsellClick()
+                          if (!isInCart(upsellDrink!.id)) {
+                            handleAddToOrder(upsellDrink!, 'drink')
+                          }
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+                        disabled={isInCart(upsellDrink!.id)}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors ${
+                          isInCart(upsellDrink!.id)
+                            ? 'bg-green-50 text-green-600'
+                            : 'bg-purple-600 text-white hover:bg-purple-700'
+                        }`}
                       >
-                        <span className="text-sm font-medium">Add to order</span>
-                        <ChevronRight className="w-4 h-4" />
+                        {isInCart(upsellDrink!.id) ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span className="text-sm font-medium">Added to order</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4" />
+                            <span className="text-sm font-medium">Add to order</span>
+                          </>
+                        )}
                       </motion.button>
                     </div>
                   </div>
