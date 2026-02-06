@@ -1,78 +1,628 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
-  Users, Sparkles, TrendingUp, TrendingDown, Clock, Download,
-  Wifi, RefreshCw, ArrowUpRight, ArrowDownRight, ChevronRight,
-  Lightbulb, AlertTriangle, Zap, Target
+  Users, Sparkles, TrendingUp, Clock, Download, ChevronLeft,
+  Wifi, ArrowUpRight, ArrowDownRight, Eye, EyeOff, AlertTriangle,
+  Lightbulb, ChevronRight, Utensils
 } from 'lucide-react'
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, BarChart, Bar, Area, AreaChart
-} from 'recharts'
 
-// Animated counter component
-function AnimatedValue({ value, suffix = '', prefix = '' }: { value: number; suffix?: string; prefix?: string }) {
-  const [displayValue, setDisplayValue] = useState(0)
+// Smooth number animation
+function AnimatedNumber({
+  value,
+  suffix = '',
+  prefix = '',
+  duration = 800
+}: {
+  value: number
+  suffix?: string
+  prefix?: string
+  duration?: number
+}) {
+  const [display, setDisplay] = useState(0)
 
   useEffect(() => {
-    const duration = 800
+    if (value === display) return
+
     const steps = 30
-    const stepValue = value / steps
-    let current = 0
+    const increment = (value - display) / steps
+    let current = display
     let step = 0
 
     const timer = setInterval(() => {
       step++
-      current += stepValue
+      current += increment
       if (step >= steps) {
-        setDisplayValue(value)
+        setDisplay(value)
         clearInterval(timer)
       } else {
-        setDisplayValue(Math.round(current))
+        setDisplay(Math.round(current))
       }
     }, duration / steps)
 
     return () => clearInterval(timer)
-  }, [value])
+  }, [value, duration, display])
 
-  return <span className="tabular-nums">{prefix}{displayValue.toLocaleString()}{suffix}</span>
+  return (
+    <motion.span
+      key={value}
+      initial={{ opacity: 0.5, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="tabular-nums font-mono"
+    >
+      {prefix}{display.toLocaleString()}{suffix}
+    </motion.span>
+  )
 }
 
-// Custom tooltip
-function CustomTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
+// Minimal metric card
+function MetricCard({
+  label,
+  value,
+  trend,
+  suffix = '',
+  loading = false,
+}: {
+  label: string
+  value: number
+  trend?: number
+  suffix?: string
+  loading?: boolean
+}) {
   return (
-    <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm">
-      <p className="font-medium">{label}</p>
-      {payload.map((p: any, i: number) => (
-        <p key={i} className="text-gray-300">{p.name}: {p.value}</p>
-      ))}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl border border-slate-200 p-6"
+    >
+      <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
+        {label}
+      </p>
+
+      {loading ? (
+        <div className="h-10 w-24 bg-slate-100 rounded animate-pulse" />
+      ) : (
+        <>
+          <p className="text-4xl font-semibold text-slate-900 tracking-tight">
+            <AnimatedNumber value={value} suffix={suffix} />
+          </p>
+
+          {trend !== undefined && trend !== 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className={`flex items-center gap-1 mt-2 text-sm ${
+                trend > 0 ? 'text-emerald-600' : 'text-slate-400'
+              }`}
+            >
+              {trend > 0 ? (
+                <ArrowUpRight className="w-4 h-4" />
+              ) : (
+                <ArrowDownRight className="w-4 h-4" />
+              )}
+              <span>{trend > 0 ? '+' : ''}{trend}%</span>
+            </motion.div>
+          )}
+        </>
+      )}
+    </motion.div>
+  )
+}
+
+// Clean bar for moods/items
+function ProgressBar({
+  value,
+  max,
+  delay = 0
+}: {
+  value: number
+  max: number
+  delay?: number
+}) {
+  const percentage = max > 0 ? (value / max) * 100 : 0
+
+  return (
+    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${percentage}%` }}
+        transition={{ delay, duration: 0.6, ease: 'easeOut' }}
+        className="h-full bg-slate-800 rounded-full"
+      />
     </div>
   )
 }
 
-// Live pulse
-function LivePulse() {
+// Preview Future Component
+function PreviewFuture({
+  menuItems,
+  onClose,
+}: {
+  menuItems: MenuItem[]
+  onClose: () => void
+}) {
+  // Generate realistic sample data from actual menu
+  const sampleData = useMemo(() => {
+    const foodItems = menuItems.filter(i => i.type === 'food')
+    const drinkItems = menuItems.filter(i => i.type === 'drink')
+
+    // Pick top items randomly weighted by price (higher = more popular usually)
+    const sortedByPrice = [...foodItems].sort((a, b) => (b.price || 0) - (a.price || 0))
+    const topItems = sortedByPrice.slice(0, 5).map((item, i) => ({
+      name: item.name,
+      score: 95 - i * 8 + Math.floor(Math.random() * 10),
+    }))
+
+    // Generate moods from tags
+    const moodMap: Record<string, number> = {}
+    menuItems.forEach(item => {
+      // This would use actual tags - simplified here
+      if (item.name.toLowerCase().includes('salad') || item.name.toLowerCase().includes('light')) {
+        moodMap['Light & Fresh'] = (moodMap['Light & Fresh'] || 0) + 15
+      }
+      if (item.name.toLowerCase().includes('burger') || item.name.toLowerCase().includes('steak')) {
+        moodMap['Comfort Food'] = (moodMap['Comfort Food'] || 0) + 20
+      }
+      if (item.name.toLowerCase().includes('pasta') || item.name.toLowerCase().includes('pizza')) {
+        moodMap['Italian Craving'] = (moodMap['Italian Craving'] || 0) + 18
+      }
+    })
+
+    // Default moods if none detected
+    if (Object.keys(moodMap).length < 3) {
+      moodMap['Comfort Food'] = 45
+      moodMap['Light & Fresh'] = 28
+      moodMap['Quick Bite'] = 18
+      moodMap['Adventurous'] = 12
+    }
+
+    const moods = Object.entries(moodMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5)
+
+    // Traffic pattern (typical restaurant week)
+    const traffic = [
+      { day: 'Mon', guests: 42 },
+      { day: 'Tue', guests: 38 },
+      { day: 'Wed', guests: 55 },
+      { day: 'Thu', guests: 67 },
+      { day: 'Fri', guests: 124 },
+      { day: 'Sat', guests: 156 },
+      { day: 'Sun', guests: 89 },
+    ]
+
+    return {
+      totalGuests: 571,
+      recommendations: 1847,
+      satisfactionRate: 94,
+      avgDecision: 2.1,
+      traffic,
+      dietary: [
+        { name: 'No Restrictions', value: 52, color: '#1e293b' },
+        { name: 'Vegetarian', value: 24, color: '#64748b' },
+        { name: 'Vegan', value: 12, color: '#94a3b8' },
+        { name: 'Gluten-free', value: 8, color: '#cbd5e1' },
+        { name: 'Other', value: 4, color: '#e2e8f0' },
+      ],
+      moods,
+      topItems,
+    }
+  }, [menuItems])
+
+  const maxTraffic = Math.max(...sampleData.traffic.map(t => t.guests))
+  const maxMood = sampleData.moods[0]?.value || 1
+
   return (
-    <span className="relative flex h-2 w-2">
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-    </span>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-6"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: 'spring', damping: 25 }}
+        className="bg-white rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-slate-100 px-8 py-6 rounded-t-3xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-sm font-medium text-emerald-600 mb-1"
+              >
+                ✨ Preview Mode
+              </motion.p>
+              <h2 className="text-2xl font-semibold text-slate-900">
+                Your analytics in a few weeks
+              </h2>
+              <p className="text-slate-500 mt-1">
+                Based on your {menuItems.length} menu items • This is simulated data
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+            >
+              <EyeOff className="w-5 h-5 text-slate-400" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-8">
+          {/* Metrics */}
+          <div className="grid grid-cols-4 gap-4 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-slate-50 rounded-2xl p-6"
+            >
+              <p className="text-xs font-medium text-slate-400 uppercase mb-2">Total Guests</p>
+              <p className="text-3xl font-semibold text-slate-900">{sampleData.totalGuests}</p>
+              <p className="text-sm text-emerald-600 mt-1">+12% vs industry avg</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-slate-50 rounded-2xl p-6"
+            >
+              <p className="text-xs font-medium text-slate-400 uppercase mb-2">Recommendations</p>
+              <p className="text-3xl font-semibold text-slate-900">{sampleData.recommendations.toLocaleString()}</p>
+              <p className="text-sm text-emerald-600 mt-1">+18% engagement</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-slate-50 rounded-2xl p-6"
+            >
+              <p className="text-xs font-medium text-slate-400 uppercase mb-2">Satisfaction</p>
+              <p className="text-3xl font-semibold text-slate-900">{sampleData.satisfactionRate}%</p>
+              <p className="text-sm text-emerald-600 mt-1">+3% vs last month</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-slate-50 rounded-2xl p-6"
+            >
+              <p className="text-xs font-medium text-slate-400 uppercase mb-2">Avg. Decision</p>
+              <p className="text-3xl font-semibold text-slate-900">{sampleData.avgDecision}m</p>
+              <p className="text-sm text-emerald-600 mt-1">-8% faster</p>
+            </motion.div>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-3 gap-6 mb-8">
+            {/* Traffic */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="col-span-2 bg-slate-50 rounded-2xl p-6"
+            >
+              <h3 className="text-sm font-medium text-slate-900 mb-4">Weekly Traffic Pattern</h3>
+              <div className="flex items-end gap-2 h-32">
+                {sampleData.traffic.map((day, i) => (
+                  <div key={day.day} className="flex-1 flex flex-col items-center">
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: `${(day.guests / maxTraffic) * 100}%` }}
+                      transition={{ delay: 0.6 + i * 0.05 }}
+                      className="w-full bg-slate-300 rounded-t"
+                    />
+                    <span className="text-xs text-slate-400 mt-2">{day.day}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Dietary */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="bg-slate-50 rounded-2xl p-6"
+            >
+              <h3 className="text-sm font-medium text-slate-900 mb-4">Dietary Split</h3>
+              <div className="space-y-2">
+                {sampleData.dietary.map((d, i) => (
+                  <motion.div
+                    key={d.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.7 + i * 0.05 }}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                      <span className="text-slate-600">{d.name}</span>
+                    </div>
+                    <span className="text-slate-900 font-medium">{d.value}%</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Bottom Row */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Moods */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="bg-slate-50 rounded-2xl p-6"
+            >
+              <h3 className="text-sm font-medium text-slate-900 mb-4">Predicted Guest Moods</h3>
+              <div className="space-y-3">
+                {sampleData.moods.map((mood, i) => (
+                  <div key={mood.name}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-slate-600">{mood.name}</span>
+                      <span className="text-slate-400">{mood.value}</span>
+                    </div>
+                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(mood.value / maxMood) * 100}%` }}
+                        transition={{ delay: 0.8 + i * 0.1 }}
+                        className="h-full bg-slate-600 rounded-full"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Top Items */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="bg-slate-50 rounded-2xl p-6"
+            >
+              <h3 className="text-sm font-medium text-slate-900 mb-4">Predicted Top Performers</h3>
+              <div className="space-y-3">
+                {sampleData.topItems.map((item, i) => (
+                  <motion.div
+                    key={item.name}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.9 + i * 0.1 }}
+                    className="flex items-center gap-3"
+                  >
+                    <span className="w-6 h-6 rounded-lg bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 text-sm text-slate-700 truncate">{item.name}</span>
+                    <span className="text-sm font-medium text-slate-900">{item.score}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Footer CTA */}
+        <div className="sticky bottom-0 bg-gradient-to-t from-white via-white to-transparent px-8 py-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">
+              Start collecting real data by sharing your QR code with guests
+            </p>
+            <Link
+              href="/dashboard/settings/qr-codes"
+              className="px-6 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
+            >
+              Get your QR code
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
+// Menu Analysis Warnings
+function MenuAnalysis({ menuItems }: { menuItems: MenuItem[] }) {
+  const warnings = useMemo(() => {
+    const issues: { type: 'warning' | 'tip'; message: string }[] = []
+
+    const foodItems = menuItems.filter(i => i.type === 'food')
+    const drinkItems = menuItems.filter(i => i.type === 'drink')
+
+    // Check for missing item types
+    if (foodItems.length === 0) {
+      issues.push({ type: 'warning', message: 'No food items found. Add food to your menu to enable recommendations.' })
+    }
+
+    if (drinkItems.length === 0) {
+      issues.push({ type: 'tip', message: 'Adding drinks enables upsell recommendations after food orders.' })
+    }
+
+    // Check for vegetarian options
+    const vegOptions = menuItems.filter(i =>
+      i.name?.toLowerCase().includes('vegetarian') ||
+      i.name?.toLowerCase().includes('vegan') ||
+      i.description?.toLowerCase().includes('vegetarian')
+    )
+    if (vegOptions.length < 2 && foodItems.length > 5) {
+      issues.push({ type: 'tip', message: '~30% of guests have plant-based preferences. Consider adding more vegetarian options.' })
+    }
+
+    // Check for gluten-free options
+    const gfOptions = menuItems.filter(i =>
+      i.name?.toLowerCase().includes('gluten') ||
+      i.description?.toLowerCase().includes('gluten-free')
+    )
+    if (gfOptions.length === 0 && foodItems.length > 5) {
+      issues.push({ type: 'tip', message: 'Gluten-free options are increasingly requested. Consider marking suitable items.' })
+    }
+
+    // Check for light options
+    const lightOptions = menuItems.filter(i =>
+      i.name?.toLowerCase().includes('salad') ||
+      i.name?.toLowerCase().includes('light') ||
+      i.name?.toLowerCase().includes('fresh')
+    )
+    if (lightOptions.length < 2 && foodItems.length > 8) {
+      issues.push({ type: 'tip', message: '"Light & Fresh" is a popular mood. Ensure you have lighter options for health-conscious guests.' })
+    }
+
+    // Check for desserts
+    const desserts = menuItems.filter(i =>
+      i.category?.toLowerCase().includes('dessert') ||
+      i.name?.toLowerCase().includes('cake') ||
+      i.name?.toLowerCase().includes('ice cream')
+    )
+    if (desserts.length === 0 && foodItems.length > 10) {
+      issues.push({ type: 'tip', message: 'Desserts drive upsells. Consider adding sweet options.' })
+    }
+
+    return issues
+  }, [menuItems])
+
+  if (warnings.length === 0) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-8"
+    >
+      <h3 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
+        <Lightbulb className="w-4 h-4 text-amber-500" />
+        Menu Insights
+      </h3>
+      <div className="space-y-2">
+        {warnings.map((w, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className={`flex items-start gap-3 p-4 rounded-xl ${
+              w.type === 'warning'
+                ? 'bg-amber-50 border border-amber-100'
+                : 'bg-slate-50 border border-slate-100'
+            }`}
+          >
+            {w.type === 'warning' ? (
+              <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            ) : (
+              <Lightbulb className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+            )}
+            <p className={`text-sm ${w.type === 'warning' ? 'text-amber-800' : 'text-slate-600'}`}>
+              {w.message}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+// Empty state when no data
+function EmptyState({
+  hasMenu,
+  menuItems,
+  onPreview
+}: {
+  hasMenu: boolean
+  menuItems: MenuItem[]
+  onPreview: () => void
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col items-center justify-center py-20 text-center"
+    >
+      <motion.div
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        transition={{ type: 'spring' }}
+        className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-6"
+      >
+        <Users className="w-10 h-10 text-slate-300" />
+      </motion.div>
+
+      <h3 className="text-xl font-semibold text-slate-900 mb-2">
+        No guest data yet
+      </h3>
+      <p className="text-slate-500 max-w-md mb-8">
+        {hasMenu
+          ? "Share your QR code with guests to start collecting insights. Data will appear here in real-time."
+          : "Add menu items first, then share your QR code with guests to start collecting data."
+        }
+      </p>
+
+      <div className="flex items-center gap-4">
+        {hasMenu ? (
+          <>
+            <Link
+              href="/dashboard/settings/qr-codes"
+              className="px-6 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors"
+            >
+              Get QR Code
+            </Link>
+            <button
+              onClick={onPreview}
+              className="px-6 py-3 bg-white text-slate-700 rounded-xl font-medium border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all flex items-center gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              Preview Your Future
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/dashboard/menu"
+            className="px-6 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
+          >
+            <Utensils className="w-4 h-4" />
+            Add Menu Items
+          </Link>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
+interface MenuItem {
+  id: string
+  name: string
+  description?: string
+  price: number
+  category?: string
+  type: 'food' | 'drink'
+}
+
+// Main Analytics Page
 export default function AnalyticsPage() {
   const [venueId, setVenueId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('7d')
   const [isLive, setIsLive] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [showPreview, setShowPreview] = useState(false)
 
-  // ===== METRICS (matching the screenshot exactly) =====
+  // Real data only - no fake numbers
   const [metrics, setMetrics] = useState({
     totalGuests: 0,
     guestsTrend: 0,
@@ -81,38 +631,52 @@ export default function AnalyticsPage() {
     satisfactionRate: 0,
     satTrend: 0,
     avgDecisionTime: 0,
-    decisionTrend: 0,
   })
 
-  // ===== CHART DATA =====
   const [trafficData, setTrafficData] = useState<{ day: string; guests: number }[]>([])
-  const [dietaryData, setDietaryData] = useState<{ name: string; value: number; color: string }[]>([])
+  const [dietaryData, setDietaryData] = useState<{ name: string; value: number }[]>([])
   const [moodData, setMoodData] = useState<{ name: string; value: number }[]>([])
   const [topItems, setTopItems] = useState<{ name: string; score: number }[]>([])
-
-  // ===== PREMIUM FEATURES =====
-  const [insights, setInsights] = useState<{ type: 'success' | 'warning' | 'tip'; message: string }[]>([])
-  const [peakHours, setPeakHours] = useState<{ hour: string; count: number }[]>([])
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
 
   const supabase = createClient()
 
-  // Get venue
+  // Get venue and menu
   useEffect(() => {
-    async function getVenue() {
+    async function init() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Try auth_user_id first, then email
+      // Get venue
       let op = await supabase.from('operator_users').select('venue_id').eq('auth_user_id', user.id).single()
       if (!op.data?.venue_id) {
         op = await supabase.from('operator_users').select('venue_id').eq('email', user.email).single()
       }
-      if (op.data?.venue_id) setVenueId(op.data.venue_id)
+
+      if (op.data?.venue_id) {
+        setVenueId(op.data.venue_id)
+
+        // Get menu items for preview feature
+        const { data: menus } = await supabase
+          .from('menus')
+          .select('id')
+          .eq('venue_id', op.data.venue_id)
+          .single()
+
+        if (menus?.id) {
+          const { data: items } = await supabase
+            .from('menu_items')
+            .select('*')
+            .eq('menu_id', menus.id)
+
+          setMenuItems(items || [])
+        }
+      }
     }
-    getVenue()
+    init()
   }, [supabase])
 
-  // ===== LOAD ALL DATA =====
+  // Load ALL real data
   const loadData = useCallback(async () => {
     if (!venueId) return
     setLoading(true)
@@ -124,7 +688,7 @@ export default function AnalyticsPage() {
     const startISO = startDate.toISOString()
     const prevISO = prevStart.toISOString()
 
-    // ========== FETCH ALL DATA IN PARALLEL ==========
+    // Fetch all data
     const [
       { count: guests },
       { count: prevGuests },
@@ -154,12 +718,12 @@ export default function AnalyticsPage() {
       supabase.from('events').select('*', { count: 'exact', head: true })
         .eq('venue_id', venueId).eq('name', 'recommendation_clicked').gte('ts', prevISO).lt('ts', startISO),
       supabase.from('rec_sessions').select('started_at, intent_chips')
-        .eq('venue_id', venueId).gte('started_at', startISO).order('started_at'),
+        .eq('venue_id', venueId).gte('started_at', startISO),
       supabase.from('rec_results').select('item_id, score, menu_items(name)')
         .gte('created_at', startISO),
     ])
 
-    // ========== CALCULATE TRENDS ==========
+    // Calculate trends
     const calcTrend = (curr: number, prev: number) => {
       if (prev === 0) return curr > 0 ? 100 : 0
       return Math.round(((curr - prev) / prev) * 100)
@@ -170,7 +734,11 @@ export default function AnalyticsPage() {
     const totalLikes = likes || 0
     const totalClicks = clicks || 0
     const satisfactionRate = totalClicks > 0 ? Math.round((totalLikes / totalClicks) * 100) : 0
-    const prevSatRate = (prevClicks || 0) > 0 ? Math.round(((prevLikes || 0) / (prevClicks || 0)) * 100) : 0
+    const prevSat = (prevClicks || 0) > 0 ? Math.round(((prevLikes || 0) / (prevClicks || 0)) * 100) : 0
+
+    // Calculate average decision time from sessions (if we have timestamps)
+    const avgTime = 0
+    // Would need end timestamps - skip for now
 
     setMetrics({
       totalGuests,
@@ -178,46 +746,30 @@ export default function AnalyticsPage() {
       recommendations: totalRecs,
       recsTrend: calcTrend(totalRecs, prevRecs || 0),
       satisfactionRate,
-      satTrend: satisfactionRate - prevSatRate,
-      avgDecisionTime: totalGuests > 0 ? 2.3 : 0,
-      decisionTrend: -8,
+      satTrend: satisfactionRate - prevSat,
+      avgDecisionTime: avgTime,
     })
 
-    // ========== TRAFFIC DATA (Line Chart) ==========
+    // Traffic data (Mon-Sun)
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     const trafficMap: Record<string, number> = {}
+    dayNames.forEach(d => trafficMap[d] = 0)
 
-    // Initialize all days
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
-      const dayName = dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]
-      trafficMap[dayName] = 0
-    }
-
-    // Count sessions per day
     sessions?.forEach(s => {
       const d = new Date(s.started_at)
-      const dayName = dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]
-      if (trafficMap[dayName] !== undefined) {
-        trafficMap[dayName]++
-      }
+      const dayIndex = d.getDay() === 0 ? 6 : d.getDay() - 1
+      trafficMap[dayNames[dayIndex]]++
     })
 
-    // Convert to array in correct order (Mon-Sun)
-    const orderedTraffic = dayNames.map(day => ({
-      day,
-      guests: trafficMap[day] || 0,
-    }))
+    setTrafficData(dayNames.map(day => ({ day, guests: trafficMap[day] })))
 
-    setTrafficData(orderedTraffic)
-
-    // ========== DIETARY PREFERENCES (Donut Chart) ==========
+    // Dietary preferences
     const dietaryCounts: Record<string, number> = {
       'No Restrictions': 0,
       'Vegetarian': 0,
       'Vegan': 0,
       'Gluten-free': 0,
-      'Other': 0
+      'Other': 0,
     }
 
     sessions?.forEach(s => {
@@ -226,7 +778,9 @@ export default function AnalyticsPage() {
 
       if (chips.includes('diet_vegetarian')) { dietaryCounts['Vegetarian']++; found = true }
       if (chips.includes('diet_vegan')) { dietaryCounts['Vegan']++; found = true }
-      if (chips.includes('diet_gluten_free') || chips.includes('allergy_gluten')) { dietaryCounts['Gluten-free']++; found = true }
+      if (chips.includes('diet_gluten_free') || chips.includes('allergy_gluten')) {
+        dietaryCounts['Gluten-free']++; found = true
+      }
       if (chips.some((c: string) => (c.startsWith('diet_') || c.startsWith('allergy_')) &&
           !['diet_vegetarian', 'diet_vegan', 'diet_gluten_free'].includes(c))) {
         dietaryCounts['Other']++; found = true
@@ -235,37 +789,23 @@ export default function AnalyticsPage() {
     })
 
     const totalDietary = Object.values(dietaryCounts).reduce((a, b) => a + b, 0) || 1
-    const dietaryColors = ['#1f2937', '#10b981', '#22c55e', '#f59e0b', '#9ca3af']
-
     setDietaryData(
       Object.entries(dietaryCounts)
-        .map(([name, count], i) => ({
+        .map(([name, count]) => ({
           name,
           value: Math.round((count / totalDietary) * 100),
-          color: dietaryColors[i],
         }))
         .filter(d => d.value > 0)
     )
 
-    // ========== MOOD DATA (Horizontal Bar Chart) ==========
+    // Mood data
     const moodCounts: Record<string, number> = {}
-    const moodLabels: Record<string, string> = {
-      'mood_comfort': 'Comfort Food',
-      'mood_light': 'Light & Healthy',
-      'mood_adventurous': 'Adventurous',
-      'mood_quick': 'Quick Bite',
-      'mood_protein': 'High Protein',
-      'mood_warm': 'Warming',
-      'mood_fresh': 'Fresh & Light',
-      'mood_indulgent': 'Indulgent',
-    }
-
     sessions?.forEach(s => {
       s.intent_chips?.forEach((chip: string) => {
         if (chip.startsWith('mood_')) {
-          const label = moodLabels[chip] || chip.replace('mood_', '').replace(/_/g, ' ')
-          const capitalLabel = label.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-          moodCounts[capitalLabel] = (moodCounts[capitalLabel] || 0) + 1
+          const name = chip.replace('mood_', '').replace(/_/g, ' ')
+          const cap = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+          moodCounts[cap] = (moodCounts[cap] || 0) + 1
         }
       })
     })
@@ -277,11 +817,10 @@ export default function AnalyticsPage() {
         .slice(0, 5)
     )
 
-    // ========== TOP RECOMMENDED ITEMS ==========
+    // Top items
     const itemScores: Record<string, { total: number; count: number }> = {}
-
     recResults?.forEach(r => {
-      const name = (r.menu_items as any)?.name
+      const name = (r.menu_items as unknown as { name: string })?.name
       if (name) {
         if (!itemScores[name]) itemScores[name] = { total: 0, count: 0 }
         itemScores[name].total += r.score || 50
@@ -299,173 +838,82 @@ export default function AnalyticsPage() {
         .slice(0, 5)
     )
 
-    // ========== PEAK HOURS ==========
-    const hourCounts: number[] = new Array(24).fill(0)
-    sessions?.forEach(s => {
-      const hour = new Date(s.started_at).getHours()
-      hourCounts[hour]++
-    })
-
-    setPeakHours(
-      hourCounts.map((count, hour) => ({
-        hour: `${hour.toString().padStart(2, '0')}:00`,
-        count,
-      }))
-    )
-
-    // ========== AI INSIGHTS ==========
-    const newInsights: typeof insights = []
-
-    if (totalGuests > (prevGuests || 0) * 1.1) {
-      newInsights.push({ type: 'success', message: `Guest traffic is up ${calcTrend(totalGuests, prevGuests || 0)}% vs last period!` })
-    }
-
-    if (satisfactionRate >= 90) {
-      newInsights.push({ type: 'success', message: 'Excellent satisfaction rate! Guests love your recommendations.' })
-    } else if (satisfactionRate < 70 && totalClicks > 10) {
-      newInsights.push({ type: 'warning', message: 'Satisfaction rate is below 70%. Consider updating menu tags for better matches.' })
-    }
-
-    const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]
-    if (topMood && topMood[1] > 5) {
-      newInsights.push({ type: 'tip', message: `"${topMood[0]}" is trending. Feature dishes that match this mood prominently.` })
-    }
-
-    if (dietaryCounts['Vegetarian'] + dietaryCounts['Vegan'] > totalDietary * 0.3) {
-      newInsights.push({ type: 'tip', message: 'Over 30% of guests have plant-based preferences. Consider expanding veggie options.' })
-    }
-
-    setInsights(newInsights)
-    setLastUpdate(new Date())
     setLoading(false)
   }, [venueId, dateRange, supabase])
 
-  // Load data when venue changes
   useEffect(() => {
     if (venueId) loadData()
   }, [venueId, dateRange, loadData])
 
-  // ===== REALTIME SUBSCRIPTIONS =====
+  // Realtime subscriptions
   useEffect(() => {
     if (!venueId) return
 
-    const sessionsChannel = supabase
-      .channel(`analytics-sessions-${venueId}`)
+    const channel = supabase
+      .channel(`analytics-${venueId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'rec_sessions',
         filter: `venue_id=eq.${venueId}`,
       }, () => {
-        // Update metrics immediately
-        setMetrics(prev => ({
-          ...prev,
-          totalGuests: prev.totalGuests + 1,
-        }))
-
-        // Update traffic chart for today
-        const today = new Date()
-        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        const todayName = dayNames[today.getDay() === 0 ? 6 : today.getDay() - 1]
-
-        setTrafficData(prev =>
-          prev.map(d => d.day === todayName ? { ...d, guests: d.guests + 1 } : d)
-        )
-
-        setLastUpdate(new Date())
+        setMetrics(prev => ({ ...prev, totalGuests: prev.totalGuests + 1 }))
       })
-      .subscribe(status => setIsLive(status === 'SUBSCRIBED'))
-
-    const eventsChannel = supabase
-      .channel(`analytics-events-${venueId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'events',
         filter: `venue_id=eq.${venueId}`,
       }, (payload) => {
-        const event = payload.new as any
-
-        if (event.name === 'recommendation_liked') {
-          setMetrics(prev => {
-            const newLikes = prev.satisfactionRate * prev.totalGuests / 100 + 1
-            const estimatedClicks = prev.totalGuests
-            return {
-              ...prev,
-              satisfactionRate: estimatedClicks > 0 ? Math.min(100, Math.round(newLikes / estimatedClicks * 100)) : prev.satisfactionRate,
-            }
-          })
+        const e = payload.new as { name: string }
+        if (e.name === 'recommendation_clicked') {
+          setMetrics(prev => ({ ...prev, recommendations: prev.recommendations + 1 }))
         }
-
-        if (event.name === 'recommendation_clicked') {
-          setMetrics(prev => ({
-            ...prev,
-            recommendations: prev.recommendations + 1,
-          }))
-        }
-
-        setLastUpdate(new Date())
       })
-      .subscribe()
+      .subscribe(status => setIsLive(status === 'SUBSCRIBED'))
 
-    return () => {
-      supabase.removeChannel(sessionsChannel)
-      supabase.removeChannel(eventsChannel)
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [venueId, supabase])
 
-  const maxMood = moodData.length > 0 ? Math.max(...moodData.map(m => m.value)) : 1
+  const hasData = metrics.totalGuests > 0
+  const hasMenu = menuItems.length > 0
+  const maxTraffic = Math.max(...trafficData.map(t => t.guests), 1)
+  const maxMood = moodData.length > 0 ? moodData[0].value : 1
   const maxItem = topItems.length > 0 ? topItems[0].score : 100
 
-  // Time ago helper
-  const timeAgo = (date: Date) => {
-    const s = Math.floor((Date.now() - date.getTime()) / 1000)
-    if (s < 5) return 'just now'
-    if (s < 60) return `${s}s ago`
-    if (s < 3600) return `${Math.floor(s / 60)}m ago`
-    return `${Math.floor(s / 3600)}h ago`
-  }
-
-  if (loading && metrics.totalGuests === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-gray-200 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Loading analytics...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="p-6 max-w-[1400px] mx-auto">
-      {/* ===== HEADER ===== */}
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
-            {isLive && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full">
-                <Wifi className="w-3 h-3" />
-                Live
-                <LivePulse />
-              </div>
-            )}
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+            <ChevronLeft className="w-5 h-5 text-slate-400" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold text-slate-900">Analytics</h1>
+              {isLive && (
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-full">
+                  <Wifi className="w-3 h-3" />
+                  Live
+                </span>
+              )}
+            </div>
+            <p className="text-slate-500 text-sm mt-0.5">Real-time guest insights</p>
           </div>
-          <p className="text-gray-500 mt-1">Guest insights and menu performance</p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Date Range Selector */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          {/* Date range */}
+          <div className="flex items-center bg-slate-100 rounded-xl p-1">
             {(['7d', '30d', '90d'] as const).map(range => (
               <button
                 key={range}
                 onClick={() => setDateRange(range)}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                   dateRange === range
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 {range === '7d' ? '7 days' : range === '30d' ? '30 days' : '90 days'}
@@ -473,357 +921,194 @@ export default function AnalyticsPage() {
             ))}
           </div>
 
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">
             <Download className="w-4 h-4" />
             <span className="text-sm font-medium">Export</span>
           </button>
         </div>
       </div>
 
-      {/* ===== AI INSIGHTS - PREMIUM FEATURE ===== */}
-      {insights.length > 0 && (
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {insights.map((insight, i) => (
+      {/* Menu Analysis Warnings */}
+      {hasMenu && !hasData && <MenuAnalysis menuItems={menuItems} />}
+
+      {/* Main Content */}
+      {!hasData ? (
+        <EmptyState
+          hasMenu={hasMenu}
+          menuItems={menuItems}
+          onPreview={() => setShowPreview(true)}
+        />
+      ) : (
+        <>
+          {/* Metrics */}
+          <div className="grid grid-cols-4 gap-4 mb-8">
+            <MetricCard
+              label="Total Guests"
+              value={metrics.totalGuests}
+              trend={metrics.guestsTrend}
+              loading={loading}
+            />
+            <MetricCard
+              label="Recommendations"
+              value={metrics.recommendations}
+              trend={metrics.recsTrend}
+              loading={loading}
+            />
+            <MetricCard
+              label="Satisfaction Rate"
+              value={metrics.satisfactionRate}
+              trend={metrics.satTrend}
+              suffix="%"
+              loading={loading}
+            />
+            <MetricCard
+              label="Avg. Decision"
+              value={metrics.avgDecisionTime}
+              suffix={metrics.avgDecisionTime > 0 ? 'm' : ''}
+              loading={loading}
+            />
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-3 gap-6 mb-8">
+            {/* Traffic */}
             <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`flex items-start gap-3 p-4 rounded-xl border ${
-                insight.type === 'success' ? 'bg-emerald-50 border-emerald-200' :
-                insight.type === 'warning' ? 'bg-amber-50 border-amber-200' :
-                'bg-blue-50 border-blue-200'
-              }`}
+              transition={{ delay: 0.1 }}
+              className="col-span-2 bg-white rounded-2xl border border-slate-200 p-6"
             >
-              {insight.type === 'success' && <Zap className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />}
-              {insight.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />}
-              {insight.type === 'tip' && <Lightbulb className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />}
-              <p className={`text-sm ${
-                insight.type === 'success' ? 'text-emerald-800' :
-                insight.type === 'warning' ? 'text-amber-800' :
-                'text-blue-800'
-              }`}>{insight.message}</p>
-            </motion.div>
-          ))}
-        </div>
-      )}
+              <h3 className="text-sm font-medium text-slate-900 mb-1">Guest Traffic</h3>
+              <p className="text-xs text-slate-400 mb-6">Daily visitors this week</p>
 
-      {/* ===== METRIC CARDS ===== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Total Guests */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Total Guests</span>
-            <Users className="w-5 h-5 text-gray-300" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">
-            <AnimatedValue value={metrics.totalGuests} />
-          </p>
-          {metrics.guestsTrend !== 0 && (
-            <p className={`text-sm font-medium mt-1 flex items-center gap-1 ${
-              metrics.guestsTrend >= 0 ? 'text-emerald-600' : 'text-red-500'
-            }`}>
-              {metrics.guestsTrend >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-              {metrics.guestsTrend >= 0 ? '+' : ''}{metrics.guestsTrend}%
-            </p>
-          )}
-        </div>
-
-        {/* Recommendations */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Recommendations</span>
-            <Sparkles className="w-5 h-5 text-gray-300" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">
-            <AnimatedValue value={metrics.recommendations} />
-          </p>
-          {metrics.recsTrend !== 0 && (
-            <p className={`text-sm font-medium mt-1 flex items-center gap-1 ${
-              metrics.recsTrend >= 0 ? 'text-emerald-600' : 'text-red-500'
-            }`}>
-              {metrics.recsTrend >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-              {metrics.recsTrend >= 0 ? '+' : ''}{metrics.recsTrend}%
-            </p>
-          )}
-        </div>
-
-        {/* Satisfaction Rate */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Satisfaction Rate</span>
-            <TrendingUp className="w-5 h-5 text-gray-300" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">
-            <AnimatedValue value={metrics.satisfactionRate} suffix="%" />
-          </p>
-          {metrics.satTrend !== 0 && (
-            <p className={`text-sm font-medium mt-1 flex items-center gap-1 ${
-              metrics.satTrend >= 0 ? 'text-emerald-600' : 'text-red-500'
-            }`}>
-              {metrics.satTrend >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-              {metrics.satTrend >= 0 ? '+' : ''}{metrics.satTrend}%
-            </p>
-          )}
-        </div>
-
-        {/* Avg Decision Time */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Avg. Decision Time</span>
-            <Clock className="w-5 h-5 text-gray-300" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">
-            {metrics.totalGuests > 0 ? `${metrics.avgDecisionTime}m` : '--'}
-          </p>
-          {metrics.decisionTrend !== 0 && metrics.totalGuests > 0 && (
-            <p className={`text-sm font-medium mt-1 flex items-center gap-1 ${
-              metrics.decisionTrend <= 0 ? 'text-emerald-600' : 'text-red-500'
-            }`}>
-              {metrics.decisionTrend <= 0 ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
-              {metrics.decisionTrend}%
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* ===== CHARTS ROW ===== */}
-      <div className="grid lg:grid-cols-3 gap-6 mb-6">
-        {/* Guest Traffic - Line Chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <div className="mb-4">
-            <h3 className="text-base font-semibold text-gray-900">Guest Traffic</h3>
-            <p className="text-sm text-gray-500">Daily guests and recommendations</p>
-          </div>
-
-          {trafficData.some(d => d.guests > 0) ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trafficData}>
-                  <defs>
-                    <linearGradient id="trafficFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#1f2937" stopOpacity={0.1} />
-                      <stop offset="100%" stopColor="#1f2937" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="day"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="guests"
-                    stroke="#1f2937"
-                    strokeWidth={2}
-                    fill="url(#trafficFill)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-400">
-              <div className="text-center">
-                <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p>No traffic data yet</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Dietary Preferences - Donut Chart */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="mb-4">
-            <h3 className="text-base font-semibold text-gray-900">Dietary Preferences</h3>
-            <p className="text-sm text-gray-500">Guest requirements breakdown</p>
-          </div>
-
-          {dietaryData.length > 0 ? (
-            <>
-              <div className="h-40 flex justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dietaryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={65}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {dietaryData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-2.5 mt-4">
-                {dietaryData.map((d) => (
-                  <div key={d.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
-                      <span className="text-sm text-gray-600">{d.name}</span>
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">{d.value}%</span>
+              <div className="flex items-end gap-3 h-40">
+                {trafficData.map((day, i) => (
+                  <div key={day.day} className="flex-1 flex flex-col items-center">
+                    <span className="text-xs text-slate-400 mb-2">{day.guests}</span>
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: `${(day.guests / maxTraffic) * 100}%` }}
+                      transition={{ delay: 0.2 + i * 0.05 }}
+                      className="w-full bg-slate-200 rounded-t"
+                      style={{ minHeight: day.guests > 0 ? '8px' : '2px' }}
+                    />
+                    <span className="text-xs text-slate-500 mt-3">{day.day}</span>
                   </div>
                 ))}
               </div>
-            </>
-          ) : (
-            <div className="h-48 flex items-center justify-center text-gray-400">
-              <div className="text-center">
-                <Target className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p>No dietary data yet</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+            </motion.div>
 
-      {/* ===== BOTTOM ROW ===== */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Guest Moods - Horizontal Bar Chart */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="mb-6">
-            <h3 className="text-base font-semibold text-gray-900">Guest Moods</h3>
-            <p className="text-sm text-gray-500">What guests are looking for</p>
+            {/* Dietary */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-2xl border border-slate-200 p-6"
+            >
+              <h3 className="text-sm font-medium text-slate-900 mb-1">Dietary Preferences</h3>
+              <p className="text-xs text-slate-400 mb-6">Guest requirements</p>
+
+              <div className="space-y-3">
+                {dietaryData.map((d, i) => (
+                  <motion.div
+                    key={d.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.05 }}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="text-slate-600">{d.name}</span>
+                    <span className="text-slate-900 font-medium tabular-nums">{d.value}%</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </div>
 
-          {moodData.length > 0 ? (
-            <div className="space-y-4">
-              {moodData.map((mood, i) => (
-                <div key={mood.name} className="flex items-center gap-4">
-                  <span className="w-28 text-sm text-gray-600 text-right truncate">{mood.name}</span>
-                  <div className="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(mood.value / maxMood) * 100}%` }}
-                      transition={{ delay: i * 0.1, duration: 0.5 }}
-                      className="h-full bg-gray-800 rounded"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="h-40 flex items-center justify-center text-gray-400">
-              <div className="text-center">
-                <Sparkles className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p>No mood data yet</p>
-              </div>
-            </div>
-          )}
-        </div>
+          {/* Bottom Row */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Moods */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white rounded-2xl border border-slate-200 p-6"
+            >
+              <h3 className="text-sm font-medium text-slate-900 mb-1">Guest Moods</h3>
+              <p className="text-xs text-slate-400 mb-6">What guests are looking for</p>
 
-        {/* Top Recommended */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-base font-semibold text-gray-900">Top Recommended</h3>
-              <p className="text-sm text-gray-500">Most recommended dishes</p>
-            </div>
-            <Link href="/dashboard/menu" className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-              View all <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {topItems.length > 0 ? (
-            <div className="space-y-4">
-              {topItems.map((item, i) => (
-                <div key={item.name} className="flex items-center gap-4">
-                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-semibold ${
-                    i === 0 ? 'bg-amber-100 text-amber-700' :
-                    i === 1 ? 'bg-gray-200 text-gray-700' :
-                    i === 2 ? 'bg-orange-100 text-orange-700' :
-                    'bg-gray-100 text-gray-500'
-                  }`}>
-                    {i + 1}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 mb-1">{item.name}</p>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(item.score / maxItem) * 100}%` }}
-                        transition={{ delay: i * 0.1 }}
-                        className="h-full bg-emerald-500 rounded-full"
-                      />
+              {moodData.length > 0 ? (
+                <div className="space-y-4">
+                  {moodData.map((mood, i) => (
+                    <div key={mood.name}>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-slate-600">{mood.name}</span>
+                        <span className="text-slate-400 tabular-nums">{mood.value}</span>
+                      </div>
+                      <ProgressBar value={mood.value} max={maxMood} delay={0.4 + i * 0.1} />
                     </div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-600 tabular-nums">{item.score}</span>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="h-40 flex items-center justify-center text-gray-400">
-              <div className="text-center">
-                <Target className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p>No recommendations yet</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+              ) : (
+                <p className="text-slate-400 text-sm">No mood data yet</p>
+              )}
+            </motion.div>
 
-      {/* ===== PEAK HOURS - PREMIUM HEATMAP ===== */}
-      <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
-        <div className="mb-6">
-          <h3 className="text-base font-semibold text-gray-900">Peak Hours</h3>
-          <p className="text-sm text-gray-500">When guests are most active (8AM - 11PM)</p>
-        </div>
-
-        <div className="flex gap-1">
-          {peakHours.slice(8, 23).map((hour, i) => {
-            const maxCount = Math.max(...peakHours.map(h => h.count), 1)
-            const intensity = hour.count / maxCount
-
-            return (
-              <div key={hour.hour} className="flex-1 text-center group relative">
-                <motion.div
-                  initial={{ opacity: 0.3 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="h-14 rounded-lg cursor-pointer transition-transform hover:scale-105"
-                  style={{
-                    backgroundColor: `rgba(16, 185, 129, ${Math.max(intensity * 0.9, 0.1)})`,
-                  }}
-                />
-                <span className="text-xs text-gray-400 mt-1 block">{hour.hour.split(':')[0]}</span>
-
-                {/* Tooltip */}
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                  {hour.count} guests
+            {/* Top Items */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white rounded-2xl border border-slate-200 p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-sm font-medium text-slate-900 mb-1">Top Recommended</h3>
+                  <p className="text-xs text-slate-400">Highest scoring dishes</p>
                 </div>
+                <Link href="/dashboard/menu" className="text-xs text-slate-400 hover:text-slate-600">
+                  View all →
+                </Link>
               </div>
-            )
-          })}
-        </div>
 
-        <div className="flex items-center justify-end gap-4 mt-4 text-xs text-gray-400">
-          <span>Quiet</span>
-          <div className="flex gap-0.5">
-            {[0.1, 0.25, 0.5, 0.75, 1].map(o => (
-              <div key={o} className="w-4 h-4 rounded" style={{ backgroundColor: `rgba(16, 185, 129, ${o * 0.9})` }} />
-            ))}
+              {topItems.length > 0 ? (
+                <div className="space-y-4">
+                  {topItems.map((item, i) => (
+                    <motion.div
+                      key={item.name}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + i * 0.1 }}
+                      className="flex items-center gap-3"
+                    >
+                      <span className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-medium text-slate-500">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-sm text-slate-700 truncate mb-1">{item.name}</p>
+                        <ProgressBar value={item.score} max={maxItem} delay={0.6 + i * 0.1} />
+                      </div>
+                      <span className="text-sm font-medium text-slate-900 tabular-nums">{item.score}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-400 text-sm">No recommendations yet</p>
+              )}
+            </motion.div>
           </div>
-          <span>Busy</span>
-        </div>
-      </div>
+        </>
+      )}
 
-      {/* ===== LAST UPDATED ===== */}
-      <div className="mt-6 text-center text-sm text-gray-400">
-        Last updated: {timeAgo(lastUpdate)}
-        {isLive && <span className="text-emerald-600 ml-2">• Live updates enabled</span>}
-      </div>
+      {/* Preview Future Modal */}
+      <AnimatePresence>
+        {showPreview && hasMenu && (
+          <PreviewFuture
+            menuItems={menuItems}
+            onClose={() => setShowPreview(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
